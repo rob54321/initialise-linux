@@ -1,15 +1,15 @@
 #!/bin/bash
 
-# the repositories must be mounted where the link points to.
+# Script to initialise raspberry pi
+# this script is run after the first reboot
+# and the system boots into the console not X windows.
 # the subversion repository must exist.
 # this script initialises the repositories for apt-get, makes all the devices, sets links for myenvironment, myrc.local and
 # and installs subversion
 usage() {
-	echo "-D linux dist [debian|ubuntu]		default: ${LINUXDISTRO}";
-	echo "-d debian path [file:///mnt/hdd/debian|http://debian.mirror.ac.za/debian]	default: ${DEBIANURL}";
-	echo "-u ubuntu path [file:///mnt/hdd/ubuntu-archive|http://ubuntu.mirror.ac.za] default: ${UBUNTUURL}";
+	echo "-d debian path [file:///mnt/hdd/debian|http://debian.mirror.ac.za/debian]	default: ${RPIURL}";
 	echo "-m debhome path			default: ${MYDEBIANPATH}";
-	echo "-r release name [stable|wily]		default: ${RELEASE}";
+	echo "-r release name [buster]		default: ${RELEASE}";
 	echo "-s svn path				default: ${SVNPATH}";
 	echo "-l linklabel for hdd				default: ${LINKLABEL}";
 	echo "-h help"
@@ -18,21 +18,17 @@ usage() {
 
 # defaults
 # must be debian or ubuntu
-LINUXDISTRO="none"
-UBUNTUURL="http://archive.ubuntu.com/ubuntu"
-DEBIANURL="/mnt/hdd/debian"
-SVNPATH="/mnt/hdint/svn"
+RPIURL="http://deb.debian.org/debian"
+SVNPATH="/home/robert/svn"
 MYDEBIANPATH="/mnt/hdd/debhome"
 LINKLABEL="ad64"
 LINK="/mnt/${LINKLABEL}"
 RELEASE="none"
 
-while getopts D:d:u:m:s:l:r:h opt
+while getopts d:m:s:l:r:h opt
 do
 	case ${opt} in
-		D) LINUXDISTRO="${OPTARG}";;
-		u) UBUNTUURL="${OPTARG}";;
-		d) DEBIANURL="${OPTARG}";;
+		d) RPIURL="${OPTARG}";;
 		m) MYDEBIANPATH="${OPTARG}";;
 		s) SVNPATH="${OPTARG}";;
 		l) LINKLABEL="${OPTARG}";;
@@ -43,20 +39,11 @@ do
 done
 
 # set up the urls and path for debian or ubuntu
-if [ "${LINUXDISTRO}" == "debian" ]
-then
-	DISTROURL="${DEBIANURL}"
-elif [ "${LINUXDISTRO}" == "ubuntu" ]
-then
-	DISTROURL="${UBUNTUURL}"
-else
-	echo "no such ${LINUXDISTRO} distribution"
-	exit 1
-fi
+DISTROURL="${RPIURL}"
 
 if [ "${RELEASE}" == "none" ]
 then
-	echo "Choose a release: bionic utopic, saucy, trusty etc"
+	echo "Choose a release: stretch|buster etc"
 	exit 1
 fi
 
@@ -65,7 +52,7 @@ MYDEBIANURL="file://${MYDEBIANPATH}"
 # make all the mount directories
 chown robert.robert /mnt
 cd /mnt
-dirlist="hd2 hd3 sd64 ssd ele tos trans16 whdd wd myp sea x1 x2 can win axiz axiz2 king sah trans ver ver8 chaos ad scd1 scd2"
+dirlist="hd2 hd3 ad64 ssd axiz axiz2 king sah trans ver ver8 chaos ad scd1 scd2"
 for dir in $dirlist
 do
 	if [ ! -d /mnt/${dir} ]
@@ -102,7 +89,7 @@ then
 fi
 sudo -u robert ln -s ${LINK} hdd
 
-# mount the  flash drive for debhome
+# mount the  flash drive for debhome if it is not mounted
 findmnt ${LINK}
 if [ $? -ne 0 ]
 then
@@ -123,31 +110,12 @@ fi
 cp -a /etc/apt/sources.list /etc/apt/sources.list.bak
 
 # edit sources.list for ubuntu or debian
-if [ "${LINUXDISTRO}" == "ubuntu" ]
-then
-	echo "deb ${DISTROURL} ${RELEASE} main restricted multiverse universe
-deb ${DISTROURL} ${RELEASE}-security main restricted multiverse universe
-deb ${DISTROURL} ${RELEASE}-updates  main restricted multiverse universe
-deb ${DISTROURL} ${RELEASE}-proposed  main restricted multiverse universe
-# deb https://download.virtualbox.org/virtualbox/debian ${RELEASE} contrib
-deb ${MYDEBIANURL} home main
+echo "deb ${DISTROURL} ${RELEASE} main contrib non-free
+deb ${DISTROURL} ${RELEASE}-security main contrib non-free
+deb ${DISTROURL} ${RELEASE}-updates  main contrib non-free
+deb ${MYDEBIANURL} home main"
 
-#deb http://archive.ubuntu.com/ubuntu ${RELEASE} main restricted multiverse universe
-#deb http://archive.ubuntu.com/ubuntu ${RELEASE}-security main restricted multiverse universe
-#deb http://archive.ubuntu.com/ubuntu ${RELEASE}-updates  main restricted multiverse universe
-#deb http://archive.ubuntu.com/ubuntu ${RELEASE}-proposed  main restricted multiverse universe" \
 > /etc/apt/sources.list
-else
-	echo "deb ${DISTROURL} ${RELEASE} main contrib non-free
-deb ${DISTROURL} ${RELEASE}-updates main contrib non-free
-deb ${DISTROURL} ${RELEASE}-proposed-updates main contrib non-free
-deb ${MYDEBIANURL} home main" \
-> /etc/apt/sources.list
-fi
-
-# get the key for virtualbox
-cd /root
-wget -q https://www.virtualbox.org/download/oracle_vbox_2016.asc -O- | sudo apt-key add -
 
 # make loop devices
 # make the loop devices
@@ -162,41 +130,20 @@ done
 chmod 666 /dev/loop*
 chown root.root /dev/loop*
 
-# add oracle java 7 repository
-# add-apt-repository ppa:webupd8team/java
-
-# install subversion
-
-# get key and update repositories.
 apt-key add ${MYDEBIANPATH}/publickeyFile.gpg
 apt-get update
 apt-get -y install subversion
 
 # add all other config files so that no 'svn:externals' properties are necessary in the deb
 # install files
-cd /usr/local/bin
-svn export ${SVNURL}/root/my-linux/scripts/unbindall
-svn export ${SVNURL}/root/my-linux/scripts/bindall
-svn export ${SVNURL}/root/my-linux/scripts/homehddBackup
-svn export ${SVNURL}/root/my-linux/scripts/getkey
-
 cd /etc
-svn export ${SVNURL}/root/my-linux/config-files/rsyncd.conf
-svn export ${SVNURL}/root/my-linux/config-files/fstab-extension
+svn export --force ${SVNURL}/root/my-linux/config-files/fstab-extension
 
 cd /etc/sudoers.d
 svn export --force ${SVNURL}/root/my-linux/sudoers.d/robert
 # set ownership
 chown root.root robert
 chmod 0440 robert
-
-cd /etc/samba
-svn export ${SVNURL}/root/my-linux/config-files/smb-extension.conf
-
-# set up apt.conf
-cd /etc/apt
-svn export ${SVNURL}/root/my-linux/config-files/apt.conf
-
 
 # setup fstab if it has not been setup already.
 grep -q "fstab-extension" /etc/fstab
@@ -209,42 +156,6 @@ then
 	cat /etc/fstab-extension >> /etc/fstab
 fi
 rm /etc/fstab-extension
-
-# edit fstab so that winext is not mounted automatically
-sed -i -e 's/defaults,umask=007,gid=46/noauto,umask=007,users,uid=robert,gid=robert/' /etc/fstab
-
-
-# extract myrc.local and myenvironment from subversion
-cd /usr/local/bin
-svn export ${SVNURL}/root/my-linux/scripts/myrc.local
-svn export ${SVNURL}/root/my-linux/scripts/myenvironment
-
-
-# edit profile 
-grep -q "myenvironment" /etc/profile
-if [ $? -ne 0 ]
-then
-	echo ". /usr/local/bin/myenvironment" >> /etc/profile
-fi
-
-# add links to myrc.local
-cd /etc/init.d
-# force removal incase it exists
-rm -f /etc/init.d/myrc.local
-rm -f /etc/rc2.d/S500myrc.local
-
-# make the links now.
-if [ ! -L /etc/rc2.d/S500myrc.local ]
-then
-	if [ -f /usr/local/bin/myrc.local ]
-	then
-		# put links for myrc.local in init.d and rc2.d
-		ln -s /usr/local/bin/myrc.local /etc/init.d/myrc.local
-		ln -s /usr/local/bin/myrc.local /etc/rc2.d/S500myrc.local
-		# register for start stop operation
-		update-rc.d myrc.local defaults 99
-	fi
-fi
 
 # edit .bashrc so directories will be in colour for root
 cd
@@ -268,30 +179,6 @@ chown robert.robert .bashrc
 
 # set time to local
 timedatectl set-timezone Africa/Johannesburg
-timedatectl set-local-rtc 1
 
-
-# fix default grub
-# edit 05_debian_theme
-sed -i -e 's/white\/black/white\/blue/' /etc/grub.d/05_debian_theme
-
-sed -i -e '/GRUB_CMDLINE_LINUX_DEFAULT/ c\GRUB_CMDLINE_LINUX_DEFAULT="acpi=force apm=power_off"
-/GRUB_HIDDEN_TIMEOUT=0/ c\# GRUB_HIDDEN_TIMEOUT=0
-/GRUB_HIDDEN_TIMEOUT_QUIET=true/ c\# GRUB_HIDDEN_TIMEOUT_QUIET=true' /etc/default/grub
-if test $? -eq 0; then
-	update-grub
-else
-	echo "error editing /etc/default/grub"
-fi
-# set link so boot only goes to command line
+#set link so boot only goes to command line
 systemctl set-default multi-user.target
-
-# set up repositories for oracle java8
-
-#add-apt-repository ppa:webupd8team/java
-#apt-get update
-#apt-get install oracle-java8-installer
-
-#update-java-alternatives -s java-8-oracle
-#apt-get install oracle-java8-set-default
-
