@@ -17,7 +17,7 @@ usage() {
 }
 
 # defaults
-# must be debian or ubuntu
+# only for raspberry pi
 RPIURL="http://deb.debian.org/debian"
 SVNPATH="/home/robert/svn"
 MYDEBIANPATH="/mnt/hdd/debhome"
@@ -107,7 +107,7 @@ fi
 # setup everything to be able to mount the repository
 
 # make sources.list for amd64
-cp -a /etc/apt/sources.list /etc/apt/sources.list.bak
+mv /etc/apt/sources.list /etc/apt/sources.list.bak
 
 # edit sources.list for ubuntu or debian
 echo "deb ${DISTROURL} ${RELEASE} main contrib non-free
@@ -136,17 +136,19 @@ apt-get -y install subversion
 
 # add all other config files so that no 'svn:externals' properties are necessary in the deb
 # install files
-cd /etc
-svn export --force ${SVNURL}/root/my-linux/config-files/fstab-extension
-
 cd /etc/sudoers.d
 svn export --force ${SVNURL}/root/my-linux/sudoers.d/robert
+
 # set ownership
 chown root.root robert
-chmod 0440 robert
+chmod 0440 robertcd /etc
 
 # setup fstab if it has not been setup already.
-grep -q "fstab-extension" /etc/fstab
+cd /etc
+svn export --force ${SVNURL}/root/my-linux/config-files/fstab-extension /etc
+
+# check if fstab-extention has been added to /etc/fstab
+grep -q "fstab-extension" /etc
 if [ $? -ne 0 ]
 then
 	# first backup it up
