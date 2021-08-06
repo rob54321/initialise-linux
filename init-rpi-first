@@ -9,6 +9,39 @@
 # this is done so user robert is not active
 # and usermod and groupmod can be run.
 
+usage() {
+	echo "-d debian path [file:///mnt/hdd/debian|http://debian.mirror.ac.za/debian]	default: ${RPIURL}";
+	echo "-m debhome path			default: ${MYDEBIANPATH}";
+	echo "-r release name [buster]		default: ${RELEASE}";
+	echo "-s svn path				default: ${SVNPATH}";
+	echo "-l linklabel for hdd				default: ${LINKLABEL}";
+	echo "-h help"
+	exit 0
+}
+
+# defaults
+# only for raspberry pi
+RPIURL="http://deb.debian.org/debian"
+SVNPATH="/home/robert/svn"
+MYDEBIANPATH="/mnt/hdd/debhome"
+LINKLABEL="ad64"
+LINK="/mnt/${LINKLABEL}"
+RELEASE="none"
+
+while getopts d:m:s:l:r:h opt
+do
+	case ${opt} in
+		d) RPIURL="${OPTARG}";;
+		m) MYDEBIANPATH="${OPTARG}";;
+		s) SVNPATH="${OPTARG}";;
+		l) LINKLABEL="${OPTARG}";;
+		r) RELEASE="${OPTARG}";;
+		h) usage;;
+		\?) usage;;
+	esac
+done
+
+
 # set the pi to boot into console
 systemctl set-default multi-user.target
 
@@ -22,13 +55,16 @@ Description=Reboot raspberry pi and then initialise rpi once.
 
 [Service]
 Type=simple
-ExecStart=/bin/bash /usr/local/bin/init-rpi
+ExecStart=/bin/bash /usr/local/bin/init-rpi -d ${RPIURL} -s ${SVNPATH} -m ${MYDEBIANPATH} -l ${LINKLABEL} -r ${RELEASE} -h
 
 [Install]
 WantedBy=multi-user.target" > /etc/systemd/system/init-rpi.service
+
+# set mode for init-rpi.service
+chmod 0644 /etc/systemd/system/init-rpi.service
 
 # enable the service for the next boot
 systemctl enable init-rpi
 
 # reboot
-shutdown -r now
+# shutdown -r now
