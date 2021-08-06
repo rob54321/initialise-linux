@@ -178,9 +178,3 @@ cd /home/robert
 chown robert.robert /home/robert/.dircolors
 
 chown robert.robert .bashrc
-
-# set time to local
-timedatectl set-timezone Africa/Johannesburg
-
-#set link so boot only goes to command line
-systemctl set-default multi-user.target

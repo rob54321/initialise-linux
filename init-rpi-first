@@ -1,0 +1,34 @@
+#! /bin/sh
+
+# this script runs immediately after the rpi has
+# maximised the sdcard space, ie after the first boot.
+# it sets up rpi to boot to console and then runs init-rpi
+# through systemd service. init-rpi only runs once and does
+# the rest of the setup.
+
+# this is done so user robert is not active
+# and usermod and groupmod can be run.
+
+# set the pi to boot into console
+systemctl set-default multi-user.target
+
+# set the time and zone
+systemctl set-timezone Africa/Johannesburg
+
+# launch service init-rpi
+# create the init-rpi service
+echo "[Unit]
+Description=Reboot raspberry pi and then initialise rpi once.
+
+[Service]
+Type=simple
+ExecStart=/bin/bash /usr/local/bin/init-rpi
+
+[Install]
+WantedBy=multi-user.target" > /etc/systemd/system/init-rpi.service
+
+# enable the service for the next boot
+systemctl enable init-rpi
+
+# reboot
+shutdown -r now
