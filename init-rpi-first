@@ -46,7 +46,7 @@ done
 systemctl set-default multi-user.target
 
 # set the time and zone
-systemctl set-timezone Africa/Johannesburg
+timedatectl set-timezone Africa/Johannesburg
 
 # launch service init-rpi
 # create the init-rpi service
@@ -55,7 +55,7 @@ Description=Reboot raspberry pi and then initialise rpi once.
 
 [Service]
 Type=simple
-ExecStart=/bin/bash /usr/local/bin/init-rpi -d ${RPIURL} -s ${SVNPATH} -m ${MYDEBIANPATH} -l ${LINKLABEL} -r ${RELEASE} -h
+ExecStart=/bin/bash /usr/local/bin/init-rpi -d ${RPIURL} -s ${SVNPATH} -m ${MYDEBIANPATH} -l ${LINKLABEL} -r ${RELEASE}
 
 [Install]
 WantedBy=multi-user.target" > /etc/systemd/system/init-rpi.service
