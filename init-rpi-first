@@ -1,6 +1,6 @@
 #! /bin/sh
 
-# this script runs immediately after the rpi has
+# this script should be run immediately after the rpi has
 # maximised the sdcard space, ie after the first boot.
 # it sets up rpi to boot to console and then runs init-rpi
 # through systemd service. init-rpi only runs once and does
@@ -66,5 +66,7 @@ chmod 0644 /etc/systemd/system/init-rpi.service
 # enable the service for the next boot
 systemctl enable init-rpi
 
+
+
 # reboot
-# shutdown -r now
+shutdown -r now

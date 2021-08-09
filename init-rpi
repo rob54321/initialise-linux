@@ -1,8 +1,11 @@
 #!/bin/bash
 
 # Script to initialise raspberry pi
-# this script is run after the first reboot
-# and the system boots into the console not X windows.
+# this script is run automatically after the first reboot.
+# init-rpi-first will setup init-rpi.service to run this script after rebooting.
+# multi-user.target is set so that user pi can be changed to robert
+# the clock and time zone are also set prior to this script
+#
 # the subversion repository must exist.
 # this script initialises the repositories for apt-get, makes all the devices, sets links for myenvironment, myrc.local and
 # and installs subversion
@@ -37,6 +40,11 @@ do
 		\?) usage;;
 	esac
 done
+
+# change user pi to robert with correct groups and permissions
+usermod -l robert -m -d /home/robert pi
+# change the group pi to robert
+groupmod -n robert pi
 
 # set up the urls and path for debian or ubuntu
 DISTROURL="${RPIURL}"
@@ -162,7 +170,10 @@ rm /etc/fstab-extension
 # edit .bashrc so directories will be in colour for root
 cd
 cp -f .bashrc .bashrc.bak
-sed -i -e 's/#force_color_prompt/force_color_prompt/' .bashrc
+sed -i -e '/^# PS1/i \PS1='\''\${debian_chroot:+(\$debian_chroot)}\\[\\033[01;32m\\]\\u@\\h\\[\\033[00m\\]:\\[\\033[01;36m\\]\\w \$\\[\\033[00m\\]'\'' /root/.bashrc
+
+sed -i -e 's/^# export LS_OPTIONS/export LS_OPTIONS='\''--color=auto'\'\/ /root/.bashrc
+sed -i -e 's/^# eval \"`dircolors`\"/\"\$(dircolors -b ~\/.dircolors)\"/ /root/.bashrc
 
 # edit .bashrc for robert so directories will be in colour
 cd /home/robert
