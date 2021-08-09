@@ -55,7 +55,7 @@ Description=Reboot raspberry pi and then initialise rpi once.
 
 [Service]
 Type=simple
-ExecStart=/bin/bash /usr/local/bin/init-rpi -d ${RPIURL} -s ${SVNPATH} -m ${MYDEBIANPATH} -l ${LINKLABEL} -r ${RELEASE}
+ExecStart=/bin/bash /usr/local/bin/init-rpi -d ${RPIURL} -s ${SVNPATH} -m ${MYDEBIANPATH} -l ${LINKLABEL} -r buster
 
 [Install]
 WantedBy=multi-user.target" > /etc/systemd/system/init-rpi.service
