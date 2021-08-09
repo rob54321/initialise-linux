@@ -25,7 +25,6 @@ RPIURL="http://deb.debian.org/debian"
 SVNPATH="/home/robert/svn"
 MYDEBIANPATH="/mnt/hdd/debhome"
 LINKLABEL="ad64"
-LINK="/mnt/${LINKLABEL}"
 RELEASE="none"
 
 while getopts d:m:s:l:r:h opt
@@ -40,6 +39,8 @@ do
 		\?) usage;;
 	esac
 done
+# set the link for where svn and debhome are
+LINK="/mnt/${LINKLABEL}"
 
 # change user pi to robert with correct groups and permissions
 usermod -l robert -m -d /home/robert pi
@@ -68,6 +69,11 @@ do
 		mkdir /mnt/${dir}
 	fi
 done
+# check /mnt/${LINKLABEL} exists
+if test ! -d "/mnt/${LINKLABEL}"; then
+	mkdir "/mnt/${LINKLABEL}"
+fi
+
 # set permisions of /mnt dirs
 chown robert.robert /mnt/*
 
@@ -83,13 +89,6 @@ sudo -u robert ln -s ${SVNPATH} svn
 SVNURL="file://${SVNPATH}"
 
 
-# check the svn repository
-if [ ! -e ${SVNPATH} ]
-then
-	echo "No subversion repository found at ${SVNPATH}"
-	exit 1
-fi
-
 # make the hdd link
 if [ -L hdd ]
 then
@@ -102,6 +101,15 @@ findmnt ${LINK}
 if [ $? -ne 0 ]
 then
 	mount -L ${LINKLABEL} ${LINK}
+fi
+# copy svn from ad64 to /home/robert
+cp -a ${LINK}/svn /home/robert/
+
+# check the svn repository
+if [ ! -e ${SVNPATH} ]
+then
+	echo "No subversion repository found at ${SVNPATH}"
+	exit 1
 fi
 
 #check for debhome
