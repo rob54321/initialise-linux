@@ -50,8 +50,7 @@ groupmod -n robert pi
 # set up the urls and path for debian or ubuntu
 DISTROURL="${RPIURL}"
 
-if [ "${RELEASE}" == "none" ]
-then
+if test "${RELEASE}" = "none"; then
 	echo "Choose a release: stretch|buster etc"
 	exit 1
 fi
@@ -98,8 +97,7 @@ sudo -u robert ln -s ${LINK} hdd
 
 # mount the  flash drive for debhome if it is not mounted
 findmnt ${LINK}
-if [ $? -ne 0 ]
-then
+if test $? -ne 0  then;
 	mount -L ${LINKLABEL} ${LINK}
 fi
 # copy svn from ad64 to /home/robert

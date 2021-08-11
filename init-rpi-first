@@ -42,16 +42,18 @@ do
 done
 # set up the urls and path for debian or ubuntu
 
-if [ "${RELEASE}" == "none" ]
-then
+if test "${RELEASE}" = "none"; then
 	echo "Choose a release: stretch|buster etc"
 	exit 1
 fi
+exit 1
 
 # set the rpi to boot to console and no autologin
 systemctl set-default multi-user.target
 ln -fs /lib/systemd/system/getty@.service /etc/systemd/system/getty.target.wants/getty@tty1.service
-rm /etc/systemd/system/getty@tty1.service.d/autologin.conf
+if test -e /etc/systemd/system/getty@tty1.service.d/autologin.conf; then
+	rm /etc/systemd/system/getty@tty1.service.d/autologin.conf
+fi
 
 # set the time and zone
 timedatectl set-timezone Africa/Johannesburg
