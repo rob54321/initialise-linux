@@ -39,21 +39,28 @@ do
 		\?) usage;;
 	esac
 done
-# set the link for where svn and debhome are
-LINK="/mnt/${LINKLABEL}"
-
-# change user pi to robert with correct groups and permissions
-usermod -l robert -m -d /home/robert pi
-# change the group pi to robert
-groupmod -n robert pi
-
-# set up the urls and path for debian or ubuntu
-DISTROURL="${RPIURL}"
-
+# check release
 if test "${RELEASE}" = "none"; then
 	echo "Choose a release: stretch|buster etc"
 	exit 1
 fi
+
+# change user pi to robert with correct groups and permissions
+# check if user robert exists
+groups robert > /dev/null 2>&1
+if test $? -ne 0; then
+	# user robert does not exist, create it
+	usermod -l robert -m -d /home/robert pi
+
+	# if group pi exists, change it to group robert
+	getent group pi
+	if test $? -eq 0; then
+		# change the group pi to robert
+		groupmod -n robert pi
+	fi
+fi
+
+exit 1;
 
 MYDEBIANURL="file://${MYDEBIANPATH}"
 
@@ -68,9 +75,13 @@ do
 		mkdir /mnt/${dir}
 	fi
 done
+
+# set the link for where svn and debhome are
+LINK="/mnt/${LINKLABEL}"
+
 # check /mnt/${LINKLABEL} exists
-if test ! -d "/mnt/${LINKLABEL}"; then
-	mkdir "/mnt/${LINKLABEL}"
+if test ! -d "${LINK}"; then
+	mkdir "${LINK}"
 fi
 
 # set permisions of /mnt dirs
@@ -80,8 +91,7 @@ chown robert.robert /mnt/*
 # so it can be accessed as file:///mnt/svn no matter where it is located
 cd /mnt
 
-if [ -L svn ]
-then
+if test -L svn; then
 	rm -f svn
 fi
 sudo -u robert ln -s ${SVNPATH} svn
@@ -89,23 +99,22 @@ SVNURL="file://${SVNPATH}"
 
 
 # make the hdd link
-if [ -L hdd ]
-then
+if test -L hdd; then
 	rm -f hdd
 fi
 sudo -u robert ln -s ${LINK} hdd
 
 # mount the  flash drive for debhome if it is not mounted
 findmnt ${LINK}
-if test $? -ne 0  then;
+if test $? -ne 0; then
 	mount -L ${LINKLABEL} ${LINK}
 fi
+
 # copy svn from ad64 to /home/robert
 cp -a ${LINK}/svn /home/robert/
 
 # check the svn repository
-if [ ! -e ${SVNPATH} ]
-then
+if test ! -e ${SVNPATH}; then
 	echo "No subversion repository found at ${SVNPATH}"
 	exit 1
 fi
@@ -124,16 +133,14 @@ fi
 mv /etc/apt/sources.list /etc/apt/sources.list.bak
 
 # edit sources.list for ubuntu or debian
-echo "deb ${DISTROURL} ${RELEASE} main contrib non-free
-deb ${DISTROURL} ${RELEASE}-security main contrib non-free
-deb ${DISTROURL} ${RELEASE}-updates  main contrib non-free
-deb ${MYDEBIANURL} home main"
-
-> /etc/apt/sources.list
+echo "deb ${RPIURL} ${RELEASE} main contrib non-free
+deb ${RPIURL}-security ${RELEASE}/updates main contrib non-free
+deb ${RPIURL} ${RELEASE}-updates  main contrib non-free
+deb ${MYDEBIANURL} home main" > /etc/apt/sources.list
 
 # make loop devices
 # make the loop devices
-for (( x = 0; x < 48; x += 1 ))
+for (( x = 0; x < 16; x += 1 ))
 do
 	if [ ! -b /dev/loop${x} ]
 	then
@@ -143,10 +150,11 @@ done
 # set permissions of loop devices
 chmod 666 /dev/loop*
 chown root.root /dev/loop*
-
+exit 1
+# add key for repository
 apt-key add ${MYDEBIANPATH}/publickeyFile.gpg
-apt-get update
-apt-get -y install subversion
+apt update
+apt -y install subversion
 
 # add all other config files so that no 'svn:externals' properties are necessary in the deb
 # install files

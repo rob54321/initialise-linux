@@ -46,7 +46,6 @@ if test "${RELEASE}" = "none"; then
 	echo "Choose a release: stretch|buster etc"
 	exit 1
 fi
-exit 1
 
 # set the rpi to boot to console and no autologin
 systemctl set-default multi-user.target
