@@ -40,13 +40,22 @@ do
 		\?) usage;;
 	esac
 done
+# set up the urls and path for debian or ubuntu
 
+if [ "${RELEASE}" == "none" ]
+then
+	echo "Choose a release: stretch|buster etc"
+	exit 1
+fi
 
-# set the pi to boot into console
+# set the rpi to boot to console and no autologin
 systemctl set-default multi-user.target
+ln -fs /lib/systemd/system/getty@.service /etc/systemd/system/getty.target.wants/getty@tty1.service
+rm /etc/systemd/system/getty@tty1.service.d/autologin.conf
 
 # set the time and zone
 timedatectl set-timezone Africa/Johannesburg
+
 
 # launch service init-rpi
 # create the init-rpi service
@@ -55,7 +64,7 @@ Description=Reboot raspberry pi and then initialise rpi once.
 
 [Service]
 Type=simple
-ExecStart=/bin/bash /usr/local/bin/init-rpi -d ${RPIURL} -s ${SVNPATH} -m ${MYDEBIANPATH} -l ${LINKLABEL} -r buster
+ExecStart=/bin/bash /usr/local/bin/init-rpi -d ${RPIURL} -s ${SVNPATH} -m ${MYDEBIANPATH} -l ${LINKLABEL} -r ${RELEASE}
 
 [Install]
 WantedBy=multi-user.target" > /etc/systemd/system/init-rpi.service
@@ -64,9 +73,9 @@ WantedBy=multi-user.target" > /etc/systemd/system/init-rpi.service
 chmod 0644 /etc/systemd/system/init-rpi.service
 
 # enable the service for the next boot
-systemctl enable init-rpi
+# systemctl enable init-rpi
 
 
 
 # reboot
-shutdown -r now
+# shutdown -r now
