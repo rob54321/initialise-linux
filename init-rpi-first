@@ -57,6 +57,10 @@ fi
 # set the time and zone
 timedatectl set-timezone Africa/Johannesburg
 
+# set hostname
+hostnamectl set-hostname rpi
+# change it in /etc/hosts
+sed -i -e 's/raspberrypi/rpi/' /etc/hosts
 
 # launch service init-rpi
 # create the init-rpi service
