@@ -138,7 +138,7 @@ if test $? -ne 0; then
 fi
 
 # add key for repository
-# apt-key add ${MYDEBIANPATH}/publickeyFile.gpg
+apt-key add ${MYDEBIANPATH}/publickeyFile.gpg
 apt update
 
 apt -y install subversion
@@ -191,6 +191,7 @@ chown robert.robert /home/robert/.dircolors
 
 # edit .bashrc for robert so directories will be in colour
 cd /home/robert
+cp .bashrc .bashrc.bak
 sed -i -e 's/#force_color_prompt/force_color_prompt/' .bashrc
 sed -i -e 's/\[\\033\[01;34m\\\]/\[\\033\[01;36m\\\]/' .bashrc
 
