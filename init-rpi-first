@@ -13,7 +13,7 @@ usage() {
 	echo "-d debian path [file:///mnt/hdd/debian|http://..]	default: ${RPIURL}";
 	echo "-m debhome path						default: ${MYDEBIANPATH}";
 	echo "-r release name [buster]				default: ${RELEASE}";
-	echo "-s svn path						default: ${SVNPATH}";
+	echo "-s svn destination path					default: ${SVNPATH}";
 	echo "-l linklabel for hdd					default: ${LINKLABEL}";
 	echo "-h help"
 	exit 0
@@ -96,8 +96,8 @@ if test $? -ne 0; then
 	mount -L ${LINKLABEL} ${LINK}
 fi
 
-# copy svn from ad64 to /home/pi
-cp -a ${LINK}/svn /home/pi/
+# copy svn from ad64 to destination path
+cp -a ${LINK}/svn ${SVNPATH}
 
 # check the svn repository
 if test ! -e "${SVNPATH}/svn"; then
