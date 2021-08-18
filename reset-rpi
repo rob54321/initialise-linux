@@ -31,6 +31,14 @@ rm *
 # rm sudoers
 rm -v /etc/sudoers.d/robert
 
+# uninstall subversion
+apt --autoremove -y purge subversion
+
+# reset hostname
+hostnamectl set-hostname raspberrypi
+# change /etc/hosts
+sed -i -e 's/rpi/raspberrypi/' /etc/hosts
+
 # restore .bashrc
 cd /root
 if test -f .bashrc.bak; then
