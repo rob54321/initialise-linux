@@ -210,7 +210,13 @@ sed -i -e 's/raspberrypi/rpi/' /etc/hosts
 
 # save init-rpi init-rpi-first and reset-rpi in /usr/local/bin
 cd /usr/local/bin
-svn export --force ${SVNURL}/root/my-linux/rpi .
+svn export --force ${SVNURL}/root/my-linux/rpi/init-rpi .
+svn export --force ${SVNURL}/root/my-linux/rpi/init-rpi-first .
+svn export --force ${SVNURL}/root/my-linux/rpi/reset-rpi .
+
+# setup default console with large fonts
+cd /etc/default
+svn export --force ${SVNURL}/root/my-linux/rpi/console-setup .
 
 # if the svn path was set to /home/pi
 # it must be changed to /home/robert as the user pi is changed to robert

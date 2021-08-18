@@ -10,6 +10,10 @@
 # this script initialises the repositories for apt-get, makes all the devices, sets links for myenvironment, myrc.local and
 # and installs subversion
 
+# disable the service that started this script
+systemctl disable init-rpi.service
+rm -v /etc/systemd/system/init-rpi.service
+
 # change user pi to robert with correct groups and permissions
 # check if user robert exists
 
