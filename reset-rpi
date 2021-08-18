@@ -13,8 +13,8 @@ else
 fi
 
 # fix sources.list
-if -f /etc/apt/sources.list.bak; then
-	mv -vf /etc/apt/sources.list.bak /etc/sources.list
+if test -f /etc/apt/sources.list.bak; then
+	mv -vf /etc/apt/sources.list.bak /etc/apt/sources.list
 else
 	echo "/etc/apt/sources.list.bak not found"
 fi
@@ -29,7 +29,11 @@ rmdir *
 rm *
 
 # rm sudoers
-rm -v /etc/sudoers.d/robert
+if test -f /etc/sudoers.d/robert; then
+	rm -v /etc/sudoers.d/robert
+else
+	echo "/etc/sudoers.d/robert not found"
+fi
 
 # uninstall subversion
 apt --autoremove -y purge subversion
@@ -41,50 +45,49 @@ sed -i -e 's/rpi/raspberrypi/' /etc/hosts
 
 # restore .bashrc
 cd /root
-if test -f .bashrc.bak; then
-	mv -vf .bashrc.bak .bashrc
+if test -f /root/.bashrc.bak; then
+	mv -vf /root/.bashrc.bak /root/.bashrc
 else
 	echo "/root/.bashrc.bak not found"
 fi
 
 # remove .dircolors
 if test -f .dircolors; then
-	rm -vf .dircolors
+	rm -vf /root/.dircolors
 else
 	echo "/root/.dircolors not found"
 fi
 
 # restore .bashrc for robert
-cd /home/robert
-if test -f .bashrc.bak; then
-	mv -vf .bashrc.bak .bashrc
+if test -f /home/robert/.bashrc.bak; then
+	mv -vf /home/robert/.bashrc.bak /home/robert/.bashrc
 else
 	echo "/home/robert/.bashrc.bak not found"
 fi
 #  remove .bash_aliases
-if test -f .bash_aliases; then
-	rm -vf .bash_aliases
+if test -f /home/robert/.bash_aliases; then
+	rm -vf /home/robert/.bash_aliases
 else
 	echo "/home/robert/.bash_aliases not found"
 fi
 
 # remove .dircolors
-if test -f .dircolors; then
-	rm -vf .dircolors
+if test -f /home/robert/.dircolors; then
+	rm -vf /home/robert/.dircolors
 else
 	echo "/home/robert/.dircolors not found"
 fi
 
-# change rober to pi, groups as well
+# change robert to pi, groups as well
 groups pi > /dev/null 2>&1
 if test $? -ne 0; then
-	# user robert does not exist, create it
+	# user pi does not exist, create it
 	usermod -l pi -m -d /home/pi robert
 
-	# if group pi exists, change it to group robert
+	# if group robert exists, change it to group pi
 	getent group robert
 	if test $? -eq 0; then
-		# change the group pi to robert
-		groupmod -n pi pi
+		# change the group robert to pi
+		groupmod -n pi robert
 	fi
 fi

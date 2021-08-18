@@ -211,7 +211,7 @@ sed -i -e 's/raspberrypi/rpi/' /etc/hosts
 # if the svn path was set to /home/pi
 # it must be changed to /home/robert as the user pi is changed to robert
 if test "${SVNPATH}" = "/home/pi"; then
-	SVNPATH= "/home/robert"
+	SVNPATH="/home/robert"
 fi
 
 # launch service init-rpi
