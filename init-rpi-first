@@ -208,6 +208,10 @@ hostnamectl set-hostname rpi
 # change it in /etc/hosts
 sed -i -e 's/raspberrypi/rpi/' /etc/hosts
 
+# save init-rpi init-rpi-first and reset-rpi in /usr/local/bin
+cd /usr/local/bin
+svn export --force ${SVNURL}/root/my-linux/rpi .
+
 # if the svn path was set to /home/pi
 # it must be changed to /home/robert as the user pi is changed to robert
 if test "${SVNPATH}" = "/home/pi"; then
@@ -230,9 +234,7 @@ WantedBy=multi-user.target" > /etc/systemd/system/init-rpi.service
 chmod 0644 /etc/systemd/system/init-rpi.service
 
 # enable the service for the next boot
-# systemctl enable init-rpi
-
-
+systemctl enable init-rpi
 
 # reboot
-# shutdown -r now
+shutdown -r now
