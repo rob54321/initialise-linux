@@ -1,0 +1,82 @@
+#! /bin/bash
+
+# this script resets the pi back
+# to it's original state.
+# user robert change to pi
+# so that init-rpi and init-rpi-first can be tested
+
+# fix fstab
+if test -f /etc/fstab.bak; then
+	mv -vf /etc/fstab.bak /etc/fstab
+else
+	echo "/etc/fstab.bak not found"
+fi
+
+# fix sources.list
+if -f /etc/apt/sources.list.bak; then
+	mv -vf /etc/apt/sources.list.bak /etc/sources.list
+else
+	echo "/etc/apt/sources.list.bak not found"
+fi
+
+# fix mount dirs
+findmnt /mnt/ad64
+if test $? -eq 0; then
+	umount /mnt/ad64
+fi
+cd /mnt
+rmdir *
+rm *
+
+# rm sudoers
+rm -v /etc/sudoers.d/robert
+
+# restore .bashrc
+cd /root
+if test -f .bashrc.bak; then
+	mv -vf .bashrc.bak .bashrc
+else
+	echo "/root/.bashrc.bak not found"
+fi
+
+# remove .dircolors
+if test -f .dircolors; then
+	rm -vf .dircolors
+else
+	echo "/root/.dircolors not found"
+fi
+
+# restore .bashrc for robert
+cd /home/robert
+if test -f .bashrc.bak; then
+	mv -vf .bashrc.bak .bashrc
+else
+	echo "/home/robert/.bashrc.bak not found"
+fi
+#  remove .bash_aliases
+if test -f .bash_aliases; then
+	rm -vf .bash_aliases
+else
+	echo "/home/robert/.bash_aliases not found"
+fi
+
+# remove .dircolors
+if test -f .dircolors; then
+	rm -vf .dircolors
+else
+	echo "/home/robert/.dircolors not found"
+fi
+
+# change rober to pi, groups as well
+groups pi > /dev/null 2>&1
+if test $? -ne 0; then
+	# user robert does not exist, create it
+	usermod -l pi -m -d /home/pi robert
+
+	# if group pi exists, change it to group robert
+	getent group robert
+	if test $? -eq 0; then
+		# change the group pi to robert
+		groupmod -n pi pi
+	fi
+fi

@@ -13,6 +13,12 @@
 # change user pi to robert with correct groups and permissions
 # check if user robert exists
 
+# check the parameter list
+if test $# -ne 1; then
+	echo "SVNPATH required"
+	exit 1;
+fi
+
 # parameter passed: the path to svn
 SVNPATH="$1"
 
