@@ -48,8 +48,9 @@ if test $? -eq 0; then
 	umount /mnt/ad64
 fi
 cd /mnt
+rm svn
+rm hdd
 rmdir *
-rm *
 
 # rm sudoers
 if test -f /etc/sudoers.d/robert; then
