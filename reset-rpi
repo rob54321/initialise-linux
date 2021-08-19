@@ -5,6 +5,23 @@
 # user robert change to pi
 # so that init-rpi and init-rpi-first can be tested
 
+# change robert to pi, groups as well
+groups pi > /dev/null 2>&1
+if test $? -ne 0; then
+	# user pi does not exist, create it
+	usermod -l pi -m -d /home/pi robert
+
+	# if group robert exists, change it to group pi
+	getent group robert
+	if test $? -eq 0; then
+		# change the group robert to pi
+		groupmod -n pi robert
+	fi
+else
+	echo "user pi exists"
+	exit 1;
+fi
+
 # fix fstab
 if test -f /etc/fstab.bak; then
 	mv -vf /etc/fstab.bak /etc/fstab
@@ -78,20 +95,7 @@ else
 	echo "/home/robert/.dircolors not found"
 fi
 
-# change robert to pi, groups as well
-groups pi > /dev/null 2>&1
-if test $? -ne 0; then
-	# user pi does not exist, create it
-	usermod -l pi -m -d /home/pi robert
-
-	# if group robert exists, change it to group pi
-	getent group robert
-	if test $? -eq 0; then
-		# change the group robert to pi
-		groupmod -n pi robert
-	fi
-fi
-
 # change console back to defaults.
 sed -i -e 's/Terminus/Fixed/' /etc/default/console-setup
 sed -i -e 's/16x32/8x16/' /etc/default/console-setup
+setupcon -f

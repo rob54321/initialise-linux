@@ -44,3 +44,6 @@ fi
 cd /mnt/
 rm -f svn
 sudo -u robert ln -s "${SVNPATH}/svn" svn
+
+# setup console
+setupcon -f
