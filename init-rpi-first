@@ -217,6 +217,7 @@ svn export --force ${SVNURL}/root/my-linux/rpi/reset-rpi .
 # setup default console with large fonts
 cd /etc/default
 svn export --force ${SVNURL}/root/my-linux/rpi/console-setup .
+setupcon -f
 
 # if the svn path was set to /home/pi
 # it must be changed to /home/robert as the user pi is changed to robert

@@ -91,3 +91,7 @@ if test $? -ne 0; then
 		groupmod -n pi robert
 	fi
 fi
+
+# change console back to defaults.
+sed -i -e 's/Terminus/Fixed/' /etc/default/console-setup
+sed -i -e 's/16x32/8x16/' /etc/default/console-setup
