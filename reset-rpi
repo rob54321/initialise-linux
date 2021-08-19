@@ -10,6 +10,12 @@ groups pi > /dev/null 2>&1
 if test $? -ne 0; then
 	# user pi does not exist, create it
 	usermod -l pi -m -d /home/pi robert
+	# check if successful
+	if test $? -ne 0; then
+		# there is still a process for user robert
+		echo "could not change robert to pi"
+		exit 1;
+	fi
 
 	# if group robert exists, change it to group pi
 	getent group robert
