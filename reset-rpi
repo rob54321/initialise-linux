@@ -96,8 +96,8 @@ else
 fi
 
 # remove .dircolors
-if test -f /home/robert/.dircolors; then
-	rm -vf /home/robert/.dircolors
+if test -f /home/pi/.dircolors; then
+	rm -vf /home/pi/.dircolors
 else
 	echo "/home/pi/.dircolors not found"
 fi
