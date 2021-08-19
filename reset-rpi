@@ -82,24 +82,24 @@ else
 	echo "/root/.dircolors not found"
 fi
 
-# restore .bashrc for robert
-if test -f /home/robert/.bashrc.bak; then
-	mv -vf /home/robert/.bashrc.bak /home/robert/.bashrc
+# restore .bashrc  in pi , robert already changed to pi
+if test -f /home/pi/.bashrc.bak; then
+	mv -vf /home/pi/.bashrc.bak /home/pi/.bashrc
 else
-	echo "/home/robert/.bashrc.bak not found"
+	echo "/home/pi/.bashrc.bak not found"
 fi
-#  remove .bash_aliases
-if test -f /home/robert/.bash_aliases; then
-	rm -vf /home/robert/.bash_aliases
+#  remove .bash_aliases robert already changed to pi
+if test -f /home/pi/.bash_aliases; then
+	rm -vf /home/pi/.bash_aliases
 else
-	echo "/home/robert/.bash_aliases not found"
+	echo "/home/pi/.bash_aliases not found"
 fi
 
 # remove .dircolors
 if test -f /home/robert/.dircolors; then
 	rm -vf /home/robert/.dircolors
 else
-	echo "/home/robert/.dircolors not found"
+	echo "/home/pi/.dircolors not found"
 fi
 
 # change console back to defaults.
