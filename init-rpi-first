@@ -222,6 +222,9 @@ svn export --force ${SVNURL}/root/my-linux/rpi/console-setup .
 sed -i -e 's/XKBLAYOUT=\".*\"/XKBLAYOUT="za"/' /etc/default/keyboard
 setupcon
 
+# remove splash screen and make boot verbose
+sed -e 's/quiet splash plymouth.ignore-serial-consoles//' /boot/cmdline.txt
+
 # if the svn path was set to /home/pi
 # it must be changed to /home/robert as the user pi is changed to robert
 if test "${SVNPATH}" = "/home/pi"; then
