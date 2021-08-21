@@ -112,3 +112,6 @@ setupcon
 
 # edit /boot/config.txt
 sed -i -e 's/^disable_overscan/#disable_overscan/' /boot/config.txt
+
+# reset back to normal boot
+systemctl set-default graphical.target
