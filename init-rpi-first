@@ -180,13 +180,11 @@ chown pi.pi /home/pi/.dircolors
 # edit .bashrc for pi so directories will be in colour
 cd /home/pi
 cp .bashrc .bashrc.bak
+# change colour of prompt
 sed -i -e 's/#force_color_prompt/force_color_prompt/' .bashrc
 sed -i -e 's/\[\\033\[01;34m\\\]/\[\\033\[01;36m\\\]/' .bashrc
-
-# change colour of prompt
-
-
 chown pi.pi .bashrc
+chown pi.pi .bashrc.bak
 
 # export .bash_aliases from subversion
 svn export --force ${SVNURL}/root/my-linux/config-files/bash_aliases/.bash_aliases /home/pi
