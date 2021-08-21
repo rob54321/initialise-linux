@@ -229,7 +229,7 @@ sed -i -e 's/quiet splash plymouth.ignore-serial-consoles//' /boot/cmdline.txt
 sed -i -e 's/^#disable_overscan/disable_overscan/' /boot/config.txt
 
 # edit subversion config so .git and .gitignore are ignored
-sed -i -e 's/# global-ignores =/global-ignores = .git .gitignore/' /etc/subversion/config
+sed -i -e 's/^# global-ignores =/global-ignores = .git .gitignore/' /etc/subversion/config
 
 # edit nanorc
 sed -i -e 's/^# set autoindent/set autoindent/' \
