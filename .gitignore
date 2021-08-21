@@ -1,3 +1,5 @@
 .svn
 console-setup
 *.bak
+.gitconfig
+.git-credentials

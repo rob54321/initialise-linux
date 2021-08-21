@@ -214,16 +214,35 @@ svn export --force ${SVNURL}/root/my-linux/rpi/init-rpi .
 svn export --force ${SVNURL}/root/my-linux/rpi/init-rpi-first .
 svn export --force ${SVNURL}/root/my-linux/rpi/reset-rpi .
 
-# setup default console with large fonts
+# setup default console with Terminus
 cd /etc/default
-svn export --force ${SVNURL}/root/my-linux/rpi/console-setup .
+sed -i -e 's/FONTFACE=\".*\"/FONTFACE="Terminus"/' /etc/default/console-setup
 
 # setup keyboard
 sed -i -e 's/XKBLAYOUT=\".*\"/XKBLAYOUT="za"/' /etc/default/keyboard
 setupcon
 
 # remove splash screen and make boot verbose
-sed -e 's/quiet splash plymouth.ignore-serial-consoles//' /boot/cmdline.txt
+sed -i -e 's/quiet splash plymouth.ignore-serial-consoles//' /boot/cmdline.txt
+
+# disable overscan to remove border in x windows
+sed -i -e 's/^#disable_overscan/disable_overscan/' /boot/config.txt
+
+# edit subversion config so .git and .gitignore are ignored
+sed -i -e 's/# global-ignores =/global-ignores = .git .gitignore/' /etc/subversion/config
+
+# edit nanorc
+sed -i -e 's/^# set autoindent/set autoindent/' \
+       -e 's/^# set linenumbers/set linenumbers/' \
+       -e 's/^# set multibuffer/set multibuffer/' \
+       -e 's/^# set positionlog/set positionlog/' \
+       -e 's/^# set selectedcolor/set selectedcolor/' \
+       -e 's/^# set numbercolor/set numbercolor/' \
+       -e 's/^# set keycolor/set keycolor/' /etc/nanorc
+
+# install git credentials
+svn export --force ${SVNURL}/root/my-linux/rpi/.gitconfig /home/pi/
+svn export --force ${SVNURL}/root/my-linux/rpi/.git-credentials /home/pi/
 
 # if the svn path was set to /home/pi
 # it must be changed to /home/robert as the user pi is changed to robert
