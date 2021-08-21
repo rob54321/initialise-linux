@@ -103,9 +103,12 @@ else
 fi
 
 # change console back to defaults.
-sed -i -e 's/Terminus/Fixed/' /etc/default/console-setup
-sed -i -e 's/16x32/8x16/' /etc/default/console-setup
+sed -i -e 's/FONTFACE=\".*\"/FONTFACE=""/' /etc/default/console-setup
+sed -i -e 's/FONTSIZE=\".*\"/FONTSIZE=""/' /etc/default/console-setup
 
 # reset keyboard
 sed -i -e 's/XKBLAYOUT=\".*\"/XKBLAYOUT="gb"/' /etc/default/keyboard
 setupcon
+
+# edit /boot/config.txt
+sed -i -e 's/^disable_overscan/#disable_overscan/' /boot/config.txt
