@@ -244,6 +244,9 @@ sed -i -e 's/^# set autoindent/set autoindent/' \
 # install git credentials
 svn export --force ${SVNURL}/root/my-linux/rpi/.gitconfig /home/pi/
 svn export --force ${SVNURL}/root/my-linux/rpi/.git-credentials /home/pi/
+# set ownership
+chown pi.pi /home/pi/.gitconfig
+chown pi.pi /home/pi/.git-credentials
 
 # if the svn path was set to /home/pi
 # it must be changed to /home/robert as the user pi is changed to robert
