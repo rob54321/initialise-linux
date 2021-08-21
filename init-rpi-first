@@ -216,7 +216,8 @@ svn export --force ${SVNURL}/root/my-linux/rpi/reset-rpi .
 
 # setup default console with Terminus
 cd /etc/default
-sed -i -e 's/FONTFACE=\".*\"/FONTFACE="Terminus"/' /etc/default/console-setup
+sed -i -e 's/FONTFACE=\".*\"/FONTFACE="Terminus"/' \
+       -e 's/FONTSIZE=\".*\"/FONTSIZE="16X32"/' /etc/default/console-setup
 
 # setup keyboard
 sed -i -e 's/XKBLAYOUT=\".*\"/XKBLAYOUT="za"/' /etc/default/keyboard
