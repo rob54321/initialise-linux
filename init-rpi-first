@@ -217,7 +217,7 @@ svn export --force ${SVNURL}/root/my-linux/rpi/reset-rpi .
 # setup default console with Terminus
 cd /etc/default
 sed -i -e 's/FONTFACE=\".*\"/FONTFACE="Terminus"/' \
-       -e 's/FONTSIZE=\".*\"/FONTSIZE="16X32"/' /etc/default/console-setup
+       -e 's/FONTSIZE=\".*\"/FONTSIZE="16x32"/' /etc/default/console-setup
 
 # setup keyboard
 sed -i -e 's/XKBLAYOUT=\".*\"/XKBLAYOUT="za"/' /etc/default/keyboard
@@ -270,4 +270,4 @@ chmod 0644 /etc/systemd/system/init-rpi.service
 systemctl enable init-rpi
 
 # reboot
-shutdown -r now
+# shutdown -r now
