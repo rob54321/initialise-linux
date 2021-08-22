@@ -235,9 +235,9 @@ sed -i -e 's/^# set autoindent/set autoindent/' \
        -e 's/^# set linenumbers/set linenumbers/' \
        -e 's/^# set multibuffer/set multibuffer/' \
        -e 's/^# set positionlog/set positionlog/' \
-       -e 's/^# set selectedcolor/set selectedcolor/' \
-       -e 's/^# set numbercolor/set numbercolor/' \
-       -e 's/^# set keycolor/set keycolor/' /etc/nanorc
+       -e 's/^# set selectedcolor brightwhite,magenta/set selectedcolor brightwhite,magenta/' \
+       -e 's/^# set numbercolor cyan/set numbercolor cyan/' \
+       -e 's/^# set keycolor cyan/set keycolor cyan/' /etc/nanorc
 
 # install git credentials
 svn export --force ${SVNURL}/root/my-linux/rpi/.gitconfig /home/pi/
