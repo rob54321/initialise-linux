@@ -240,8 +240,8 @@ sed -i -e 's/^# set autoindent/set autoindent/' \
        -e 's/^# set keycolor cyan/set keycolor cyan/' /etc/nanorc
 
 # install git credentials
-svn export --force ${SVNURL}/root/my-linux/rpi/.gitconfig /home/pi/
-svn export --force ${SVNURL}/root/my-linux/rpi/.git-credentials /home/pi/
+svn export --force ${SVNURL}/root/my-linux/git/.gitconfig /home/pi/
+svn export --force ${SVNURL}/root/my-linux/git/.git-credentials /home/pi/
 # set ownership
 chown pi.pi /home/pi/.gitconfig
 chown pi.pi /home/pi/.git-credentials
