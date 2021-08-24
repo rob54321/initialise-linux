@@ -179,17 +179,17 @@ chown pi.pi /home/pi/.dircolors
 
 # edit .bashrc for pi so directories will be in colour
 cd /home/pi
-cp .bashrc .bashrc.bak
+sudo -u pi cp .bashrc .bashrc.bak
 # change colour of prompt
-sed -i -e 's/#force_color_prompt/force_color_prompt/' .bashrc
-sed -i -e 's/\[\\033\[01;34m\\\]/\[\\033\[01;36m\\\]/' .bashrc
-chown pi.pi .bashrc
-chown pi.pi .bashrc.bak
+sudo -u pi sed -i -e 's/#force_color_prompt/force_color_prompt/' .bashrc
+sudo -u pi sed -i -e 's/\[\\033\[01;34m\\\]/\[\\033\[01;36m\\\]/' .bashrc
+
+# install git credentials
+sudo -u pi svn export --force ${SVNURL}/root/my-linux/git/.gitconfig /home/pi/
+sudo -u pi svn export --force ${SVNURL}/root/my-linux/git/.git-credentials /home/pi/
 
 # export .bash_aliases from subversion
-svn export --force ${SVNURL}/root/my-linux/config-files/bash_aliases/.bash_aliases /home/pi
-chown pi.pi .bash_aliases
-
+sudo -u pi svn export --force ${SVNURL}/root/my-linux/config-files/bash_aliases/.bash_aliases /home/pi
 
 # set the rpi to boot to console and no autologin
 systemctl set-default multi-user.target
@@ -238,13 +238,6 @@ sed -i -e 's/^# set autoindent/set autoindent/' \
        -e 's/^# set selectedcolor brightwhite,magenta/set selectedcolor brightwhite,magenta/' \
        -e 's/^# set numbercolor cyan/set numbercolor cyan/' \
        -e 's/^# set keycolor cyan/set keycolor cyan/' /etc/nanorc
-
-# install git credentials
-svn export --force ${SVNURL}/root/my-linux/git/.gitconfig /home/pi/
-svn export --force ${SVNURL}/root/my-linux/git/.git-credentials /home/pi/
-# set ownership
-chown pi.pi /home/pi/.gitconfig
-chown pi.pi /home/pi/.git-credentials
 
 # if the svn path was set to /home/pi
 # it must be changed to /home/robert as the user pi is changed to robert
