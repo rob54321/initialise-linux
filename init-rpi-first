@@ -96,11 +96,12 @@ if test $? -ne 0; then
 	mount -L ${LINKLABEL} ${LINK}
 fi
 
-# copy svn from ad64 to destination path
-cp -a ${LINK}/svn ${SVNPATH}
-
-# check the svn repository
-if test ! -e "${SVNPATH}/svn"; then
+# if svn exists at LINK then copy it, otherwise exit
+if test -d "${LINK}/svn"; then
+	# copy svn to home directory
+	cp -a ${LINK}/svn ${SVNPATH}
+else
+	# subversion respository not found, exit
 	echo "${SVNPATH}/svn does not exist"
 	exit 1
 fi
@@ -208,9 +209,9 @@ sed -i -e 's/raspberrypi/rpi/' /etc/hosts
 
 # save init-rpi init-rpi-first and reset-rpi in /usr/local/bin
 cd /usr/local/bin
-svn export --force ${SVNURL}/root/my-linux/rpi/init-rpi .
-svn export --force ${SVNURL}/root/my-linux/rpi/init-rpi-first .
-svn export --force ${SVNURL}/root/my-linux/rpi/reset-rpi .
+svn export --force ${SVNURL}/root/my-linux/init-rpi/init-rpi .
+svn export --force ${SVNURL}/root/my-linux/init-rpi/init-rpi-first .
+svn export --force ${SVNURL}/root/my-linux/init-rpi/reset-rpi .
 
 # setup default console with Terminus
 cd /etc/default
