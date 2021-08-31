@@ -210,9 +210,12 @@ hostnamectl set-hostname rpi
 # change it in /etc/hosts
 sed -i -e 's/raspberrypi/rpi/' /etc/hosts
 
-# save init-rpi init-rpi-first reset-rpi and rpitemp in /usr/local/bin
+# save init-rpi init-rpi-first reset-rpi in /usr/local/bin
 cd /usr/local/bin
-svn export --force ${SVNURL}/root/my-linux/init-rpi .
+svn export --force ${SVNURL}/root/my-linux/init-rpi/init-rpi /usr/local/bin/init-rpi
+svn export --force ${SVNURL}/root/my-linux/init-rpi/init-rpi-first /usr/local/bin/init-rpi-first
+svn export --force ${SVNURL}/root/my-linux/init-rpi/reset-rpi /usr/local/bin/reset-rpi
+
 
 # setup default console with Terminus
 cd /etc/default
