@@ -173,6 +173,9 @@ dircolors --print-database > .dircolors
 sed -i -e 's/^DIR 01;34/DIR 01;36/' .dircolors
 sed -i -e 's/^LINK 01;36/LINK 01;33/' .dircolors
 
+#########################
+# setup  /home/pi account
+#########################
 # copy .dircolors to /home/pi and set ownership
 cp /root/.dircolors /home/pi/
 cd /home/pi
