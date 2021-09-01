@@ -99,7 +99,10 @@ fi
 # if svn exists at LINK then copy it, otherwise exit
 if test -d "${LINK}/svn"; then
 	# copy svn to home directory
-	cp -a ${LINK}/svn ${SVNPATH}
+	# do not copy svn to itself
+	if test "${LINK}" != "${SVNPATH}"; then
+		cp -a ${LINK}/svn ${SVNPATH}
+	fi
 else
 	# subversion respository not found, exit
 	echo "${SVNPATH}/svn does not exist"
