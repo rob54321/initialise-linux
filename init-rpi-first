@@ -10,24 +10,24 @@
 # and usermod and groupmod can be run.
 
 usage() {
-	echo "-a edit sources.list to use file:///mnt/hd3...            default: do not edit sources.list";
-	echo "-m debhome path						default: ${MYDEBIANPATH}";
-	echo "-r release name [buster]				default: ${RELEASE}";
-	echo "-s svn destination path					default: ${SVNPATH}";
-	echo "-l linklabel for hdd					default: ${LINKLABEL}";
+	echo "-a edit sources.list to use file:///mnt/hd3...	default: do not edit sources.list";
+	echo "-m debhome path					default: ${MYDEBIANPATH}";
+	echo "-r release name [buster]			default: ${RELEASE}";
+	echo "-s svn destination path				default: ${SVNPATH}";
+	echo "-l linklabel for hdd				default: ${LINKLABEL}";
 	echo "-h help"
 	exit 0
 }
 
-# function to edit sources.list and sources.list.d/raspi.list
+# function to edit /etc/apt/sources.list and /etc/apt/sources.list.d/raspi.list
 # this function is only called if the -a option is given
 # on the command line
 editsources() {
-	# do not edit sources.list if it has been edited
-	rc=grep -q "${DEBURL}" /etc/apt/sources.list
-	if test ${rc} -ne 0; then
+	# do not edit /etc/apt/sources.list if it has been edited
+	grep -q "${DEBURL}" /etc/apt/sources.list
+	if test $? -ne 0; then
 
-		# edit sources.list
+		# edit /etc/apt/sources.list
 		# comment all deb lines out
 		sed -i -e 's/^deb /# deb /g' /etc/apt/sources.list
 
@@ -40,9 +40,9 @@ deb [ arch=arm64 ] file:///mnt/hd3/deb.debian.org buster-backports main contrib 
 
 	# edit /etc/apt/sources.list.d/raspi.list
 	# if it has not been edited.
-	rc=grep -q "$ARCURL}" /etc/apt/sources.list.d/raspi.list
-	if test ${rc} -ne 0; then
-		# edit raspi.list
+	grep -q "${ARCURL}" /etc/apt/sources.list.d/raspi.list
+	if test $? -ne 0; then
+		# edit /etc/apt/sources.list.d/raspi.list
 		sed -i -e 's/^deb /# deb /g' /etc/apt/sources.list.d/raspi.list
 
 		# append line
@@ -149,7 +149,7 @@ then
 fi
 
 # backup sources.list if it is not backed up
-if test ! -d /etc/apt/sources.list.bak; then
+if test ! -f /etc/apt/sources.list.bak; then
 	cp /etc/apt/sources.list /etc/apt/sources.list.bak
 if
 
@@ -168,6 +168,7 @@ if test $? -ne 0; then
 	# edit sources.list for ubuntu or debian
 	echo "deb ${MYDEBIANURL} home main" >> /etc/apt/sources.list
 fi
+exit ;
 
 # add key for repository
 apt-key add ${MYDEBIANPATH}/publickeyFile.gpg
