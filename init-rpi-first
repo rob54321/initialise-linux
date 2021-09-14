@@ -10,21 +10,70 @@
 # and usermod and groupmod can be run.
 
 usage() {
-	echo "-a edit sources.list to use file:///mnt/hd3...	default: do not edit sources.list";
-	echo "-m debhome path					default: ${MYDEBIANPATH}";
-	echo "-r release name [buster]			default: ${RELEASE}";
-	echo "-s svn destination path				default: ${SVNPATH}";
-	echo "-l linklabel for hdd				default: ${LINKLABEL}";
+	echo "-m disk label for debhome				default: ${DEBHOMELABEL}";
+	echo "-d disk label for deb.debian.org			default: ${DEBORGLABEL}";
+	echo "-D disk label for archive.raspberrypi.org		default: ${ARCHIVERPILABEL}";
+	echo "-s disk label for svn      				default: ${SVNLABEL}";
+	echo "-S svn destination					default: none";
+	echo "-e edit sources.list to use file:///...			default: do not edit sources.list";
+      	echo "-r release name [buster]				default: ${RELEASE}";
 	echo "-h help"
 	exit 0
 }
 
+# function to check the existence of svn or deb.debian.org or archive.raspberrypi.org or debhome
+# this function will mount the correct disk drive
+# if they are on a  disk drive LABEL.
+# the function will exit the script if nothing is found
+# parameters passed: disk_label, root directory of svn | deb.debian.org | archive.debian.org | debhome
+
+mountresource () {
+	# check if the disk label is attached
+	blkid -L "$1"
+	if test "$?" -ne 0; then
+		echo "$1 is not attached"
+		exit 1;
+	fi
+	#  if disk not mounted, mount it
+	findmnt "/mnt/$1"
+	if test "$?" -ne 0; then
+		# mount it
+		mount -L "$1" "/mnt/$1"
+		if test $? -ne 0; then
+			# count not mount disk drive
+			echo "could not mount $1"
+			exit 1;
+		fi
+	fi
+	# check if svn | deb.debian.org | archive.debian.org | debhome is accessible
+	if test ! -d "/mnt/$1/$2"; then
+		# svn or archive does not exist
+		echo "/mnt/$1/$2 not found"
+		echo "unmounting /mnt/$1"
+		umount "/mnt/$1"
+		exit 1;
+	fi
+	# return success
+	return 0;
+}
 # function to edit /etc/apt/sources.list and /etc/apt/sources.list.d/raspi.list
 # this function is only called if the -a option is given
+# only called if the debian archives are on local disks.
 # on the command line
+# paraters passed: label of disk with deb.debian.org
+#                  label of disk with archive.debian.org
 editsources() {
+	# set the URL and links for deb.debian.org and archive.debian.org
+	DEBORGURL="file://${DEBORGLINK}"
+	ARCHIVERPIURL="file://${ARCHIVERPILINK}"
+	# remove the links if they exist
+	rm -f "${DEBORGLINK}"
+	rm -f "${ARCHIVERPILINK}"
+	sudo -u pi ln -s "/mnt/$1/deb.debian.org" "${DEBORGLINK}"
+	sudo -u pi ln -s "/mnt/$2/archive.raspberrypi.org" "${ARCHIVERPILINK}"
+
 	# do not edit /etc/apt/sources.list if it has been edited
-	grep -q "${DEBURL}" /etc/apt/sources.list
+	grep -q "${DEBORGURL}" /etc/apt/sources.list
 	if test $? -ne 0; then
 
 		# edit /etc/apt/sources.list
@@ -32,40 +81,55 @@ editsources() {
 		sed -i -e 's/^deb /# deb /g' /etc/apt/sources.list
 
 		# append the lines
-		sed -i -e '$a \deb [ arch=arm64 ] file:///mnt/hd3/deb.debian.org buster main contrib non-free\
-deb [ arch=arm64 ] file:///mnt/hd3/deb.debian.org buster-updates main contrib non-free\
-deb [ arch=arm64 ] file:///mnt/hd3/deb.debian.org buster-proposed-updates main contrib non-free\
-deb [ arch=arm64 ] file:///mnt/hd3/deb.debian.org buster-backports main contrib non-free' /etc/apt/sources.list
+		sed -i -e '$a \deb [ arch=arm64 ] '${DEBORGURL}' buster main contrib non-free\
+deb [ arch=arm64 ] '${DEBORGURL}' buster-updates main contrib non-free\
+deb [ arch=arm64 ] '${DEBORGURL}' buster-proposed-updates main contrib non-free\
+deb [ arch=arm64 ] '${DEBORGURL}' buster-backports main contrib non-free' /etc/apt/sources.list
 	fi
 
 	# edit /etc/apt/sources.list.d/raspi.list
 	# if it has not been edited.
-	grep -q "${ARCURL}" /etc/apt/sources.list.d/raspi.list
+	grep -q "${ARCHIVERPIURL}" /etc/apt/sources.list.d/raspi.list
 	if test $? -ne 0; then
 		# edit /etc/apt/sources.list.d/raspi.list
 		sed -i -e 's/^deb /# deb /g' /etc/apt/sources.list.d/raspi.list
 
 		# append line
-		sed -i -e '$a \deb [ arch=arm64 ] file:///mnt/hd3/archive.raspberrypi.org buster main' /etc/apt/sources.list.d/raspi.list
+		sed -i -e '$a \deb [ arch=arm64 ] '${ARCHIVERPIURL}' buster main' /etc/apt/sources.list.d/raspi.list
 	fi
 }
-# defaults
+# defaults, links
+# /mnt/debhome    -> /mnt/ad64/debhome
+# /mnt/deborg     -> /mnt/DEBORGLABEL/deb.debian.org
+# /mnt/archiverpi -> /mnt/ARCHIVERPILABEL/archive.raspberrypi.org
+# /mnt/svn        -> /mnt/ad64/svn
+# the links cannot be changed, the mountpoints can be changed
+# DEBORGLABEL, DEBHOMELABEL, ARCHIVERPILABEL, SVNLABEL
+# are the labels of the disks containing deb.debian.org, archive.debian.org, debhome, svn and
+# are all mounted at /mnt/LABEL
+
 # only for raspberry pi
-DEBURL="file:///mnt/hd3/deb.debian.org"
-ARCURL="file:///mnt/hd3/archive.raspberrypi.org"
-SVNPATH="/home/pi"
-MYDEBIANPATH="/mnt/hdd/debhome"
-LINKLABEL="ad64"
+DEBORGLABEL="hd3"
+DEBORGLINK="/mnt/deborg"
+DEBHOMELABEL="ad64"
+DEBHOMELINK="/mnt/debhome"
+ARCHIVERPILABEL="hd3"
+ARCHIVERPILINK="/mnt/archiverpi"
+SVNLABEL="ad64"
+SVNLINK="/mnt/svn"
+SVNDESTINATION=""
 RELEASE="none"
 EDITSOURCES=1
 
-while getopts ad:m:s:l:r:h opt
+while getopts S:D:ed:m:s:r:h opt
 do
 	case ${opt} in
-		m) MYDEBIANPATH="${OPTARG}";;
-		a) EDITSOURCES=0;;
-		s) SVNPATH="${OPTARG}";;
-		l) LINKLABEL="${OPTARG}";;
+		m) DEBHOMELABEL="${OPTARG}";;
+		d) DEBORGLABEL="${OPTARG}";;
+		D) ARCHIVERPILABEL="${OPTARG}";;
+		s) SVNLABEL="${OPTARG}";;
+		S) SVNDESTINATION="${OPTARG}";;
+		e) EDITSOURCES=0;;
 		r) RELEASE="${OPTARG}";;
 		h) usage;;
 		\?) usage;;
@@ -78,14 +142,10 @@ if test "${RELEASE}" = "none"; then
 	exit 1
 fi
 
-# set the link for hdd
-LINK="/mnt/${LINKLABEL}"
-MYDEBIANURL="file://${MYDEBIANPATH}"
-
 # make all the mount directories
 chown pi.pi /mnt
 cd /mnt
-dirlist="hd2 hd3 ad64 ssd axiz axiz2 king sah trans ver ver8 chaos ad scd1 scd2"
+dirlist="${DEBORGLABEL} ${ARCHIVERPILABEL} ${DEBHOMELABEL} ${SVNLABEL} hd2 hd3 ad64 ssd axiz axiz2 king sah trans ver ver8 chaos ad scd1 scd2"
 for dir in $dirlist
 do
 	if [ ! -d /mnt/${dir} ]
@@ -94,84 +154,75 @@ do
 	fi
 done
 
-# set the link for where svn and debhome are
-LINK="/mnt/${LINKLABEL}"
-
-# check /mnt/${LINKLABEL} exists
-if test ! -d "${LINK}"; then
-	mkdir "${LINK}"
-fi
-
 # set permisions of /mnt dirs
 chown pi.pi /mnt/*
 
+#########################################################
+# subversion
+#########################################################
 # make the link for subversion
 # so it can be accessed as file:///mnt/svn no matter where it is located
-cd /mnt
+rm -f "${SVNLINK}"
+sudo -u pi ln -s "/mnt/${SVNLABEL}/svn" "${SVNLINK}"
+SVNURL="file://${SVNLINK}"
 
-if test -L svn; then
-	rm -f svn
-fi
-sudo -u pi ln -s "${SVNPATH}/svn" svn
-SVNURL="file://${SVNPATH}/svn"
+# mount disk label for svn
+# mountresource will exit if svn is not available
+mountresource "${SVNLABEL}" "svn"
 
-
-# make the hdd link
-if test -L hdd; then
-	rm -f hdd
-fi
-sudo -u pi ln -s ${LINK} hdd
-
-# mount the  flash drive for debhome if it is not mounted
-findmnt ${LINK}
-if test $? -ne 0; then
-	mount -L ${LINKLABEL} ${LINK}
-fi
-
-# if svn exists at LINK then copy it, otherwise exit
-if test -d "${LINK}/svn"; then
-	# copy svn to home directory
-	# do not copy svn to itself
-	if test "${LINK}" != "${SVNPATH}"; then
-		cp -a ${LINK}/svn ${SVNPATH}
+# svn disk mounted and it exists
+# copy svn to destination if destination given
+# do not copy svn to itself
+if test "${SVNDESTINATION}" != ""; then
+	# check if destination exists
+	if test ! -d "${SVNDESTINATION}"; then
+		mkdir -p "${SVNDESTINATION}"
 	fi
-else
-	# subversion respository not found, exit
-	echo "${SVNPATH}/svn does not exist"
-	exit 1
+	cp -a "/mnt/${SVNLABEL}/svn" "${SVNDESTINATION}/"
 fi
 
-#check for debhome
-if [ ! -e ${MYDEBIANPATH} ]
-then
-	echo "No debhome repository found at ${MYDEBIANPATH}"
-	exit 1
-fi
+########################################################
+# debhome
+########################################################
+# make the link for debhome
+rm -f "${DEBHOMELINK}"
+sudo -u pi ln -s "/mnt/${DEBHOMELABEL}" "${DEBHOMELINK}"
+DEBHOMEURL="file://${DEBHOMELINK}"
 
+# mount disk label for debhome
+# mountresource will exist if debhome is not available
+mountresource "${DEBHOMELABEL}" "debhome"
+
+########################################################
+# sources.list
+########################################################
 # backup sources.list if it is not backed up
 if test ! -f /etc/apt/sources.list.bak; then
 	cp /etc/apt/sources.list /etc/apt/sources.list.bak
 if
 
-# if -a option given, edit sources.list. EDITSOURCES set to 0 if -a given
-# to use /mnt/hd3/deb.debian.org and /mnt/hd3/archive.raspberrypi.org
-if test ${EDITSOURCES} -eq 0; then
-	# edit  sources.list
-	editsources
-fi
-
 
 # append debhome to sources.list
 # check if sources.list has already been edited
-grep "${MYDEBIANURL}" /etc/apt/sources.list
+grep "${DEBHOMEURL}" /etc/apt/sources.list
 if test $? -ne 0; then
 	# edit sources.list for ubuntu or debian
-	echo "deb ${MYDEBIANURL} home main" >> /etc/apt/sources.list
+	echo "deb ${DEBHOMEURL} home main" >> /etc/apt/sources.list
 fi
-exit ;
 
 # add key for repository
-apt-key add ${MYDEBIANPATH}/publickeyFile.gpg
+apt-key add "${DEBHOMELINK}/publickeyFile.gpg"
+
+# if -a option given, edit sources.list. EDITSOURCES set to 0 if -a given
+# to use /mnt/hd3/deb.debian.org and /mnt/hd3/archive.raspberrypi.org
+# then mount the disks for deb.debian.org and archive.raspberrypi.org
+if test ${EDITSOURCES} -eq 0; then
+	mountresource "${DEBORGLABEL}" "deb.debian.org"
+	mountresource "${ARCHIVERPILABEL}" "archive.raspberrypi.org"
+	# edit  sources.list
+	editsources "${DEBORGLABEL}" "${ARCHIVERPILABEL}"
+fi
+
 apt update
 
 apt -y install subversion
