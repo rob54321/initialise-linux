@@ -34,6 +34,12 @@ mountresource () {
 		echo "$1 is not attached"
 		exit 1;
 	fi
+	# make the mount directory if it does not exist
+	if test ! -d "/mnt/$1"; then
+		mkdir "/mnt/$1"
+		chown pi.pi "/mnt/$1"
+	fi
+
 	#  if disk not mounted, mount it
 	findmnt "/mnt/$1"
 	if test "$?" -ne 0; then
@@ -145,7 +151,7 @@ fi
 # make all the mount directories
 chown pi.pi /mnt
 cd /mnt
-dirlist="${DEBORGLABEL} ${ARCHIVERPILABEL} ${DEBHOMELABEL} ${SVNLABEL} hd2 hd3 ad64 ssd axiz axiz2 king sah trans ver ver8 chaos ad scd1 scd2"
+dirlist="hd2 hd3 ad64 ssd axiz axiz2 king sah trans ver ver8 chaos ad scd1 scd2"
 for dir in $dirlist
 do
 	if [ ! -d /mnt/${dir} ]
@@ -177,6 +183,7 @@ if test "${SVNDESTINATION}" != ""; then
 	# check if destination exists
 	if test ! -d "${SVNDESTINATION}"; then
 		mkdir -p "${SVNDESTINATION}"
+		chown pi.pi "${SVNDESTINATION}"
 	fi
 	cp -a "/mnt/${SVNLABEL}/svn" "${SVNDESTINATION}/"
 fi
