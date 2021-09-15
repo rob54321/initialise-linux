@@ -12,7 +12,7 @@
 usage() {
 	echo "-m disk label for debhome				default: ${DEBHOMELABEL}";
 	echo "-d disk label for deb.debian.org			default: ${DEBORGLABEL}";
-	echo "-D disk label for archive.raspberrypi.org		default: ${ARCHIVERPILABEL}";
+	echo "-a disk label for archive.raspberrypi.org		default: ${ARCHIVERPILABEL}";
 	echo "-s disk label for svn      				default: ${SVNLABEL}";
 	echo "-S svn destination					default: none";
 	echo "-e edit sources.list to use file:///...			default: do not edit sources.list";
@@ -121,12 +121,12 @@ SVNDESTINATION=""
 RELEASE="none"
 EDITSOURCES=1
 
-while getopts S:D:ed:m:s:r:h opt
+while getopts S:a:ed:m:s:r:h opt
 do
 	case ${opt} in
 		m) DEBHOMELABEL="${OPTARG}";;
 		d) DEBORGLABEL="${OPTARG}";;
-		D) ARCHIVERPILABEL="${OPTARG}";;
+		a) ARCHIVERPILABEL="${OPTARG}";;
 		s) SVNLABEL="${OPTARG}";;
 		S) SVNDESTINATION="${OPTARG}";;
 		e) EDITSOURCES=0;;
