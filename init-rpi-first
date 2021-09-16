@@ -166,11 +166,10 @@ chown pi.pi /mnt/*
 #########################################################
 # subversion
 #########################################################
-# make the link for subversion
-# so it can be accessed as file:///mnt/svn no matter where it is located
-rm -f "${SVNLINK}"
-sudo -u pi ln -s "/mnt/${SVNLABEL}/svn" "${SVNLINK}"
+# svn is always accessed at file:///mnt/svn
 SVNURL="file://${SVNLINK}"
+# remove any old links
+rm -f "${SVNLINK}"
 
 # mount disk label for svn
 # mountresource will exit if svn is not available
@@ -186,47 +185,56 @@ if test "${SVNDESTINATION}" != ""; then
 		chown pi.pi "${SVNDESTINATION}"
 	fi
 	cp -a "/mnt/${SVNLABEL}/svn" "${SVNDESTINATION}/"
+	# setup the link, svn was moved
+	sudo -u pi ln -s "${SVNDESTINATION}/svn" "${SVNLINK}"
+else
+	# svn destination not changed, set the link
+	sudo -u pi ln -s "/mnt/${SVNLABEL}/svn" "${SVNLINK}"
 fi
 
 ########################################################
 # debhome
 ########################################################
 # make the link for debhome
+# debhome is always at /mnt/debhome
 rm -f "${DEBHOMELINK}"
-sudo -u pi ln -s "/mnt/${DEBHOMELABEL}" "${DEBHOMELINK}"
 DEBHOMEURL="file://${DEBHOMELINK}"
 
 # mount disk label for debhome
 # mountresource will exist if debhome is not available
 mountresource "${DEBHOMELABEL}" "debhome"
+sudo -u pi ln -s "/mnt/${DEBHOMELABEL}/debhome" "${DEBHOMELINK}"
 
 ########################################################
 # sources.list
 ########################################################
-# backup sources.list if it is not backed up
+# backup /etc/apt/sources.list if it is not backed up
 if test ! -f /etc/apt/sources.list.bak; then
 	cp /etc/apt/sources.list /etc/apt/sources.list.bak
-if
+fi
 
+if test ! -f /etc/apt/sources.list.d/raspi.list.bak; then
+	cp /etc/apt/sources.list.d/raspi.list /etc/apt/sources.list.d/raspi.list.bak
+fi
 
-# append debhome to sources.list
-# check if sources.list has already been edited
+# append debhome to /etc/apt/sources.list
+# check if /etc/apt/sources.list has already been edited
 grep "${DEBHOMEURL}" /etc/apt/sources.list
 if test $? -ne 0; then
-	# edit sources.list for ubuntu or debian
+	# edit /etc/apt/sources.list for ubuntu or debian
 	echo "deb ${DEBHOMEURL} home main" >> /etc/apt/sources.list
 fi
 
 # add key for repository
 apt-key add "${DEBHOMELINK}/publickeyFile.gpg"
 
-# if -a option given, edit sources.list. EDITSOURCES set to 0 if -a given
+# if -a option given, edit /etc/apt/sources.list. EDITSOURCES set to 0 if -a given
 # to use /mnt/hd3/deb.debian.org and /mnt/hd3/archive.raspberrypi.org
 # then mount the disks for deb.debian.org and archive.raspberrypi.org
 if test ${EDITSOURCES} -eq 0; then
 	mountresource "${DEBORGLABEL}" "deb.debian.org"
 	mountresource "${ARCHIVERPILABEL}" "archive.raspberrypi.org"
-	# edit  sources.list
+	# edit  /etc/apt/sources.list
 	editsources "${DEBORGLABEL}" "${ARCHIVERPILABEL}"
 fi
 
@@ -348,8 +356,8 @@ sed -i -e 's/^# set autoindent/set autoindent/' \
 
 # if the svn path was set to /home/pi
 # it must be changed to /home/robert as the user pi is changed to robert
-if test "${SVNPATH}" = "/home/pi"; then
-	SVNPATH="/home/robert"
+if test "${SVNDESTINATION}" = "/home/pi"; then
+	SVNDESTINATION="/home/robert"
 fi
 
 # launch service init-rpi
