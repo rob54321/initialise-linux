@@ -105,10 +105,10 @@ deb [ arch=arm64 ] '${DEBORGURL}' buster-backports main contrib non-free' /etc/a
 	fi
 }
 # defaults, links
-# /mnt/debhome    -> /mnt/ad64/debhome
+# /mnt/debhome    -> /mnt/DEBHOMELABEL/debhome
 # /mnt/deborg     -> /mnt/DEBORGLABEL/deb.debian.org
 # /mnt/archiverpi -> /mnt/ARCHIVERPILABEL/archive.raspberrypi.org
-# /mnt/svn        -> /mnt/ad64/svn
+# /mnt/svn        -> /mnt/SVNLABEL/svn
 # the links cannot be changed, the mountpoints can be changed
 # DEBORGLABEL, DEBHOMELABEL, ARCHIVERPILABEL, SVNLABEL
 # are the labels of the disks containing deb.debian.org, archive.debian.org, debhome, svn and
