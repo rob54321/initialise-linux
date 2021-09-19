@@ -28,6 +28,10 @@ usage() {
 # parameters passed: disk_label, root directory of svn | deb.debian.org | archive.debian.org | debhome
 
 mountresource () {
+	# flag to inidicate
+	# disk was mounted and should be left mounted
+	WASMOUNTED="false"
+
 	# check if the disk label is attached
 	blkid -L "$1"
 	if test "$?" -ne 0; then
@@ -45,64 +49,39 @@ mountresource () {
 	if test "$?" -ne 0; then
 		# mount it
 		mount -L "$1" "/mnt/$1"
+		# set mounted flag to false
+		WASMOUNTED="false"
 		if test $? -ne 0; then
 			# count not mount disk drive
 			echo "could not mount $1"
 			exit 1;
 		fi
+	else
+		# disk was mounted
+		# leave it mounted
+		WASMOUNTED="true"
 	fi
 	# check if svn | deb.debian.org | archive.debian.org | debhome is accessible
 	if test ! -d "/mnt/$1/$2"; then
 		# svn or archive does not exist
 		echo "/mnt/$1/$2 not found"
-		echo "unmounting /mnt/$1"
-		umount "/mnt/$1"
+		if test "${WASMOUNTED}" = "false"; then
+			# disk was not mounted, un mount it
+			echo "unmounting /mnt/$1"
+			umount "/mnt/$1"
+			# reset WASMOUNTED so disk
+			# is not unmounted twice
+			WASMOUNTED="unmounted"
+		fi
 		exit 1;
 	fi
 	# return success
+	# unmount drvive if it was unmounted initially
+	if test "${WASMOUNTED}" = "false"; then
+		echo "unmounting /mnt/$1"
+		umount "/mnt/$1"
+	fi
 	return 0;
-}
-# function to edit /etc/apt/sources.list and /etc/apt/sources.list.d/raspi.list
-# this function is only called if the -a option is given
-# only called if the debian archives are on local disks.
-# on the command line
-# paraters passed: label of disk with deb.debian.org
-#                  label of disk with archive.debian.org
-editsources() {
-	# set the URL and links for deb.debian.org and archive.debian.org
-	DEBORGURL="file://${DEBORGLINK}"
-	ARCHIVERPIURL="file://${ARCHIVERPILINK}"
-	# remove the links if they exist
-	rm -f "${DEBORGLINK}"
-	rm -f "${ARCHIVERPILINK}"
-	sudo -u pi ln -s "/mnt/$1/deb.debian.org" "${DEBORGLINK}"
-	sudo -u pi ln -s "/mnt/$2/archive.raspberrypi.org" "${ARCHIVERPILINK}"
-
-	# do not edit /etc/apt/sources.list if it has been edited
-	grep -q "${DEBORGURL}" /etc/apt/sources.list
-	if test $? -ne 0; then
-
-		# edit /etc/apt/sources.list
-		# comment all deb lines out
-		sed -i -e 's/^deb /# deb /g' /etc/apt/sources.list
-
-		# append the lines
-		sed -i -e '$a \deb [ arch=arm64 ] '${DEBORGURL}' buster main contrib non-free\
-deb [ arch=arm64 ] '${DEBORGURL}' buster-updates main contrib non-free\
-deb [ arch=arm64 ] '${DEBORGURL}' buster-proposed-updates main contrib non-free\
-deb [ arch=arm64 ] '${DEBORGURL}' buster-backports main contrib non-free' /etc/apt/sources.list
-	fi
-
-	# edit /etc/apt/sources.list.d/raspi.list
-	# if it has not been edited.
-	grep -q "${ARCHIVERPIURL}" /etc/apt/sources.list.d/raspi.list
-	if test $? -ne 0; then
-		# edit /etc/apt/sources.list.d/raspi.list
-		sed -i -e 's/^deb /# deb /g' /etc/apt/sources.list.d/raspi.list
-
-		# append line
-		sed -i -e '$a \deb [ arch=arm64 ] '${ARCHIVERPIURL}' buster main' /etc/apt/sources.list.d/raspi.list
-	fi
 }
 # defaults, links
 # /mnt/debhome    -> /mnt/DEBHOMELABEL/debhome
@@ -141,177 +120,89 @@ do
 		\?) usage;;
 	esac
 done
-# set up the urls and path for debian or ubuntu
 
+#####################################
+# subversion not installed so
+# init-rpi must to be copied to /usr/local/bin
+# init-rpi should be in the same directory
+# as init-rpi-first
+#####################################
+if test -f "init-rpi"; then
+	echo "found init-rpi"
+	cp -v init-rpi /usr/local/bin/
+else
+	# cannot find init-rpi
+	echo "cannot find init-rpi in `pwd`"
+	exit 1;
+fi
+
+##################################
+# check RELEASE was given
+##################################
 if test "${RELEASE}" = "none"; then
 	echo "Choose a release: stretch|buster etc"
 	exit 1
 fi
 
-# make all the mount directories
-chown pi.pi /mnt
-cd /mnt
-dirlist="hd2 hd3 ad64 ssd axiz axiz2 king sah trans ver ver8 chaos ad scd1 scd2"
-for dir in $dirlist
-do
-	if [ ! -d /mnt/${dir} ]
-	then
-		mkdir /mnt/${dir}
-	fi
-done
-
-# set permisions of /mnt dirs
-chown pi.pi /mnt/*
-
-#########################################################
-# subversion
-#########################################################
-# svn is always accessed at file:///mnt/svn
-SVNURL="file://${SVNLINK}"
-# remove any old links
-rm -f "${SVNLINK}"
-
-# mount disk label for svn
-# mountresource will exit if svn is not available
+#################################
+# check subversion repository exists
+#################################
 mountresource "${SVNLABEL}" "svn"
 
-# svn disk mounted and it exists
-# copy svn to destination if destination given
-# do not copy svn to itself
-if test "${SVNDESTINATION}" != ""; then
-	# check if destination exists
-	if test ! -d "${SVNDESTINATION}"; then
-		mkdir -p "${SVNDESTINATION}"
-		chown pi.pi "${SVNDESTINATION}"
-	fi
-	cp -a "/mnt/${SVNLABEL}/svn" "${SVNDESTINATION}/"
-	# setup the link, svn was moved
-	sudo -u pi ln -s "${SVNDESTINATION}/svn" "${SVNLINK}"
-else
-	# svn destination not changed, set the link
-	sudo -u pi ln -s "/mnt/${SVNLABEL}/svn" "${SVNLINK}"
-fi
-
-########################################################
-# debhome
-########################################################
-# make the link for debhome
-# debhome is always at /mnt/debhome
-rm -f "${DEBHOMELINK}"
-DEBHOMEURL="file://${DEBHOMELINK}"
-
-# mount disk label for debhome
-# mountresource will exist if debhome is not available
+################################
+# check debhome repository exists
+###############################
 mountresource "${DEBHOMELABEL}" "debhome"
-sudo -u pi ln -s "/mnt/${DEBHOMELABEL}/debhome" "${DEBHOMELINK}"
 
-########################################################
-# sources.list
-########################################################
-# backup /etc/apt/sources.list if it is not backed up
-if test ! -f /etc/apt/sources.list.bak; then
-	cp /etc/apt/sources.list /etc/apt/sources.list.bak
-fi
-
-if test ! -f /etc/apt/sources.list.d/raspi.list.bak; then
-	cp /etc/apt/sources.list.d/raspi.list /etc/apt/sources.list.d/raspi.list.bak
-fi
-
-# append debhome to /etc/apt/sources.list
-# check if /etc/apt/sources.list has already been edited
-grep "${DEBHOMEURL}" /etc/apt/sources.list
-if test $? -ne 0; then
-	# edit /etc/apt/sources.list for ubuntu or debian
-	echo "deb ${DEBHOMEURL} home main" >> /etc/apt/sources.list
-fi
-
-# add key for repository
-apt-key add "${DEBHOMELINK}/publickeyFile.gpg"
-
-# if -a option given, edit /etc/apt/sources.list. EDITSOURCES set to 0 if -a given
-# to use /mnt/hd3/deb.debian.org and /mnt/hd3/archive.raspberrypi.org
-# then mount the disks for deb.debian.org and archive.raspberrypi.org
+################################
+# check deb.debian.org and
+# archive.raspberrypi.org
+# exist if /etc/apt/sources.list
+# is edited to use them
+################################
 if test ${EDITSOURCES} -eq 0; then
 	mountresource "${DEBORGLABEL}" "deb.debian.org"
 	mountresource "${ARCHIVERPILABEL}" "archive.raspberrypi.org"
-	# edit  /etc/apt/sources.list
-	editsources "${DEBORGLABEL}" "${ARCHIVERPILABEL}"
 fi
 
-apt update
+###################################
+# launch service init-rpi
+# create the init-rpi service
+###################################
+echo "[Unit]
+Description=Reboot raspberry pi and then initialise rpi once.
 
-apt -y install subversion
+[Service]
+Type=simple
+ExecStart=/bin/bash /usr/local/bin/init-rpi -m ${DEBHOMELABEL}\
+ -d ${DEBORGLABEL}\
+ -a ${ARCHIVERPILABEL}\
+ -s ${SVNLABEL}\
+ -S ${SVNDESTINATION}\
+ -e ${EDITSOURCES}\
+ -r ${RELEASE}
 
-# add all other config files so that no 'svn:externals' properties are necessary in the deb
-# install files
-cd /etc/sudoers.d
-svn export --force ${SVNURL}/root/my-linux/sudoers.d/robert
-# set ownership
-chown root.root robert
-chmod 0440 robert
+[Install]
+WantedBy=multi-user.target" > /etc/systemd/system/init-rpi.service
 
-# setup fstab if it has not been setup already.
-cd /etc
-svn export --force ${SVNURL}/root/my-linux/config-files/fstab-extension /etc
+# set mode for init-rpi.service
+chmod 0644 /etc/systemd/system/init-rpi.service
 
-# check if fstab-extention has been added to /etc/fstab
-grep -q "fstab-extension" /etc/fstab
-if [ $? -ne 0 ]
-then
-	# first backup it up
-	cp -a /etc/fstab /etc/fstab.bak
+# enable the service for the next boot
+systemctl enable init-rpi
 
-	# append fstab extension to fstab
-	cat /etc/fstab-extension >> /etc/fstab
-fi
-rm /etc/fstab-extension
-
-# root .bashrc edit so directories will be in colour for root and red prompt
-cd /root
-cp -f .bashrc .bashrc.bak
-# make the prompt
-sed -i -e '/^# PS1/i \PS1='\''\${debian_chroot:+(\$debian_chroot)}\\[\\033[01;31m\\]\\u@\\h\\[\\033[00m\\]:\\[\\033[01;36m\\]\\w \#\\[\\033[00m\\] '\''' ~/.bashrc
-# setup the aliases for colour
-sed -i -e 's/^# alias l/alias l/' ~/.bashrc
-
-# setup to use .dircolors
-sed -i -e 's/^# export LS/export LS/' ~/.bashrc
-sed -i -e 's/^# eval \"`dircolors`\"/eval \"\$(dircolors -b ~\/.dircolors)\"/' ~/.bashrc
-
-# set up dircolors for root
-dircolors --print-database > .dircolors
-sed -i -e 's/^DIR 01;34/DIR 01;36/' .dircolors
-sed -i -e 's/^LINK 01;36/LINK 01;33/' .dircolors
-
-#########################
-# setup  /home/pi account
-#########################
-# copy .dircolors to /home/pi and set ownership
-cp /root/.dircolors /home/pi/
-cd /home/pi
-chown pi.pi /home/pi/.dircolors
-
-# edit .bashrc for pi so directories will be in colour
-cd /home/pi
-sudo -u pi cp .bashrc .bashrc.bak
-# change colour of prompt
-sudo -u pi sed -i -e 's/#force_color_prompt/force_color_prompt/' .bashrc
-sudo -u pi sed -i -e 's/\[\\033\[01;34m\\\]/\[\\033\[01;36m\\\]/' .bashrc
-
-# install git credentials
-sudo -u pi svn export --force ${SVNURL}/root/my-linux/git/.gitconfig /home/pi/
-sudo -u pi svn export --force ${SVNURL}/root/my-linux/git/.git-credentials /home/pi/
-
-# export .bash_aliases from subversion
-sudo -u pi svn export --force ${SVNURL}/root/my-linux/config-files/bash_aliases/.bash_aliases /home/pi
-
+#############################################
+# setup console boot, hostname timezone,
+# console fonts, keyboard, splash screen,
+# disable overscan
+#############################################
 # set the rpi to boot to console and no autologin
 systemctl set-default multi-user.target
 ln -fs /lib/systemd/system/getty@.service /etc/systemd/system/getty.target.wants/getty@tty1.service
 if test -e /etc/systemd/system/getty@tty1.service.d/autologin.conf; then
 	rm /etc/systemd/system/getty@tty1.service.d/autologin.conf
 fi
-
+exit
 # set the time and zone
 timedatectl set-timezone Africa/Johannesburg
 
@@ -319,13 +210,6 @@ timedatectl set-timezone Africa/Johannesburg
 hostnamectl set-hostname rpi
 # change it in /etc/hosts
 sed -i -e 's/raspberrypi/rpi/' /etc/hosts
-
-# save init-rpi init-rpi-first reset-rpi in /usr/local/bin
-cd /usr/local/bin
-svn export --force ${SVNURL}/root/my-linux/init-rpi/init-rpi /usr/local/bin/init-rpi
-svn export --force ${SVNURL}/root/my-linux/init-rpi/init-rpi-first /usr/local/bin/init-rpi-first
-svn export --force ${SVNURL}/root/my-linux/init-rpi/reset-rpi /usr/local/bin/reset-rpi
-
 
 # setup default console with Terminus
 cd /etc/default
@@ -342,41 +226,5 @@ sed -i -e 's/quiet splash plymouth.ignore-serial-consoles//' /boot/cmdline.txt
 # disable overscan to remove border in x windows
 sed -i -e 's/^#disable_overscan/disable_overscan/' /boot/config.txt
 
-# edit subversion config so .git and .gitignore are ignored
-sed -i -e 's/^# global-ignores =/global-ignores = .git .gitignore/' /etc/subversion/config
-
-# edit nanorc
-sed -i -e 's/^# set autoindent/set autoindent/' \
-       -e 's/^# set linenumbers/set linenumbers/' \
-       -e 's/^# set multibuffer/set multibuffer/' \
-       -e 's/^# set positionlog/set positionlog/' \
-       -e 's/^# set selectedcolor brightwhite,magenta/set selectedcolor brightwhite,magenta/' \
-       -e 's/^# set numbercolor cyan/set numbercolor cyan/' \
-       -e 's/^# set keycolor cyan/set keycolor cyan/' /etc/nanorc
-
-# if the svn path was set to /home/pi
-# it must be changed to /home/robert as the user pi is changed to robert
-if test "${SVNDESTINATION}" = "/home/pi"; then
-	SVNDESTINATION="/home/robert"
-fi
-
-# launch service init-rpi
-# create the init-rpi service
-echo "[Unit]
-Description=Reboot raspberry pi and then initialise rpi once.
-
-[Service]
-Type=simple
-ExecStart=/bin/bash /usr/local/bin/init-rpi ${SVNPATH}
-
-[Install]
-WantedBy=multi-user.target" > /etc/systemd/system/init-rpi.service
-
-# set mode for init-rpi.service
-chmod 0644 /etc/systemd/system/init-rpi.service
-
-# enable the service for the next boot
-systemctl enable init-rpi
-
 # reboot
-shutdown -r now
+# shutdown -r now
