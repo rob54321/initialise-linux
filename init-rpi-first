@@ -105,6 +105,7 @@ SVNLINK="/mnt/svn"
 RELEASE="none"
 # default is not to edit sources.
 EDITSOURCES="false"
+SVNDESTCHANGED="false"
 
 while getopts S:a:ed:m:s:r:h opt
 do
@@ -113,15 +114,20 @@ do
 		d) DEBORGLABEL="${OPTARG}";;
 		a) ARCHIVERPILABEL="${OPTARG}";;
 		s) SVNLABEL="${OPTARG}";;
-		S) SVNDESTINATION="${OPTARG}";;
+		S) SVNDESTINATION="${OPTARG}"; SVNDESTCHANGED="true";;
 		e) EDITSOURCES="true";;
 		r) RELEASE="${OPTARG}";;
 		h) usage;;
 		\?) usage;;
 	esac
 done
-# SVNLABEL may have changed
-SVNDESTINATION="/mnt/${SVNLABEL}"
+
+# if SVNDESTINATION has not changed
+# then SVNDESTINATION = /mnt/${SVNLABEL}
+# because SVNLABEL may have changed
+if test "${SVNDESTCHANGED}" = "false"; then
+	"${SVNDESTCHANGED}" = "/mnt/${SVNLABEL}"
+fi
 
 #####################################
 # subversion not installed so
