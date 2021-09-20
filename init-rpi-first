@@ -126,16 +126,29 @@ SVNDESTINATION="/mnt/${SVNLABEL}"
 #####################################
 # subversion not installed so
 # init-rpi must to be copied to /usr/local/bin
-# init-rpi should be in the same directory
-# as init-rpi-first
+# find init-rpi
+# look in current dir, usr/local/bin, prompt
 #####################################
 if test -f "init-rpi"; then
+	# look in current directory
 	echo "found init-rpi"
 	cp -v init-rpi /usr/local/bin/
+elif test -f "/usr/local/bin/init-rpi"; then
+	# look in /usr/local/bin
+	echo "found /usr/local/bin/init-rpi"
 else
-	# cannot find init-rpi
-	echo "cannot find init-rpi in `pwd`"
-	exit 1;
+	# prompt for init-rpi
+	echo "Enter the path of init-rpi"
+	read INITP
+	if test -f "${INITP}/init-rpi"; then
+		if test "/usr/local/bin" != "${INITP}"; then
+			cp -v "${INITP}/init-rpi" "/usr/local/bin/"
+		fi
+	else
+		# file not found
+		echo "${INITP}/init-rpi not found"
+		exit 1;
+	fi
 fi
 
 ##################################
@@ -225,4 +238,4 @@ sed -i -e 's/quiet splash plymouth.ignore-serial-consoles//' /boot/cmdline.txt
 sed -i -e 's/^#disable_overscan/disable_overscan/' /boot/config.txt
 
 # reboot
-shutdown -r now
+#shutdown -r now

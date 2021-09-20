@@ -16,6 +16,18 @@
 # the function will exit the script if nothing is found
 # parameters passed: disk_label, root directory of svn | deb.debian.org | archive.debian.org | debhome
 
+usage() {
+	echo "-m disk label for debhome				default: ${DEBHOMELABEL}";
+	echo "-d disk label for deb.debian.org			default: ${DEBORGLABEL}";
+	echo "-a disk label for archive.raspberrypi.org		default: ${ARCHIVERPILABEL}";
+	echo "-s disk label for svn      				default: ${SVNLABEL}";
+	echo "-S svn destination					default: none";
+	echo "-e edit sources.list to use file:///...			default: do not edit sources.list";
+      	echo "-r release name [buster]				default: ${RELEASE}";
+	echo "-h help"
+	exit 0
+}
+
 mountresource () {
 	# flag to inidicate
 	# disk was mounted and should be left mounted
@@ -128,6 +140,7 @@ SVNLABEL="ad64"
 SVNLINK="/mnt/svn"
 RELEASE="none"
 EDITSOURCES="false"
+SVNDESTCHANGED="false"
 
 while getopts S:a:ed:m:s:r:h opt
 do
@@ -136,7 +149,7 @@ do
 		d) DEBORGLABEL="${OPTARG}";;
 		a) ARCHIVERPILABEL="${OPTARG}";;
 		s) SVNLABEL="${OPTARG}";;
-		S) SVNDESTINATION="${OPTARG}";;
+		S) SVNDESTINATION="${OPTARG}"; SVNDESTCHANGED="true";;
 		e) EDITSOURCES="true";;
 		r) RELEASE="${OPTARG}";;
 		h) usage;;
@@ -144,12 +157,18 @@ do
 	esac
 done
 
-# SVNLABEL may have changed
-SVNDESTINATION="/mnt/${SVNLABEL}"
+# if SVNDESTINATION has not changed
+# then SVNDESTINATION = /mnt/${SVNLABEL}
+# because SVNLABEL may have changed
+if test "${SVNDESTCHANGED}" = "false"; then
+	"${SVNDESTCHANGED}" = "/mnt/${SVNLABEL}"
+fi
 
 # disable the service that started this script
-systemctl disable init-rpi.service
-rm -v /etc/systemd/system/init-rpi.service
+if test -f "/etc/systemd/system/init-rpi.service"; then
+	systemctl disable init-rpi.service
+	rm -v /etc/systemd/system/init-rpi.service
+fi
 
 # change user pi to robert with correct groups and permissions
 # check if user robert exists
