@@ -17,6 +17,10 @@
 # parameters passed: disk_label, root directory of svn | deb.debian.org | archive.debian.org | debhome
 
 mountresource () {
+	# flag to inidicate
+	# disk was mounted and should be left mounted
+	WASMOUNTED="false"
+
 	# check if the disk label is attached
 	blkid -L "$1"
 	if test "$?" -ne 0; then
@@ -26,7 +30,7 @@ mountresource () {
 	# make the mount directory if it does not exist
 	if test ! -d "/mnt/$1"; then
 		mkdir "/mnt/$1"
-		chown robert.robert "/mnt/$1"
+		chown pi.pi "/mnt/$1"
 	fi
 
 	#  if disk not mounted, mount it
@@ -34,18 +38,27 @@ mountresource () {
 	if test "$?" -ne 0; then
 		# mount it
 		mount -L "$1" "/mnt/$1"
+		# set mounted flag to false
+		WASMOUNTED="false"
 		if test $? -ne 0; then
 			# count not mount disk drive
 			echo "could not mount $1"
 			exit 1;
 		fi
+	else
+		# disk was mounted
+		# leave it mounted
+		WASMOUNTED="true"
 	fi
 	# check if svn | deb.debian.org | archive.debian.org | debhome is accessible
 	if test ! -d "/mnt/$1/$2"; then
 		# svn or archive does not exist
 		echo "/mnt/$1/$2 not found"
-		echo "unmounting /mnt/$1"
-		umount "/mnt/$1"
+		if test "${WASMOUNTED}" = "false"; then
+			# disk was not mounted, un mount it
+			echo "unmounting /mnt/$1"
+			umount "/mnt/$1"
+		fi
 		exit 1;
 	fi
 	# return success
@@ -113,9 +126,8 @@ ARCHIVERPILABEL="hd3"
 ARCHIVERPILINK="/mnt/archiverpi"
 SVNLABEL="ad64"
 SVNLINK="/mnt/svn"
-SVNDESTINATION=""
 RELEASE="none"
-EDITSOURCES=1
+EDITSOURCES="false"
 
 while getopts S:a:ed:m:s:r:h opt
 do
@@ -125,14 +137,15 @@ do
 		a) ARCHIVERPILABEL="${OPTARG}";;
 		s) SVNLABEL="${OPTARG}";;
 		S) SVNDESTINATION="${OPTARG}";;
-		e) EDITSOURCES=0;;
+		e) EDITSOURCES="true";;
 		r) RELEASE="${OPTARG}";;
 		h) usage;;
 		\?) usage;;
 	esac
 done
 
-
+# SVNLABEL may have changed
+SVNDESTINATION="/mnt/${SVNLABEL}"
 
 # disable the service that started this script
 systemctl disable init-rpi.service
@@ -182,7 +195,7 @@ mountresource "${SVNLABEL}" "svn"
 # svn disk mounted and it exists
 # copy svn to destination if destination given
 # do not copy svn to itself
-if test "${SVNDESTINATION}" != ""; then
+if test "${SVNDESTINATION}" != "/mnt/${SVNLABEL}"; then
 	# check if destination exists
 	if test ! -d "${SVNDESTINATION}"; then
 		mkdir -p "${SVNDESTINATION}"
@@ -235,7 +248,7 @@ apt-key add "${DEBHOMELINK}/publickeyFile.gpg"
 # if -a option given, edit /etc/apt/sources.list. EDITSOURCES set to 0 if -a given
 # to use /mnt/hd3/deb.debian.org and /mnt/hd3/archive.raspberrypi.org
 # then mount the disks for deb.debian.org and archive.raspberrypi.org
-if test ${EDITSOURCES} -eq 0; then
+if test "${EDITSOURCES}" = "true"; then
 	mountresource "${DEBORGLABEL}" "deb.debian.org"
 	mountresource "${ARCHIVERPILABEL}" "archive.raspberrypi.org"
 	# edit  /etc/apt/sources.list

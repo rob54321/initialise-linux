@@ -102,9 +102,9 @@ ARCHIVERPILABEL="hd3"
 ARCHIVERPILINK="/mnt/archiverpi"
 SVNLABEL="ad64"
 SVNLINK="/mnt/svn"
-SVNDESTINATION=""
 RELEASE="none"
-EDITSOURCES=1
+# default is not to edit sources.
+EDITSOURCES="false"
 
 while getopts S:a:ed:m:s:r:h opt
 do
@@ -114,12 +114,14 @@ do
 		a) ARCHIVERPILABEL="${OPTARG}";;
 		s) SVNLABEL="${OPTARG}";;
 		S) SVNDESTINATION="${OPTARG}";;
-		e) EDITSOURCES=0;;
+		e) EDITSOURCES="true";;
 		r) RELEASE="${OPTARG}";;
 		h) usage;;
 		\?) usage;;
 	esac
 done
+# SVNLABEL may have changed
+SVNDESTINATION="/mnt/${SVNLABEL}"
 
 #####################################
 # subversion not installed so
@@ -160,7 +162,7 @@ mountresource "${DEBHOMELABEL}" "debhome"
 # exist if /etc/apt/sources.list
 # is edited to use them
 ################################
-if test ${EDITSOURCES} -eq 0; then
+if test "${EDITSOURCES}" = "true"; then
 	mountresource "${DEBORGLABEL}" "deb.debian.org"
 	mountresource "${ARCHIVERPILABEL}" "archive.raspberrypi.org"
 fi
@@ -168,19 +170,15 @@ fi
 ###################################
 # launch service init-rpi
 # create the init-rpi service
+# the -e option is given or not given
+# it has no value
 ###################################
 echo "[Unit]
 Description=Reboot raspberry pi and then initialise rpi once.
 
 [Service]
 Type=simple
-ExecStart=/bin/bash /usr/local/bin/init-rpi -m ${DEBHOMELABEL}\
- -d ${DEBORGLABEL}\
- -a ${ARCHIVERPILABEL}\
- -s ${SVNLABEL}\
- -S ${SVNDESTINATION}\
- -e ${EDITSOURCES}\
- -r ${RELEASE}
+ExecStart=/bin/bash /usr/local/bin/init-rpi $*
 
 [Install]
 WantedBy=multi-user.target" > /etc/systemd/system/init-rpi.service
@@ -202,7 +200,7 @@ ln -fs /lib/systemd/system/getty@.service /etc/systemd/system/getty.target.wants
 if test -e /etc/systemd/system/getty@tty1.service.d/autologin.conf; then
 	rm /etc/systemd/system/getty@tty1.service.d/autologin.conf
 fi
-exit
+
 # set the time and zone
 timedatectl set-timezone Africa/Johannesburg
 
@@ -227,4 +225,4 @@ sed -i -e 's/quiet splash plymouth.ignore-serial-consoles//' /boot/cmdline.txt
 sed -i -e 's/^#disable_overscan/disable_overscan/' /boot/config.txt
 
 # reboot
-# shutdown -r now
+shutdown -r now
