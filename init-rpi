@@ -230,8 +230,7 @@ fi
 ########################################################
 # make the link for debhome
 # debhome is always at /mnt/debhome
-rm -f "${DEBHOMELINK}"
-DEBHOMEURL="file://${DEBHOMELINK}"
+rm "${DEBHOMELINK}"
 
 # mount disk label for debhome
 # mountresource will exist if debhome is not available
@@ -264,7 +263,8 @@ fi
 # append debhome to /etc/apt/sources.list
 # check if /etc/apt/sources.list has already been edited
 # delete debhomeurl home main, then append it
-sed -i -e '/deb '"${DEBHOMEURL}"' home main/d' /etc/apt/sources.list
+DEBHOMEURL="file://${DEBHOMELINK}"
+sed -i -e '/deb.*file:.*home main/d' /etc/apt/sources.list
 sed -i -e '$a \deb '"${DEBHOMEURL}"' home main' /etc/apt/sources.list
 
 # add key for repository
