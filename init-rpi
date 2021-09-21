@@ -92,31 +92,28 @@ editsources() {
 	sudo -u robert ln -s "/mnt/$1/deb.debian.org" "${DEBORGLINK}"
 	sudo -u robert ln -s "/mnt/$2/archive.raspberrypi.org" "${ARCHIVERPILINK}"
 
-	# do not edit /etc/apt/sources.list if it has been edited
-	grep -q "${DEBORGURL}" /etc/apt/sources.list
-	if test $? -ne 0; then
+	# remove old deb [....] file:/// if they exist
+	sed -i -e '/^deb.*file/d' /etc/apt/sources.list
+	# edit /etc/apt/sources.list
 
-		# edit /etc/apt/sources.list
-		# comment all deb lines out
-		sed -i -e 's/^deb /# deb /g' /etc/apt/sources.list
+	# comment all deb lines out for http, not deb [ arch=arm64 ] file:///
+	sed -i -e 's/^deb.*http/#&/g' /etc/apt/sources.list
 
-		# append the lines
-		sed -i -e '$a \deb [ arch=arm64 ] '${DEBORGURL}' buster main contrib non-free\
+	# append the lines for accesing the local resositories
+	sed -i -e '$a \deb [ arch=arm64 ] '"${DEBORGURL}"' buster main contrib non-free\
 deb [ arch=arm64 ] '${DEBORGURL}' buster-updates main contrib non-free\
 deb [ arch=arm64 ] '${DEBORGURL}' buster-proposed-updates main contrib non-free\
 deb [ arch=arm64 ] '${DEBORGURL}' buster-backports main contrib non-free' /etc/apt/sources.list
-	fi
 
 	# edit /etc/apt/sources.list.d/raspi.list
-	# if it has not been edited.
-	grep -q "${ARCHIVERPIURL}" /etc/apt/sources.list.d/raspi.list
-	if test $? -ne 0; then
-		# edit /etc/apt/sources.list.d/raspi.list
-		sed -i -e 's/^deb /# deb /g' /etc/apt/sources.list.d/raspi.list
+	# remove old deb [...] file:/// if they exist
+	sed -i -e '/^deb.*file/d' /etc/apt/sources.list.d/raspi.list
 
-		# append line
-		sed -i -e '$a \deb [ arch=arm64 ] '${ARCHIVERPIURL}' buster main' /etc/apt/sources.list.d/raspi.list
-	fi
+	# comment all deb lines out for http, not deb [...] file:///
+	sed -i -e 's/^deb.*http/#&/g' /etc/apt/sources.list.d/raspi.list
+
+	# append line
+	sed -i -e '$a \deb [ arch=arm64 ] '"${ARCHIVERPIURL}"' buster main' /etc/apt/sources.list.d/raspi.list
 }
 
 # defaults, links
@@ -253,16 +250,6 @@ if test ! -f /etc/apt/sources.list.d/raspi.list.bak; then
 	cp /etc/apt/sources.list.d/raspi.list /etc/apt/sources.list.d/raspi.list.bak
 fi
 
-# append debhome to /etc/apt/sources.list
-# check if /etc/apt/sources.list has already been edited
-grep "${DEBHOMEURL}" /etc/apt/sources.list
-if test $? -ne 0; then
-	# edit /etc/apt/sources.list for ubuntu or debian
-	echo "deb ${DEBHOMEURL} home main" >> /etc/apt/sources.list
-fi
-
-# add key for repository
-apt-key add "${DEBHOMELINK}/publickeyFile.gpg"
 
 # if -a option given, edit /etc/apt/sources.list. EDITSOURCES set to 0 if -a given
 # to use /mnt/hd3/deb.debian.org and /mnt/hd3/archive.raspberrypi.org
@@ -273,6 +260,15 @@ if test "${EDITSOURCES}" = "true"; then
 	# edit  /etc/apt/sources.list
 	editsources "${DEBORGLABEL}" "${ARCHIVERPILABEL}"
 fi
+
+# append debhome to /etc/apt/sources.list
+# check if /etc/apt/sources.list has already been edited
+# delete debhomeurl home main, then append it
+sed -i -e '/deb '"${DEBHOMEURL}"' home main/d' /etc/apt/sources.list
+sed -i -e '$a \deb '"${DEBHOMEURL}"' home main' /etc/apt/sources.list
+
+# add key for repository
+apt-key add "${DEBHOMELINK}/publickeyFile.gpg"
 
 apt update
 
