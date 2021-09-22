@@ -158,7 +158,7 @@ done
 # then SVNDESTINATION = /mnt/${SVNLABEL}
 # because SVNLABEL may have changed
 if test "${SVNDESTCHANGED}" = "false"; then
-	"${SVNDESTCHANGED}" = "/mnt/${SVNLABEL}"
+	SVNDESTINATION="/mnt/${SVNLABEL}"
 fi
 
 # disable the service that started this script
