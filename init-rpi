@@ -194,7 +194,7 @@ do
 done
 
 # change ownership of directories
-chown robert.robert /mnt/*
+chown --no-dereference robert.robert /mnt/*
 
 #########################################################
 # subversion
