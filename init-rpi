@@ -230,7 +230,7 @@ fi
 ########################################################
 # make the link for debhome
 # debhome is always at /mnt/debhome
-rm "${DEBHOMELINK}"
+rm -f "${DEBHOMELINK}"
 
 # mount disk label for debhome
 # mountresource will exist if debhome is not available
