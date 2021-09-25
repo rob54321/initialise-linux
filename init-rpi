@@ -76,6 +76,36 @@ mountresource () {
 	# return success
 	return 0;
 }
+# function to remove edits from /etc/apt/sources.list and 
+# /etc/apt/sources.list.d/raspi.list
+# and use the default http protocol for the respositories
+# the links to DEBORGLINK and ARCHIVERPILINK are removed
+restoresources() {
+	# restore the sources.list backup
+	if test -f /etc/apt/sources.list.bak; then
+		cp -vf /etc/apt/sources.list.bak /etc/apt/sources.list
+	else
+		# backup file does not exist
+		# generate original sources.list
+		# delete file:// lines
+		sed -i -e '/^deb*.file:/d' /etc/apt/sources.list
+
+		# now uncomment the original #deb http lines
+		sed -i -e 's/^#deb http/deb http/' /etc/apt/sources.list
+	fi
+	# restore raspi.list
+	if test -f /etc/apt/sources.list.d/raspi.list; then
+		cp -vf /etc/apt/sources.list.d/raspi.list.bak /etc/apt/sources.list.d/raspi.list
+	else
+		# backup file does not exist
+		# generate original raspi.list
+		sed -i -e '/^deb.*file:/d' /etc/apt/sources.list.d/raspi.list
+		sed -i -e 's/^#deb http/deb http/' /etc/apt/sources.list.d/raspi.list
+	fi
+
+	rm -f "${DEBORGLINK}"
+	rm -f "${ARCHIVERPILINK}"
+}
 # function to edit /etc/apt/sources.list and /etc/apt/sources.list.d/raspi.list
 # this function is only called if the -a option is given
 # only called if the debian archives are on local disks.
@@ -235,7 +265,16 @@ rm -f "${DEBHOMELINK}"
 # mount disk label for debhome
 # mountresource will exist if debhome is not available
 mountresource "${DEBHOMELABEL}" "debhome"
+
+# create debhome.list in /etc/apt/sources.list.d
+DEBHOMEURL="file://${DEBHOMELINK}"
+echo "deb ${DEBHOMEURL} home main" > /etc/apt/sources.list.d/debhome.list
+
+# make the link for debhome
 sudo -u robert ln -s "/mnt/${DEBHOMELABEL}/debhome" "${DEBHOMELINK}"
+
+# add key for repository
+apt-key add "${DEBHOMELINK}/publickeyFile.gpg"
 
 ########################################################
 # sources.list
@@ -259,16 +298,6 @@ if test "${EDITSOURCES}" = "true"; then
 	# edit  /etc/apt/sources.list
 	editsources "${DEBORGLABEL}" "${ARCHIVERPILABEL}"
 fi
-
-# append debhome to /etc/apt/sources.list
-# check if /etc/apt/sources.list has already been edited
-# delete debhomeurl home main, then append it
-DEBHOMEURL="file://${DEBHOMELINK}"
-sed -i -e '/deb.*file:.*home main/d' /etc/apt/sources.list
-sed -i -e '$a \deb '"${DEBHOMEURL}"' home main' /etc/apt/sources.list
-
-# add key for repository
-apt-key add "${DEBHOMELINK}/publickeyFile.gpg"
 
 apt update
 
