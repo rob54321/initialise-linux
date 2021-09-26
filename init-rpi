@@ -76,7 +76,7 @@ mountresource () {
 	# return success
 	return 0;
 }
-# function to remove edits from /etc/apt/sources.list and 
+# function to remove edits from /etc/apt/sources.list and
 # /etc/apt/sources.list.d/raspi.list
 # and use the default http protocol for the respositories
 # the links to DEBORGLINK and ARCHIVERPILINK are removed
@@ -88,7 +88,7 @@ restoresources() {
 		# backup file does not exist
 		# generate original sources.list
 		# delete file:// lines
-		sed -i -e '/^deb*.file:/d' /etc/apt/sources.list
+		sed -i -e '/^deb.*file:/d' /etc/apt/sources.list
 
 		# now uncomment the original #deb http lines
 		sed -i -e 's/^#deb http/deb http/' /etc/apt/sources.list
@@ -146,6 +146,43 @@ deb [ arch=arm64 ] '${DEBORGURL}' buster-backports main contrib non-free' /etc/a
 	sed -i -e '$a \deb [ arch=arm64 ] '"${ARCHIVERPIURL}"' buster main' /etc/apt/sources.list.d/raspi.list
 }
 
+# change user pi to robert with correct groups and permissions
+# check if user robert exists
+# parameters: changeuser from_user to_user
+# ie changeuser pi robert
+changeuser() {
+	groups $2 > /dev/null 2>&1
+	if test $? -ne 0; then
+		# user robert does not exist, create it
+		usermod -l $2 -m -d /home/$2 $1
+
+		# if group pi exists, change it to group robert
+		getent group $1
+		if test $? -eq 0; then
+			# change the group pi to robert
+			groupmod -n $2 $1
+		fi
+	fi
+}
+
+# make all the mount directories
+# set ownership to newuser
+# parameters: makedirs ${NEWUSER}
+
+makedirs() {
+	chown $1.$1 /mnt
+	dirlist="hd2 hd3 ad64 ssd axiz axiz2 king sah trans ver ver8 chaos ad scd1 scd2"
+	for dir in $dirlist
+	do
+		if [ ! -d /mnt/${dir} ]
+		then
+			mkdir /mnt/${dir}
+		fi
+	done
+
+	# change ownership of directories
+	chown --no-dereference $1.$1 /mnt/*
+}
 # defaults, links
 # /mnt/debhome    -> /mnt/DEBHOMELABEL/debhome
 # /mnt/deborg     -> /mnt/DEBORGLABEL/deb.debian.org
@@ -168,6 +205,8 @@ SVNLINK="/mnt/svn"
 RELEASE="none"
 EDITSOURCES="false"
 SVNDESTCHANGED="false"
+OLDUSER="pi"
+NEWUSER="robert"
 
 while getopts S:a:ed:m:s:r:h opt
 do
@@ -197,34 +236,11 @@ if test -f "/etc/systemd/system/init-rpi.service"; then
 	rm -v /etc/systemd/system/init-rpi.service
 fi
 
-# change user pi to robert with correct groups and permissions
-# check if user robert exists
-groups robert > /dev/null 2>&1
-if test $? -ne 0; then
-	# user robert does not exist, create it
-	usermod -l robert -m -d /home/robert pi
+# change user from pi to robert
+changeuser "${OLDUSER}" "${NEWUSER}"
 
-	# if group pi exists, change it to group robert
-	getent group pi
-	if test $? -eq 0; then
-		# change the group pi to robert
-		groupmod -n robert pi
-	fi
-fi
-
-# make all the mount directories
-chown robert.robert /mnt
-dirlist="hd2 hd3 ad64 ssd axiz axiz2 king sah trans ver ver8 chaos ad scd1 scd2"
-for dir in $dirlist
-do
-	if [ ! -d /mnt/${dir} ]
-	then
-		mkdir /mnt/${dir}
-	fi
-done
-
-# change ownership of directories
-chown --no-dereference robert.robert /mnt/*
+# make all mount directories
+makedirs "${NEWUSER}"
 
 #########################################################
 # subversion
