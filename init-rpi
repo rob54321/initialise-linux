@@ -112,6 +112,7 @@ restoresources() {
 # on the command line
 # paraters passed: label of disk with deb.debian.org
 #                  label of disk with archive.debian.org
+#                  new user
 editsources() {
 	# set the URL and links for deb.debian.org and archive.debian.org
 	DEBORGURL="file://${DEBORGLINK}"
@@ -119,8 +120,8 @@ editsources() {
 	# remove the links if they exist
 	rm -f "${DEBORGLINK}"
 	rm -f "${ARCHIVERPILINK}"
-	sudo -u robert ln -s "/mnt/$1/deb.debian.org" "${DEBORGLINK}"
-	sudo -u robert ln -s "/mnt/$2/archive.raspberrypi.org" "${ARCHIVERPILINK}"
+	sudo -u $3 ln -s "/mnt/$1/deb.debian.org" "${DEBORGLINK}"
+	sudo -u $3 ln -s "/mnt/$2/archive.raspberrypi.org" "${ARCHIVERPILINK}"
 
 	# remove old deb [....] file:/// if they exist
 	sed -i -e '/^deb.*file/d' /etc/apt/sources.list
@@ -183,6 +184,123 @@ makedirs() {
 	# change ownership of directories
 	chown --no-dereference $1.$1 /mnt/*
 }
+#########################################################
+# subversion
+# setup subversion link and destintation
+# parameters: setupsvn newuser
+#########################################################
+setupsvn() {
+	# svn is always accessed at file:///mnt/svn
+	SVNURL="file://${SVNLINK}"
+	# remove any old links
+	rm -f "${SVNLINK}"
+
+	# mount disk label for svn
+	# mountresource will exit if svn is not available
+	mountresource "${SVNLABEL}" "svn"
+
+	# svn disk mounted and it exists
+	# copy svn to destination if destination given
+	# do not copy svn to itself
+	if test "${SVNDESTINATION}" != "/mnt/${SVNLABEL}"; then
+		# check if destination exists
+		if test ! -d "${SVNDESTINATION}"; then
+			mkdir -p "${SVNDESTINATION}"
+			chown $1.$1 "${SVNDESTINATION}"
+		fi
+		cp -a "/mnt/${SVNLABEL}/svn" "${SVNDESTINATION}/"
+		# setup the link, svn was moved
+		sudo -u $1 ln -s "${SVNDESTINATION}/svn" "${SVNLINK}"
+	else
+		# svn destination not changed, set the link
+		sudo -u $1 ln -s "/mnt/${SVNLABEL}/svn" "${SVNLINK}"
+	fi
+}
+
+########################################################
+# debhome
+# setup the link for debhome
+# paramters: debhome newuser
+#######################################################
+debhome() {
+	# make the link for debhome
+	# debhome is always at /mnt/debhome
+	rm -f "${DEBHOMELINK}"
+
+	# mount disk label for debhome
+	# mountresource will exist if debhome is not available
+	mountresource "${DEBHOMELABEL}" "debhome"
+
+	# create debhome.list in /etc/apt/sources.list.d
+	DEBHOMEURL="file://${DEBHOMELINK}"
+	echo "deb ${DEBHOMEURL} home main" > /etc/apt/sources.list.d/debhome.list
+
+	# make the link for debhome
+	sudo -u $1 ln -s "/mnt/${DEBHOMELABEL}/debhome" "${DEBHOMELINK}"
+
+	# add key for repository
+	apt-key add "${DEBHOMELINK}/publickeyFile.gpg"
+}
+
+#############################################
+# setup colors for accounts and nano
+# parameters: accountcolours newuser
+#############################################
+accountcolours() {
+	#############################
+	# setup /root account
+	#############################
+	# root .bashrc edit so directories will be in colour for root and red prompt
+	cp -f /root/.bashrc /root/.bashrc.bak
+	# make the prompt
+	sed -i -e '/^# PS1/i \PS1='\''\${debian_chroot:+(\$debian_chroot)}\\[\\033[01;31m\\]\\u@\\h\\[\\033[00m\\]:\\[\\033[01;36m\\]\\w \#\\[\\033[00m\\] '\''' /root/.bashrc
+	# setup the aliases for colour
+	sed -i -e 's/^# alias l/alias l/' /root/.bashrc
+
+	# setup to use .dircolors
+	sed -i -e 's/^# export LS/export LS/' /root/.bashrc
+	sed -i -e 's/^# eval \"`dircolors`\"/eval \"\$(dircolors -b ~\/.dircolors)\"/' /root/.bashrc
+
+	# set up dircolors for root
+	dircolors --print-database > /root/.dircolors
+	sed -i -e 's/^DIR 01;34/DIR 01;36/' /root/.dircolors
+	sed -i -e 's/^LINK 01;36/LINK 01;33/' /root/.dircolors
+
+	#########################
+	# setup  /home/robert account
+	#########################
+	# copy .dircolors to /home/robert and set ownership
+	cp /root/.dircolors "/home/$1/"
+	chown $1.$1 /home/$1/.dircolors
+
+	# edit .bashrc for pi so directories will be in colour
+	sudo -u $1 cp /home/$1/.bashrc /home/$1/.bashrc.bak
+	# change colour of prompt
+	sudo -u robert sed -i -e 's/#force_color_prompt/force_color_prompt/' /home/$1/.bashrc
+	sudo -u $1 sed -i -e 's/\[\\033\[01;34m\\\]/\[\\033\[01;36m\\\]/' /home/$1/.bashrc
+
+	# install git credentials
+	sudo -u $1 svn export --force ${SVNURL}/root/my-linux/git/.gitconfig /home/$1/
+	sudo -u $1 svn export --force ${SVNURL}/root/my-linux/git/.git-credentials /home/$1/
+
+	# export .bash_aliases from subversion
+	sudo -u $1 svn export --force ${SVNURL}/root/my-linux/config-files/bash_aliases/.bash_aliases /home/$1
+
+
+	# edit subversion config so .git and .gitignore are ignored
+	sed -i -e 's/^# global-ignores =/global-ignores = .git .gitignore/' /etc/subversion/config
+
+	# edit nanorc
+	sed -i -e 's/^# set autoindent/set autoindent/' \
+	       -e 's/^# set linenumbers/set linenumbers/' \
+	       -e 's/^# set smooth/set smooth/' \
+	       -e 's/^# set multibuffer/set multibuffer/' \
+	       -e 's/^# set positionlog/set positionlog/' \
+	       -e 's/^# set selectedcolor brightwhite,magenta/set selectedcolor brightwhite,magenta/' \
+	       -e 's/^# set numbercolor cyan/set numbercolor cyan/' \
+	       -e 's/^# set keycolor cyan/set keycolor cyan/' /etc/nanorc
+}
+
 # defaults, links
 # /mnt/debhome    -> /mnt/DEBHOMELABEL/debhome
 # /mnt/deborg     -> /mnt/DEBORGLABEL/deb.debian.org
@@ -242,55 +360,11 @@ changeuser "${OLDUSER}" "${NEWUSER}"
 # make all mount directories
 makedirs "${NEWUSER}"
 
-#########################################################
-# subversion
-#########################################################
-# svn is always accessed at file:///mnt/svn
-SVNURL="file://${SVNLINK}"
-# remove any old links
-rm -f "${SVNLINK}"
+# setup subversion
+setupsvn "${NEWUSER}"
 
-# mount disk label for svn
-# mountresource will exit if svn is not available
-mountresource "${SVNLABEL}" "svn"
-
-# svn disk mounted and it exists
-# copy svn to destination if destination given
-# do not copy svn to itself
-if test "${SVNDESTINATION}" != "/mnt/${SVNLABEL}"; then
-	# check if destination exists
-	if test ! -d "${SVNDESTINATION}"; then
-		mkdir -p "${SVNDESTINATION}"
-		chown robert.robert "${SVNDESTINATION}"
-	fi
-	cp -a "/mnt/${SVNLABEL}/svn" "${SVNDESTINATION}/"
-	# setup the link, svn was moved
-	sudo -u robert ln -s "${SVNDESTINATION}/svn" "${SVNLINK}"
-else
-	# svn destination not changed, set the link
-	sudo -u robert ln -s "/mnt/${SVNLABEL}/svn" "${SVNLINK}"
-fi
-
-########################################################
-# debhome
-########################################################
-# make the link for debhome
-# debhome is always at /mnt/debhome
-rm -f "${DEBHOMELINK}"
-
-# mount disk label for debhome
-# mountresource will exist if debhome is not available
-mountresource "${DEBHOMELABEL}" "debhome"
-
-# create debhome.list in /etc/apt/sources.list.d
-DEBHOMEURL="file://${DEBHOMELINK}"
-echo "deb ${DEBHOMEURL} home main" > /etc/apt/sources.list.d/debhome.list
-
-# make the link for debhome
-sudo -u robert ln -s "/mnt/${DEBHOMELABEL}/debhome" "${DEBHOMELINK}"
-
-# add key for repository
-apt-key add "${DEBHOMELINK}/publickeyFile.gpg"
+# setup debhome
+debhome "${NEWUSER}"
 
 ########################################################
 # sources.list
@@ -312,15 +386,20 @@ if test "${EDITSOURCES}" = "true"; then
 	mountresource "${DEBORGLABEL}" "deb.debian.org"
 	mountresource "${ARCHIVERPILABEL}" "archive.raspberrypi.org"
 	# edit  /etc/apt/sources.list
-	editsources "${DEBORGLABEL}" "${ARCHIVERPILABEL}"
+	editsources "${DEBORGLABEL}" "${ARCHIVERPILABEL}" "${NEWUSER}"
 fi
 
+# get the keys for rpi
+svn export --force ${SVNURL}/root/my-linux/init-rpi/rpikeys.sh /usr/local/bin/
+/usr/local/bin/rpikeys.sh
+
+# update and install subversion
 apt update
 
+# install subversion
 apt -y install subversion
 
-# add all other config files so that no 'svn:externals' properties are necessary in the deb
-# install files
+# install files sudoers
 svn export --force ${SVNURL}/root/my-linux/sudoers.d/robert /etc/sudoers.d
 # set ownership
 chown root.root /etc/sudoers.d/robert
@@ -341,58 +420,8 @@ then
 fi
 rm /etc/fstab-extension
 
-#############################
-# setup /root account
-#############################
-# root .bashrc edit so directories will be in colour for root and red prompt
-cp -f /root/.bashrc /root/.bashrc.bak
-# make the prompt
-sed -i -e '/^# PS1/i \PS1='\''\${debian_chroot:+(\$debian_chroot)}\\[\\033[01;31m\\]\\u@\\h\\[\\033[00m\\]:\\[\\033[01;36m\\]\\w \#\\[\\033[00m\\] '\''' /root/.bashrc
-# setup the aliases for colour
-sed -i -e 's/^# alias l/alias l/' /root/.bashrc
-
-# setup to use .dircolors
-sed -i -e 's/^# export LS/export LS/' /root/.bashrc
-sed -i -e 's/^# eval \"`dircolors`\"/eval \"\$(dircolors -b ~\/.dircolors)\"/' /root/.bashrc
-
-# set up dircolors for root
-dircolors --print-database > /root/.dircolors
-sed -i -e 's/^DIR 01;34/DIR 01;36/' /root/.dircolors
-sed -i -e 's/^LINK 01;36/LINK 01;33/' /root/.dircolors
-
-#########################
-# setup  /home/robert account
-#########################
-# copy .dircolors to /home/robert and set ownership
-cp /root/.dircolors /home/robert/
-chown robert.robert /home/robert/.dircolors
-
-# edit .bashrc for pi so directories will be in colour
-sudo -u robert cp /home/robert/.bashrc /home/robert/.bashrc.bak
-# change colour of prompt
-sudo -u robert sed -i -e 's/#force_color_prompt/force_color_prompt/' /home/robert/.bashrc
-sudo -u robert sed -i -e 's/\[\\033\[01;34m\\\]/\[\\033\[01;36m\\\]/' /home/robert/.bashrc
-
-# install git credentials
-sudo -u robert svn export --force ${SVNURL}/root/my-linux/git/.gitconfig /home/robert/
-sudo -u robert svn export --force ${SVNURL}/root/my-linux/git/.git-credentials /home/robert/
-
-# export .bash_aliases from subversion
-sudo -u robert svn export --force ${SVNURL}/root/my-linux/config-files/bash_aliases/.bash_aliases /home/robert
-
-
-# edit subversion config so .git and .gitignore are ignored
-sed -i -e 's/^# global-ignores =/global-ignores = .git .gitignore/' /etc/subversion/config
-
-# edit nanorc
-sed -i -e 's/^# set autoindent/set autoindent/' \
-       -e 's/^# set linenumbers/set linenumbers/' \
-       -e 's/^# set multibuffer/set multibuffer/' \
-       -e 's/^# set positionlog/set positionlog/' \
-       -e 's/^# set selectedcolor brightwhite,magenta/set selectedcolor brightwhite,magenta/' \
-       -e 's/^# set numbercolor cyan/set numbercolor cyan/' \
-       -e 's/^# set keycolor cyan/set keycolor cyan/' /etc/nanorc
-
+# setup up account colours
+accountcolours "${NEWUSER}"
 
 # setup console
 setupcon
