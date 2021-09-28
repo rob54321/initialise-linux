@@ -34,10 +34,22 @@ mountresource () {
 	WASMOUNTED="false"
 
 	# check if the disk label is attached
-	blkid -L "$1"
+	DEVICE=`blkid -L "$1"`
 	if test "$?" -ne 0; then
 		echo "$1 is not attached"
 		exit 1;
+	else
+		# check if device is mounted and where
+		grep "${DEVICE}" /etc/mtab
+		if test $? -eq 0; then
+			MOUNTPT=`grep "${DEVICE}" /etc/mtab | cut -d " " -f2`
+			# disk is  mounted at MOUNTPT
+			# unmount if MOUNTPT is not /mnt/disk_label
+			if test "${MOUNTPT}" != "/mnt/$1"; then
+				echo "unmounting ${MOUNTPT}"
+				umount "${MOUNTPT}"
+			fi
+		fi
 	fi
 	# make the mount directory if it does not exist
 	if test ! -d "/mnt/$1"; then
@@ -340,6 +352,13 @@ do
 		\?) usage;;
 	esac
 done
+# check if any process of pi is running
+ps -U pi
+if test $? -eq 0; then
+	# a process from pi is running.
+	echo "a process from pi is running"
+	exit 1
+fi
 
 # if SVNDESTINATION has not changed
 # then SVNDESTINATION = /mnt/${SVNLABEL}
@@ -389,15 +408,15 @@ if test "${EDITSOURCES}" = "true"; then
 	editsources "${DEBORGLABEL}" "${ARCHIVERPILABEL}" "${NEWUSER}"
 fi
 
-# get the keys for rpi
-svn export --force ${SVNURL}/root/my-linux/init-rpi/rpikeys.sh /usr/local/bin/
-/usr/local/bin/rpikeys.sh
-
 # update and install subversion
 apt update
 
 # install subversion
 apt -y install subversion
+
+# get the keys for rpi
+svn export --force ${SVNURL}/root/my-linux/init-rpi/rpikeys.sh /usr/local/bin/
+/usr/local/bin/rpikeys.sh
 
 # install files sudoers
 svn export --force ${SVNURL}/root/my-linux/sudoers.d/robert /etc/sudoers.d

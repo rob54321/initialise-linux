@@ -33,10 +33,22 @@ mountresource () {
 	WASMOUNTED="false"
 
 	# check if the disk label is attached
-	blkid -L "$1"
+	DEVICE=`blkid -L "$1"`
 	if test "$?" -ne 0; then
 		echo "$1 is not attached"
 		exit 1;
+	else
+		# check if device is mounted and where
+		grep "${DEVICE}" /etc/mtab
+		if test $? -eq 0; then
+			MOUNTPT=`grep "${DEVICE}" /etc/mtab | cut -d " " -f2`
+			# disk is  mounted at MOUNTPT
+			# unmount if MOUNTPT is not /mnt/disk_label
+			if test "${MOUNTPT}" != "/mnt/$1"; then
+				echo "unmounting ${MOUNTPT}"
+				umount "${MOUNTPT}"
+			fi
+		fi
 	fi
 	# make the mount directory if it does not exist
 	if test ! -d "/mnt/$1"; then
@@ -135,13 +147,14 @@ fi
 # find init-rpi
 # look in current dir, usr/local/bin, prompt
 #####################################
-if test -f "init-rpi"; then
+if test -f "/usr/local/bin/init-rpi"; then
+	# found init-rpi
+	echo "found /usr/local/bin/init-rpi"
+elif test -f "init-rpi"; then
 	# look in current directory
 	echo "found init-rpi"
 	cp -v init-rpi /usr/local/bin/
-elif test -f "/usr/local/bin/init-rpi"; then
-	# look in /usr/local/bin
-	echo "found /usr/local/bin/init-rpi"
+
 else
 	# prompt for init-rpi
 	echo "Enter the path of init-rpi"
