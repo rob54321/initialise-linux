@@ -410,6 +410,9 @@ if test "${EDITSOURCES}" = "true"; then
 	mountresource "${ARCHIVERPILABEL}" "archive.raspberrypi.org"
 	# edit  /etc/apt/sources.list
 	editsources "${DEBORGLABEL}" "${ARCHIVERPILABEL}" "${NEWUSER}"
+else
+	# restore the sources.list and raspi.list
+	restoresources
 fi
 
 # update and install subversion
