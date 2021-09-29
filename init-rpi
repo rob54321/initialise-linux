@@ -21,8 +21,8 @@ usage() {
 	echo "-d disk label for deb.debian.org			default: ${DEBORGLABEL}";
 	echo "-a disk label for archive.raspberrypi.org		default: ${ARCHIVERPILABEL}";
 	echo "-s disk label for svn      				default: ${SVNLABEL}";
-	echo "-S svn destination					default: none";
-	echo "-e edit sources.list to use file:///...			default: do not edit sources.list";
+	echo "-S svn destination					default: original location";
+	echo "-e edit sources.list to use file:///...			default: restore original sources.list";
       	echo "-r release name [buster]				default: ${RELEASE}";
 	echo "-h help"
 	exit 0
@@ -357,7 +357,7 @@ do
 	esac
 done
 # check if any process of pi is running
-ps -U pi
+ps -U "${OLDUSER}" > /dev/null 2>&1
 if test $? -eq 0; then
 	# a process from pi is running.
 	echo "a process from pi is running"
