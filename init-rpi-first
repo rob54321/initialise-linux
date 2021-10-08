@@ -17,6 +17,7 @@ usage() {
 	echo "-S svn destination					default: none";
 	echo "-e edit sources.list to use file:///...			default: do not edit sources.list";
       	echo "-r release name [buster]				default: ${RELEASE}";
+      	echo "-R reboot                                         default: no reboot";
 	echo "-h help"
 	exit 0
 }
@@ -115,11 +116,12 @@ ARCHIVERPILINK="/mnt/archiverpi"
 SVNLABEL="ad64"
 SVNLINK="/mnt/svn"
 RELEASE="none"
+REBOOT="false"
 # default is not to edit sources.
 EDITSOURCES="false"
 SVNDESTCHANGED="false"
 
-while getopts S:a:ed:m:s:r:h opt
+while getopts RS:a:ed:m:s:r:h opt
 do
 	case ${opt} in
 		m) DEBHOMELABEL="${OPTARG}";;
@@ -129,6 +131,7 @@ do
 		S) SVNDESTINATION="${OPTARG}"; SVNDESTCHANGED="true";;
 		e) EDITSOURCES="true";;
 		r) RELEASE="${OPTARG}";;
+		R) REBOOT="true";;
 		h) usage;;
 		\?) usage;;
 	esac
@@ -257,4 +260,6 @@ sed -i -e 's/quiet splash plymouth.ignore-serial-consoles//' /boot/cmdline.txt
 sed -i -e 's/^#disable_overscan/disable_overscan/' /boot/config.txt
 
 # reboot
-shutdown -r now
+if test "${REBOOT}" = "true"; then
+	shutdown -r now
+fi
