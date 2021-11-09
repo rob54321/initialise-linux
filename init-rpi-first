@@ -120,7 +120,7 @@ REBOOT="false"
 # default is not to edit sources.
 EDITSOURCES="false"
 
-# parameter S destinstion of svn is 
+# parameter S destinstion of svn is
 # only used in init-rpi, not in this script
 while getopts RS:a:ed:m:s:r:h opt
 do
