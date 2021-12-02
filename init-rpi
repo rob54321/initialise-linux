@@ -1,0 +1,453 @@
+#!/bin/bash
+
+# Script to initialise raspberry pi
+# this script is run automatically after init-rpi-first is run
+# which will boot the pi and then run this script automatically.
+# multi-user.target is set so that user pi can be changed to robert
+# the clock and time zone are also set prior to this script
+#
+# the subversion repository must exist.
+# this script initialises the repositories for apt-get, makes all the devices, sets links for myenvironment, myrc.local and
+# and installs subversion
+
+# function to check the existence of svn or deb.debian.org or archive.raspberrypi.org or debhome
+# this function will mount the correct disk drive
+# if they are on a  disk drive LABEL.
+# the function will exit the script if nothing is found
+# parameters passed: disk_label, root directory of svn | deb.debian.org | archive.debian.org | debhome
+
+usage() {
+	echo "-m disk label for debhome				default: ${DEBHOMELABEL}";
+	echo "-d disk label for deb.debian.org			default: ${DEBORGLABEL}";
+	echo "-a disk label for archive.raspberrypi.org		default: ${ARCHIVERPILABEL}";
+	echo "-s disk label for svn      				default: ${SVNLABEL}";
+	echo "-S svn destination					default: original location";
+	echo "-e edit sources.list to use file:///...			default: restore original sources.list";
+      	echo "-r release name [buster]				default: ${RELEASE}";
+	echo "-h help"
+	exit 0
+}
+
+mountresource () {
+	# flag to inidicate
+	# disk was mounted and should be left mounted
+	WASMOUNTED="false"
+
+	# check if the disk label is attached
+	DEVICE=`blkid -L "$1"`
+	if test "$?" -ne 0; then
+		echo "$1 is not attached"
+		exit 1;
+	else
+		# check if device is mounted and where
+		grep "${DEVICE}" /etc/mtab
+		if test $? -eq 0; then
+			MOUNTPT=`grep "${DEVICE}" /etc/mtab | cut -d " " -f2`
+			# disk is  mounted at MOUNTPT
+			# unmount if MOUNTPT is not /mnt/disk_label
+			if test "${MOUNTPT}" != "/mnt/$1"; then
+				echo "unmounting ${MOUNTPT}"
+				umount "${MOUNTPT}"
+			fi
+		fi
+	fi
+	# make the mount directory if it does not exist
+	if test ! -d "/mnt/$1"; then
+		mkdir "/mnt/$1"
+		chown pi.pi "/mnt/$1"
+	fi
+
+	#  if disk not mounted, mount it
+	findmnt "/mnt/$1"
+	if test "$?" -ne 0; then
+		# mount it
+		mount -L "$1" "/mnt/$1"
+		# set mounted flag to false
+		WASMOUNTED="false"
+		if test $? -ne 0; then
+			# count not mount disk drive
+			echo "could not mount $1"
+			exit 1;
+		fi
+	else
+		# disk was mounted
+		# leave it mounted
+		WASMOUNTED="true"
+	fi
+	# check if svn | deb.debian.org | archive.debian.org | debhome is accessible
+	if test ! -d "/mnt/$1/$2"; then
+		# svn or archive does not exist
+		echo "/mnt/$1/$2 not found"
+		if test "${WASMOUNTED}" = "false"; then
+			# disk was not mounted, un mount it
+			echo "unmounting /mnt/$1"
+			umount "/mnt/$1"
+		fi
+		exit 1;
+	fi
+	# return success
+	return 0;
+}
+# function to remove edits from /etc/apt/sources.list and
+# /etc/apt/sources.list.d/raspi.list
+# and use the default http protocol for the respositories
+# the links to DEBORGLINK and ARCHIVERPILINK are removed
+restoresources() {
+	# restore the sources.list backup
+	if test -f /etc/apt/sources.list.bak; then
+		cp -vf /etc/apt/sources.list.bak /etc/apt/sources.list
+	else
+		# backup file does not exist
+		# generate original sources.list
+		# delete file:// lines
+		sed -i -e '/^deb.*file:/d' /etc/apt/sources.list
+
+		# now uncomment the original #deb http lines
+		sed -i -e 's/^#deb http/deb http/' /etc/apt/sources.list
+	fi
+	# restore raspi.list
+	if test -f /etc/apt/sources.list.d/raspi.list; then
+		cp -vf /etc/apt/sources.list.d/raspi.list.bak /etc/apt/sources.list.d/raspi.list
+	else
+		# backup file does not exist
+		# generate original raspi.list
+		sed -i -e '/^deb.*file:/d' /etc/apt/sources.list.d/raspi.list
+		sed -i -e 's/^#deb http/deb http/' /etc/apt/sources.list.d/raspi.list
+	fi
+
+	rm -f "${DEBORGLINK}"
+	rm -f "${ARCHIVERPILINK}"
+}
+# function to edit /etc/apt/sources.list and /etc/apt/sources.list.d/raspi.list
+# this function is only called if the -a option is given
+# only called if the debian archives are on local disks.
+# on the command line
+# paraters passed: label of disk with deb.debian.org
+#                  label of disk with archive.debian.org
+#                  new user
+editsources() {
+	# set the URL and links for deb.debian.org and archive.debian.org
+	DEBORGURL="file://${DEBORGLINK}"
+	ARCHIVERPIURL="file://${ARCHIVERPILINK}"
+	# remove the links if they exist
+	rm -f "${DEBORGLINK}"
+	rm -f "${ARCHIVERPILINK}"
+	sudo -u $3 ln -s "/mnt/$1/deb.debian.org" "${DEBORGLINK}"
+	sudo -u $3 ln -s "/mnt/$2/archive.raspberrypi.org" "${ARCHIVERPILINK}"
+
+	# remove old deb [....] file:/// if they exist
+	sed -i -e '/^deb.*file/d' /etc/apt/sources.list
+	# edit /etc/apt/sources.list
+
+	# comment all deb lines out for http, not deb [ arch=arm64 ] file:///
+	sed -i -e 's/^deb.*http/#&/g' /etc/apt/sources.list
+
+	# append the lines for accesing the local resositories
+	sed -i -e '$a \deb [ arch=arm64 ] '"${DEBORGURL}"' buster main contrib non-free\
+deb [ arch=arm64 ] '${DEBORGURL}' buster-updates main contrib non-free\
+deb [ arch=arm64 ] '${DEBORGURL}' buster-proposed-updates main contrib non-free\
+deb [ arch=arm64 ] '${DEBORGURL}' buster-backports main contrib non-free' /etc/apt/sources.list
+
+	# edit /etc/apt/sources.list.d/raspi.list
+	# remove old deb [...] file:/// if they exist
+	sed -i -e '/^deb.*file/d' /etc/apt/sources.list.d/raspi.list
+
+	# comment all deb lines out for http, not deb [...] file:///
+	sed -i -e 's/^deb.*http/#&/g' /etc/apt/sources.list.d/raspi.list
+
+	# append line
+	sed -i -e '$a \deb [ arch=arm64 ] '"${ARCHIVERPIURL}"' buster main' /etc/apt/sources.list.d/raspi.list
+}
+
+# change user pi to robert with correct groups and permissions
+# check if user robert exists
+# parameters: changeuser from_user to_user
+# ie changeuser pi robert
+changeuser() {
+	groups $2 > /dev/null 2>&1
+	if test $? -ne 0; then
+		# user robert does not exist, create it
+		usermod -l $2 -m -d /home/$2 $1
+
+		# if group pi exists, change it to group robert
+		getent group $1
+		if test $? -eq 0; then
+			# change the group pi to robert
+			groupmod -n $2 $1
+		fi
+	fi
+}
+
+# make all the mount directories
+# set ownership to newuser
+# parameters: makedirs ${NEWUSER}
+
+makedirs() {
+	chown $1.$1 /mnt
+	dirlist="hd2 hd3 ad64 ssd axiz axiz2 king sah trans ver ver8 chaos ad scd1 scd2"
+	for dir in $dirlist
+	do
+		if [ ! -d /mnt/${dir} ]
+		then
+			mkdir /mnt/${dir}
+		fi
+	done
+
+	# change ownership of directories
+	chown --no-dereference $1.$1 /mnt/*
+}
+#########################################################
+# subversion
+# setup subversion link and destintation
+# parameters: setupsvn newuser
+#########################################################
+setupsvn() {
+	# svn is always accessed at file:///mnt/svn
+	SVNURL="file://${SVNLINK}"
+	# remove any old links
+	rm -f "${SVNLINK}"
+
+	# mount disk label for svn
+	# mountresource will exit if svn is not available
+	mountresource "${SVNLABEL}" "svn"
+
+	# svn disk mounted and it exists
+	# copy svn to destination if destination given
+	# do not copy svn to itself
+	if test "${SVNDESTINATION}" != "/mnt/${SVNLABEL}"; then
+		# check if destination exists
+		if test ! -d "${SVNDESTINATION}"; then
+			mkdir -p "${SVNDESTINATION}"
+			chown $1.$1 "${SVNDESTINATION}"
+		fi
+		cp -a "/mnt/${SVNLABEL}/svn" "${SVNDESTINATION}/"
+		# setup the link, svn was moved
+		sudo -u $1 ln -s "${SVNDESTINATION}/svn" "${SVNLINK}"
+	else
+		# svn destination not changed, set the link
+		sudo -u $1 ln -s "/mnt/${SVNLABEL}/svn" "${SVNLINK}"
+	fi
+}
+
+########################################################
+# debhome
+# setup the link for debhome
+# paramters: debhome newuser
+#######################################################
+debhome() {
+	# make the link for debhome
+	# debhome is always at /mnt/debhome
+	rm -f "${DEBHOMELINK}"
+
+	# mount disk label for debhome
+	# mountresource will exist if debhome is not available
+	mountresource "${DEBHOMELABEL}" "debhome"
+
+	# create debhome.list in /etc/apt/sources.list.d
+	DEBHOMEURL="file://${DEBHOMELINK}"
+	echo "deb ${DEBHOMEURL} home main" > /etc/apt/sources.list.d/debhome.list
+
+	# make the link for debhome
+	sudo -u $1 ln -s "/mnt/${DEBHOMELABEL}/debhome" "${DEBHOMELINK}"
+
+	# add key for repository
+	apt-key add "${DEBHOMELINK}/publickeyFile.gpg"
+}
+
+#############################################
+# setup colors for accounts and nano
+# parameters: accountcolours newuser
+#############################################
+accountcolours() {
+	#############################
+	# setup /root account
+	#############################
+	# root .bashrc edit so directories will be in colour for root and red prompt
+	if test ! -f /root/.bashrc.bak; then
+		cp -f /root/.bashrc /root/.bashrc.bak
+	fi
+	# make the prompt
+	sed -i -e '/^# PS1/i \PS1='\''\${debian_chroot:+(\$debian_chroot)}\\[\\033[01;31m\\]\\u@\\h\\[\\033[00m\\]:\\[\\033[01;36m\\]\\w \#\\[\\033[00m\\] '\''' /root/.bashrc
+	# setup the aliases for colour
+	sed -i -e 's/^# alias l/alias l/' /root/.bashrc
+
+	# setup to use .dircolors
+	sed -i -e 's/^# export LS/export LS/' /root/.bashrc
+	sed -i -e 's/^# eval \"`dircolors`\"/eval \"\$(dircolors -b ~\/.dircolors)\"/' /root/.bashrc
+
+	# set up dircolors for root
+	dircolors --print-database > /root/.dircolors
+	sed -i -e 's/^DIR 01;34/DIR 01;36/' /root/.dircolors
+	sed -i -e 's/^LINK 01;36/LINK 01;33/' /root/.dircolors
+
+	#########################
+	# setup  /home/robert account
+	#########################
+	# copy .dircolors to /home/robert and set ownership
+	cp /root/.dircolors "/home/$1/"
+	chown $1.$1 /home/$1/.dircolors
+
+	# edit .bashrc for pi so directories will be in colour
+	if test ! -f /home/$1/.bashrc.bak; then
+		sudo -u $1 cp /home/$1/.bashrc /home/$1/.bashrc.bak
+	fi
+	# change colour of prompt
+	sudo -u robert sed -i -e 's/#force_color_prompt/force_color_prompt/' /home/$1/.bashrc
+	sudo -u $1 sed -i -e 's/\[\\033\[01;34m\\\]/\[\\033\[01;36m\\\]/' /home/$1/.bashrc
+
+	# install git credentials
+	sudo -u $1 svn export --force ${SVNURL}/root/my-linux/git/.gitconfig /home/$1/
+	sudo -u $1 svn export --force ${SVNURL}/root/my-linux/git/.git-credentials /home/$1/
+
+	# export .bash_aliases from subversion
+	sudo -u $1 svn export --force ${SVNURL}/root/my-linux/config-files/bash_aliases/.bash_aliases /home/$1
+
+
+	# edit subversion config so .git and .gitignore are ignored
+	sed -i -e 's/^# global-ignores =/global-ignores = .git .gitignore/' /etc/subversion/config
+
+	# edit nanorc
+	sed -i -e 's/^# set autoindent/set autoindent/' \
+	       -e 's/^# set linenumbers/set linenumbers/' \
+	       -e 's/^# set smooth/set smooth/' \
+	       -e 's/^# set multibuffer/set multibuffer/' \
+	       -e 's/^# set positionlog/set positionlog/' \
+	       -e 's/^# set selectedcolor brightwhite,magenta/set selectedcolor brightwhite,magenta/' \
+	       -e 's/^# set numbercolor cyan/set numbercolor cyan/' \
+	       -e 's/^# set keycolor cyan/set keycolor cyan/' /etc/nanorc
+}
+
+# defaults, links
+# /mnt/debhome    -> /mnt/DEBHOMELABEL/debhome
+# /mnt/deborg     -> /mnt/DEBORGLABEL/deb.debian.org
+# /mnt/archiverpi -> /mnt/ARCHIVERPILABEL/archive.raspberrypi.org
+# /mnt/svn        -> /mnt/SVNLABEL/svn
+# the links cannot be changed, the mountpoints can be changed
+# DEBORGLABEL, DEBHOMELABEL, ARCHIVERPILABEL, SVNLABEL
+# are the labels of the disks containing deb.debian.org, archive.debian.org, debhome, svn and
+# are all mounted at /mnt/LABEL
+
+# only for raspberry pi
+DEBORGLABEL="hd3"
+DEBORGLINK="/mnt/deborg"
+DEBHOMELABEL="ad64"
+DEBHOMELINK="/mnt/debhome"
+ARCHIVERPILABEL="hd3"
+ARCHIVERPILINK="/mnt/archiverpi"
+SVNLABEL="ad64"
+SVNLINK="/mnt/svn"
+RELEASE="none"
+EDITSOURCES="false"
+SVNDESTCHANGED="false"
+OLDUSER="pi"
+NEWUSER="robert"
+
+while getopts S:a:ed:m:s:r:h opt
+do
+	case ${opt} in
+		m) DEBHOMELABEL="${OPTARG}";;
+		d) DEBORGLABEL="${OPTARG}";;
+		a) ARCHIVERPILABEL="${OPTARG}";;
+		s) SVNLABEL="${OPTARG}";;
+		S) SVNDESTINATION="${OPTARG}"; SVNDESTCHANGED="true";;
+		e) EDITSOURCES="true";;
+		r) RELEASE="${OPTARG}";;
+		h) usage;;
+		\?) usage;;
+	esac
+done
+# check if any process of pi is running
+ps -U "${OLDUSER}" > /dev/null 2>&1
+if test $? -eq 0; then
+	# a process from pi is running.
+	echo "a process from pi is running"
+	exit 1
+fi
+
+# if SVNDESTINATION has not changed
+# then SVNDESTINATION = /mnt/${SVNLABEL}
+# because SVNLABEL may have changed
+if test "${SVNDESTCHANGED}" = "false"; then
+	SVNDESTINATION="/mnt/${SVNLABEL}"
+fi
+
+# disable the service that started this script
+if test -f "/etc/systemd/system/init-rpi.service"; then
+	systemctl disable init-rpi.service
+	rm -v /etc/systemd/system/init-rpi.service
+fi
+
+# change user from pi to robert
+changeuser "${OLDUSER}" "${NEWUSER}"
+
+# make all mount directories
+makedirs "${NEWUSER}"
+
+# setup subversion
+setupsvn "${NEWUSER}"
+
+# setup debhome
+debhome "${NEWUSER}"
+
+########################################################
+# sources.list
+########################################################
+# backup /etc/apt/sources.list if it is not backed up
+if test ! -f /etc/apt/sources.list.bak; then
+	cp /etc/apt/sources.list /etc/apt/sources.list.bak
+fi
+
+if test ! -f /etc/apt/sources.list.d/raspi.list.bak; then
+	cp /etc/apt/sources.list.d/raspi.list /etc/apt/sources.list.d/raspi.list.bak
+fi
+
+
+# if -a option given, edit /etc/apt/sources.list. EDITSOURCES set to 0 if -a given
+# to use /mnt/hd3/deb.debian.org and /mnt/hd3/archive.raspberrypi.org
+# then mount the disks for deb.debian.org and archive.raspberrypi.org
+if test "${EDITSOURCES}" = "true"; then
+	mountresource "${DEBORGLABEL}" "deb.debian.org"
+	mountresource "${ARCHIVERPILABEL}" "archive.raspberrypi.org"
+	# edit  /etc/apt/sources.list
+	editsources "${DEBORGLABEL}" "${ARCHIVERPILABEL}" "${NEWUSER}"
+else
+	# restore the sources.list and raspi.list
+	restoresources
+fi
+
+# update and install subversion
+apt update
+
+# install subversion
+apt -y install subversion
+
+# get the keys for rpi
+svn export --force ${SVNURL}/root/my-linux/init-rpi/rpikeys.sh /usr/local/bin/
+/usr/local/bin/rpikeys.sh
+
+# install files sudoers
+svn export --force ${SVNURL}/root/my-linux/sudoers.d/robert /etc/sudoers.d
+# set ownership
+chown root.root /etc/sudoers.d/robert
+chmod 0440 /etc/sudoers.d/robert
+
+# setup fstab if it has not been setup already.
+svn export --force ${SVNURL}/root/my-linux/config-files/fstab-extension /etc
+
+# check if fstab-extention has been added to /etc/fstab
+grep -q "fstab-extension" /etc/fstab
+if [ $? -ne 0 ]
+then
+	# first backup it up
+	cp -a /etc/fstab /etc/fstab.bak
+
+	# append fstab extension to fstab
+	cat /etc/fstab-extension >> /etc/fstab
+fi
+rm /etc/fstab-extension
+
+# setup up account colours
+accountcolours "${NEWUSER}"
+
+# setup console
+setupcon

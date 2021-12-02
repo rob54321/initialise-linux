@@ -1,0 +1,259 @@
+#! /bin/sh
+
+# this script should be run immediately after the rpi has
+# maximised the sdcard space, ie after the first boot.
+# it sets up rpi to boot to console and then runs init-rpi
+# through systemd service. init-rpi only runs once and does
+# the rest of the setup.
+
+# this is done so user pi is not active
+# and usermod and groupmod can be run.
+
+usage() {
+	echo "-m disk label for debhome				default: ${DEBHOMELABEL}";
+	echo "-d disk label for deb.debian.org			default: ${DEBORGLABEL}";
+	echo "-a disk label for archive.raspberrypi.org		default: ${ARCHIVERPILABEL}";
+	echo "-s disk label for svn      				default: ${SVNLABEL}";
+	echo "-S svn destination					default: none";
+	echo "-e edit sources.list to use file:///...			default: do not edit sources.list";
+      	echo "-r release name [buster]				default: ${RELEASE}";
+      	echo "-R reboot                                         default: no reboot";
+	echo "-h help"
+	exit 0
+}
+
+# function to check the existence of svn or deb.debian.org or archive.raspberrypi.org or debhome
+# this function will mount the correct disk drive
+# if they are on a  disk drive LABEL.
+# the function will exit the script if nothing is found
+# parameters passed: disk_label, root directory of svn | deb.debian.org | archive.debian.org | debhome
+
+mountresource () {
+	# flag to inidicate
+	# disk was mounted and should be left mounted
+	WASMOUNTED="false"
+
+	# check if the disk label is attached
+	DEVICE=`blkid -L "$1"`
+	if test "$?" -ne 0; then
+		echo "$1 is not attached"
+		exit 1;
+	else
+		# check if device is mounted and where
+		grep "${DEVICE}" /etc/mtab
+		if test $? -eq 0; then
+			MOUNTPT=`grep "${DEVICE}" /etc/mtab | cut -d " " -f2`
+			# disk is  mounted at MOUNTPT
+			# unmount if MOUNTPT is not /mnt/disk_label
+			if test "${MOUNTPT}" != "/mnt/$1"; then
+				echo "unmounting ${MOUNTPT}"
+				umount "${MOUNTPT}"
+			fi
+		fi
+	fi
+	# make the mount directory if it does not exist
+	if test ! -d "/mnt/$1"; then
+		mkdir "/mnt/$1"
+		chown pi.pi "/mnt/$1"
+	fi
+
+	#  if disk not mounted, mount it
+	findmnt "/mnt/$1"
+	if test "$?" -ne 0; then
+		# mount it
+		mount -L "$1" "/mnt/$1"
+		# set mounted flag to false
+		WASMOUNTED="false"
+		if test $? -ne 0; then
+			# count not mount disk drive
+			echo "could not mount $1"
+			exit 1;
+		fi
+	else
+		# disk was mounted
+		# leave it mounted
+		WASMOUNTED="true"
+	fi
+	# check if svn | deb.debian.org | archive.debian.org | debhome is accessible
+	if test ! -d "/mnt/$1/$2"; then
+		# svn or archive does not exist
+		echo "/mnt/$1/$2 not found"
+		if test "${WASMOUNTED}" = "false"; then
+			# disk was not mounted, un mount it
+			echo "unmounting /mnt/$1"
+			umount "/mnt/$1"
+			# reset WASMOUNTED so disk
+			# is not unmounted twice
+			WASMOUNTED="unmounted"
+		fi
+		exit 1;
+	fi
+	# return success
+	# unmount drvive if it was unmounted initially
+	if test "${WASMOUNTED}" = "false"; then
+		echo "unmounting /mnt/$1"
+		umount "/mnt/$1"
+	fi
+	return 0;
+}
+# defaults, links
+# /mnt/debhome    -> /mnt/DEBHOMELABEL/debhome
+# /mnt/deborg     -> /mnt/DEBORGLABEL/deb.debian.org
+# /mnt/archiverpi -> /mnt/ARCHIVERPILABEL/archive.raspberrypi.org
+# /mnt/svn        -> /mnt/SVNLABEL/svn
+# the links cannot be changed, the mountpoints can be changed
+# DEBORGLABEL, DEBHOMELABEL, ARCHIVERPILABEL, SVNLABEL
+# are the labels of the disks containing deb.debian.org, archive.debian.org, debhome, svn and
+# are all mounted at /mnt/LABEL
+
+# only for raspberry pi
+DEBORGLABEL="hd3"
+DEBORGLINK="/mnt/deborg"
+DEBHOMELABEL="ad64"
+DEBHOMELINK="/mnt/debhome"
+ARCHIVERPILABEL="hd3"
+ARCHIVERPILINK="/mnt/archiverpi"
+SVNLABEL="ad64"
+SVNLINK="/mnt/svn"
+RELEASE="none"
+REBOOT="false"
+# default is not to edit sources.
+EDITSOURCES="false"
+
+# parameter S destinstion of svn is
+# only used in init-rpi, not in this script
+while getopts RS:a:ed:m:s:r:h opt
+do
+	case ${opt} in
+		m) DEBHOMELABEL="${OPTARG}";;
+		d) DEBORGLABEL="${OPTARG}";;
+		a) ARCHIVERPILABEL="${OPTARG}";;
+		s) SVNLABEL="${OPTARG}";;
+		e) EDITSOURCES="true";;
+		r) RELEASE="${OPTARG}";;
+		R) REBOOT="true";;
+		h) usage;;
+		\?) usage;;
+	esac
+done
+
+
+#####################################
+# subversion not installed so
+# init-rpi must to be copied to /usr/local/bin
+# find init-rpi
+# look in current dir, usr/local/bin, prompt
+#####################################
+if test -f "/usr/local/bin/init-rpi"; then
+	# found init-rpi
+	echo "found /usr/local/bin/init-rpi"
+elif test -f "init-rpi"; then
+	# look in current directory
+	echo "found init-rpi"
+	cp -v init-rpi /usr/local/bin/
+
+else
+	# prompt for init-rpi
+	echo "Enter the path of init-rpi"
+	read INITP
+	if test -f "${INITP}/init-rpi"; then
+		if test "/usr/local/bin" != "${INITP}"; then
+			cp -v "${INITP}/init-rpi" "/usr/local/bin/"
+		fi
+	else
+		# file not found
+		echo "${INITP}/init-rpi not found"
+		exit 1;
+	fi
+fi
+
+##################################
+# check RELEASE was given
+##################################
+if test "${RELEASE}" = "none"; then
+	echo "Choose a release: stretch|buster etc"
+	exit 1
+fi
+
+#################################
+# check subversion repository exists
+#################################
+mountresource "${SVNLABEL}" "svn"
+
+################################
+# check debhome repository exists
+###############################
+mountresource "${DEBHOMELABEL}" "debhome"
+
+################################
+# check deb.debian.org and
+# archive.raspberrypi.org
+# exist if /etc/apt/sources.list
+# is edited to use them
+################################
+if test "${EDITSOURCES}" = "true"; then
+	mountresource "${DEBORGLABEL}" "deb.debian.org"
+	mountresource "${ARCHIVERPILABEL}" "archive.raspberrypi.org"
+fi
+
+###################################
+# launch service init-rpi
+# create the init-rpi service
+# the -e option is given or not given
+# it has no value
+###################################
+echo "[Unit]
+Description=Reboot raspberry pi and then initialise rpi once.
+
+[Service]
+Type=simple
+ExecStart=/bin/bash /usr/local/bin/init-rpi $*
+
+[Install]
+WantedBy=multi-user.target" > /etc/systemd/system/init-rpi.service
+
+# set mode for init-rpi.service
+chmod 0644 /etc/systemd/system/init-rpi.service
+
+# enable the service for the next boot
+systemctl enable init-rpi
+
+#############################################
+# setup console boot, hostname timezone,
+# console fonts, keyboard, splash screen,
+# disable overscan
+#############################################
+# set the rpi to boot to console and no autologin
+systemctl set-default multi-user.target
+ln -fs /lib/systemd/system/getty@.service /etc/systemd/system/getty.target.wants/getty@tty1.service
+if test -e /etc/systemd/system/getty@tty1.service.d/autologin.conf; then
+	rm /etc/systemd/system/getty@tty1.service.d/autologin.conf
+fi
+
+# set the time and zone
+timedatectl set-timezone Africa/Johannesburg
+
+# set hostname
+hostnamectl set-hostname rpi
+# change it in /etc/hosts
+sed -i -e 's/raspberrypi/rpi/' /etc/hosts
+
+# setup default console with Terminus
+cd /etc/default
+sed -i -e 's/FONTFACE=\".*\"/FONTFACE="Terminus"/' \
+       -e 's/FONTSIZE=\".*\"/FONTSIZE="16x32"/' /etc/default/console-setup
+
+# setup keyboard
+sed -i -e 's/XKBLAYOUT=\".*\"/XKBLAYOUT="za"/' /etc/default/keyboard
+setupcon
+
+# remove splash screen and make boot verbose
+sed -i -e 's/quiet splash plymouth.ignore-serial-consoles//' /boot/cmdline.txt
+
+# disable overscan to remove border in x windows
+sed -i -e 's/^#disable_overscan/disable_overscan/' /boot/config.txt
+
+# reboot
+if test "${REBOOT}" = "true"; then
+	shutdown -r now
+fi

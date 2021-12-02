@@ -1,0 +1,117 @@
+#! /bin/bash
+
+# this script resets the pi back
+# to it's original state.
+# user robert change to pi
+# so that init-rpi and init-rpi-first can be tested
+
+# change robert to pi, groups as well
+groups pi > /dev/null 2>&1
+if test $? -ne 0; then
+	# user pi does not exist, create it
+	usermod -l pi -m -d /home/pi robert
+	# check if successful
+	if test $? -ne 0; then
+		# there is still a process for user robert
+		echo "could not change robert to pi"
+		exit 1;
+	fi
+
+	# if group robert exists, change it to group pi
+	getent group robert
+	if test $? -eq 0; then
+		# change the group robert to pi
+		groupmod -n pi robert
+	fi
+else
+	echo "user pi exists"
+	exit 1;
+fi
+
+# fix fstab
+if test -f /etc/fstab.bak; then
+	mv -vf /etc/fstab.bak /etc/fstab
+else
+	echo "/etc/fstab.bak not found"
+fi
+
+# fix sources.list
+if test -f /etc/apt/sources.list.bak; then
+	mv -vf /etc/apt/sources.list.bak /etc/apt/sources.list
+else
+	echo "/etc/apt/sources.list.bak not found"
+fi
+
+# fix mount dirs
+findmnt /mnt/ad64
+if test $? -eq 0; then
+	umount /mnt/ad64
+fi
+cd /mnt
+rm svn
+rm hdd
+rmdir *
+
+# rm sudoers
+if test -f /etc/sudoers.d/robert; then
+	rm -v /etc/sudoers.d/robert
+else
+	echo "/etc/sudoers.d/robert not found"
+fi
+
+# uninstall subversion
+apt --autoremove -y purge subversion
+
+# reset hostname
+hostnamectl set-hostname raspberrypi
+# change /etc/hosts
+sed -i -e 's/rpi/raspberrypi/' /etc/hosts
+
+# restore .bashrc
+cd /root
+if test -f /root/.bashrc.bak; then
+	mv -vf /root/.bashrc.bak /root/.bashrc
+else
+	echo "/root/.bashrc.bak not found"
+fi
+
+# remove .dircolors
+if test -f .dircolors; then
+	rm -vf /root/.dircolors
+else
+	echo "/root/.dircolors not found"
+fi
+
+# restore .bashrc  in pi , robert already changed to pi
+if test -f /home/pi/.bashrc.bak; then
+	mv -vf /home/pi/.bashrc.bak /home/pi/.bashrc
+else
+	echo "/home/pi/.bashrc.bak not found"
+fi
+#  remove .bash_aliases robert already changed to pi
+if test -f /home/pi/.bash_aliases; then
+	rm -vf /home/pi/.bash_aliases
+else
+	echo "/home/pi/.bash_aliases not found"
+fi
+
+# remove .dircolors
+if test -f /home/pi/.dircolors; then
+	rm -vf /home/pi/.dircolors
+else
+	echo "/home/pi/.dircolors not found"
+fi
+
+# change console back to defaults.
+sed -i -e 's/FONTFACE=\".*\"/FONTFACE=""/' /etc/default/console-setup
+sed -i -e 's/FONTSIZE=\".*\"/FONTSIZE=""/' /etc/default/console-setup
+
+# reset keyboard
+sed -i -e 's/XKBLAYOUT=\".*\"/XKBLAYOUT="gb"/' /etc/default/keyboard
+setupcon
+
+# edit /boot/config.txt
+sed -i -e 's/^disable_overscan/#disable_overscan/' /boot/config.txt
+
+# reset back to normal boot
+systemctl set-default graphical.target
