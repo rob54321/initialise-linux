@@ -10,19 +10,15 @@
 # this script initialises the repositories for apt-get, makes all the devices, sets links for myenvironment, myrc.local and
 # and installs subversion
 
-# function to check the existence of svn or deb.debian.org or archive.raspberrypi.org or debhome
 # this function will mount the correct disk drive
 # if they are on a  disk drive LABEL.
 # the function will exit the script if nothing is found
-# parameters passed: disk_label, root directory of svn | deb.debian.org | archive.debian.org | debhome
+# parameters passed: disk_label, root directory of svn | debhome
 
 usage() {
 	echo "-m disk label for debhome				default: ${DEBHOMELABEL}";
-	echo "-d disk label for deb.debian.org			default: ${DEBORGLABEL}";
-	echo "-a disk label for archive.raspberrypi.org		default: ${ARCHIVERPILABEL}";
 	echo "-s disk label for svn      				default: ${SVNLABEL}";
 	echo "-S svn destination					default: original location";
-	echo "-e edit sources.list to use file:///...			default: restore original sources.list";
       	echo "-r release name [buster]				default: ${RELEASE}";
 	echo "-h help"
 	exit 0
@@ -74,7 +70,7 @@ mountresource () {
 		# leave it mounted
 		WASMOUNTED="true"
 	fi
-	# check if svn | deb.debian.org | archive.debian.org | debhome is accessible
+	# check if svn | debhome is accessible
 	if test ! -d "/mnt/$1/$2"; then
 		# svn or archive does not exist
 		echo "/mnt/$1/$2 not found"
@@ -88,80 +84,10 @@ mountresource () {
 	# return success
 	return 0;
 }
-# function to remove edits from /etc/apt/sources.list and
-# /etc/apt/sources.list.d/raspi.list
-# and use the default http protocol for the respositories
-# the links to DEBORGLINK and ARCHIVERPILINK are removed
-restoresources() {
-	# restore the sources.list backup
-	if test -f /etc/apt/sources.list.bak; then
-		cp -vf /etc/apt/sources.list.bak /etc/apt/sources.list
-	else
-		# backup file does not exist
-		# generate original sources.list
-		# delete file:// lines
-		sed -i -e '/^deb.*file:/d' /etc/apt/sources.list
-
-		# now uncomment the original #deb http lines
-		sed -i -e 's/^#deb http/deb http/' /etc/apt/sources.list
-	fi
-	# restore raspi.list
-	if test -f /etc/apt/sources.list.d/raspi.list; then
-		cp -vf /etc/apt/sources.list.d/raspi.list.bak /etc/apt/sources.list.d/raspi.list
-	else
-		# backup file does not exist
-		# generate original raspi.list
-		sed -i -e '/^deb.*file:/d' /etc/apt/sources.list.d/raspi.list
-		sed -i -e 's/^#deb http/deb http/' /etc/apt/sources.list.d/raspi.list
-	fi
-
-	rm -f "${DEBORGLINK}"
-	rm -f "${ARCHIVERPILINK}"
-}
-# function to edit /etc/apt/sources.list and /etc/apt/sources.list.d/raspi.list
-# this function is only called if the -a option is given
-# only called if the debian archives are on local disks.
-# on the command line
-# paraters passed: label of disk with deb.debian.org
-#                  label of disk with archive.debian.org
-#                  new user
-editsources() {
-	# set the URL and links for deb.debian.org and archive.debian.org
-	DEBORGURL="file://${DEBORGLINK}"
-	ARCHIVERPIURL="file://${ARCHIVERPILINK}"
-	# remove the links if they exist
-	rm -f "${DEBORGLINK}"
-	rm -f "${ARCHIVERPILINK}"
-	sudo -u $3 ln -s "/mnt/$1/deb.debian.org" "${DEBORGLINK}"
-	sudo -u $3 ln -s "/mnt/$2/archive.raspberrypi.org" "${ARCHIVERPILINK}"
-
-	# remove old deb [....] file:/// if they exist
-	sed -i -e '/^deb.*file/d' /etc/apt/sources.list
-	# edit /etc/apt/sources.list
-
-	# comment all deb lines out for http, not deb [ arch=arm64 ] file:///
-	sed -i -e 's/^deb.*http/#&/g' /etc/apt/sources.list
-
-	# append the lines for accesing the local resositories
-	sed -i -e '$a \deb [ arch=arm64 ] '"${DEBORGURL}"' buster main contrib non-free\
-deb [ arch=arm64 ] '${DEBORGURL}' buster-updates main contrib non-free\
-deb [ arch=arm64 ] '${DEBORGURL}' buster-proposed-updates main contrib non-free\
-deb [ arch=arm64 ] '${DEBORGURL}' buster-backports main contrib non-free' /etc/apt/sources.list
-
-	# edit /etc/apt/sources.list.d/raspi.list
-	# remove old deb [...] file:/// if they exist
-	sed -i -e '/^deb.*file/d' /etc/apt/sources.list.d/raspi.list
-
-	# comment all deb lines out for http, not deb [...] file:///
-	sed -i -e 's/^deb.*http/#&/g' /etc/apt/sources.list.d/raspi.list
-
-	# append line
-	sed -i -e '$a \deb [ arch=arm64 ] '"${ARCHIVERPIURL}"' buster main' /etc/apt/sources.list.d/raspi.list
-}
 
 # change user pi to robert with correct groups and permissions
 # check if user robert exists
-# parameters: changeuser from_user to_user
+# parameters: changeuser OLDUSER NEWUSER
 # ie changeuser pi robert
 changeuser() {
 	groups $2 > /dev/null 2>&1
@@ -319,38 +245,28 @@ accountcolours() {
 
 # defaults, links
 # /mnt/debhome    -> /mnt/DEBHOMELABEL/debhome
-# /mnt/deborg     -> /mnt/DEBORGLABEL/deb.debian.org
-# /mnt/archiverpi -> /mnt/ARCHIVERPILABEL/archive.raspberrypi.org
 # /mnt/svn        -> /mnt/SVNLABEL/svn
 # the links cannot be changed, the mountpoints can be changed
-# DEBORGLABEL, DEBHOMELABEL, ARCHIVERPILABEL, SVNLABEL
-# are the labels of the disks containing deb.debian.org, archive.debian.org, debhome, svn and
+# DEBHOMELABEL, SVNLABEL
+# are the labels of the disks containing debhome, svn and
 # are all mounted at /mnt/LABEL
 
 # only for raspberry pi
-DEBORGLABEL="hd3"
-DEBORGLINK="/mnt/deborg"
 DEBHOMELABEL="ad64"
 DEBHOMELINK="/mnt/debhome"
-ARCHIVERPILABEL="hd3"
-ARCHIVERPILINK="/mnt/archiverpi"
 SVNLABEL="ad64"
 SVNLINK="/mnt/svn"
 RELEASE="none"
-EDITSOURCES="false"
 SVNDESTCHANGED="false"
 OLDUSER="pi"
 NEWUSER="robert"
 
-while getopts S:a:ed:m:s:r:h opt
+while getopts S:m:s:r:h opt
 do
 	case ${opt} in
 		m) DEBHOMELABEL="${OPTARG}";;
-		d) DEBORGLABEL="${OPTARG}";;
-		a) ARCHIVERPILABEL="${OPTARG}";;
 		s) SVNLABEL="${OPTARG}";;
 		S) SVNDESTINATION="${OPTARG}"; SVNDESTCHANGED="true";;
-		e) EDITSOURCES="true";;
 		r) RELEASE="${OPTARG}";;
 		h) usage;;
 		\?) usage;;
@@ -401,19 +317,6 @@ if test ! -f /etc/apt/sources.list.d/raspi.list.bak; then
 	cp /etc/apt/sources.list.d/raspi.list /etc/apt/sources.list.d/raspi.list.bak
 fi
 
-
-# if -a option given, edit /etc/apt/sources.list. EDITSOURCES set to 0 if -a given
-# to use /mnt/hd3/deb.debian.org and /mnt/hd3/archive.raspberrypi.org
-# then mount the disks for deb.debian.org and archive.raspberrypi.org
-if test "${EDITSOURCES}" = "true"; then
-	mountresource "${DEBORGLABEL}" "deb.debian.org"
-	mountresource "${ARCHIVERPILABEL}" "archive.raspberrypi.org"
-	# edit  /etc/apt/sources.list
-	editsources "${DEBORGLABEL}" "${ARCHIVERPILABEL}" "${NEWUSER}"
-else
-	# restore the sources.list and raspi.list
-	restoresources
-fi
 
 # update and install subversion
 apt update

@@ -11,11 +11,8 @@
 
 usage() {
 	echo "-m disk label for debhome				default: ${DEBHOMELABEL}";
-	echo "-d disk label for deb.debian.org			default: ${DEBORGLABEL}";
-	echo "-a disk label for archive.raspberrypi.org		default: ${ARCHIVERPILABEL}";
 	echo "-s disk label for svn      				default: ${SVNLABEL}";
 	echo "-S svn destination					default: none";
-	echo "-e edit sources.list to use file:///...			default: do not edit sources.list";
       	echo "-r release name [buster]				default: ${RELEASE}";
       	echo "-R reboot                                         default: no reboot";
 	echo "-h help"
@@ -98,38 +95,27 @@ mountresource () {
 }
 # defaults, links
 # /mnt/debhome    -> /mnt/DEBHOMELABEL/debhome
-# /mnt/deborg     -> /mnt/DEBORGLABEL/deb.debian.org
-# /mnt/archiverpi -> /mnt/ARCHIVERPILABEL/archive.raspberrypi.org
 # /mnt/svn        -> /mnt/SVNLABEL/svn
 # the links cannot be changed, the mountpoints can be changed
-# DEBORGLABEL, DEBHOMELABEL, ARCHIVERPILABEL, SVNLABEL
-# are the labels of the disks containing deb.debian.org, archive.debian.org, debhome, svn and
+# DEBHOMELABEL, SVNLABEL
+# are the labels of the disks containing debhome, svn and
 # are all mounted at /mnt/LABEL
 
 # only for raspberry pi
-DEBORGLABEL="hd3"
-DEBORGLINK="/mnt/deborg"
 DEBHOMELABEL="ad64"
 DEBHOMELINK="/mnt/debhome"
-ARCHIVERPILABEL="hd3"
-ARCHIVERPILINK="/mnt/archiverpi"
 SVNLABEL="ad64"
 SVNLINK="/mnt/svn"
 RELEASE="none"
 REBOOT="false"
-# default is not to edit sources.
-EDITSOURCES="false"
 
 # parameter S destinstion of svn is
 # only used in init-rpi, not in this script
-while getopts RS:a:ed:m:s:r:h opt
+while getopts RS:m:s:r:h opt
 do
 	case ${opt} in
 		m) DEBHOMELABEL="${OPTARG}";;
-		d) DEBORGLABEL="${OPTARG}";;
-		a) ARCHIVERPILABEL="${OPTARG}";;
 		s) SVNLABEL="${OPTARG}";;
-		e) EDITSOURCES="true";;
 		r) RELEASE="${OPTARG}";;
 		R) REBOOT="true";;
 		h) usage;;
@@ -184,17 +170,6 @@ mountresource "${SVNLABEL}" "svn"
 # check debhome repository exists
 ###############################
 mountresource "${DEBHOMELABEL}" "debhome"
-
-################################
-# check deb.debian.org and
-# archive.raspberrypi.org
-# exist if /etc/apt/sources.list
-# is edited to use them
-################################
-if test "${EDITSOURCES}" = "true"; then
-	mountresource "${DEBORGLABEL}" "deb.debian.org"
-	mountresource "${ARCHIVERPILABEL}" "archive.raspberrypi.org"
-fi
 
 ###################################
 # launch service init-rpi
