@@ -291,7 +291,7 @@ SVNLINK="/mnt/svn"
 SVNDESTCHANGED="false"
 OLDUSER="pi"
 NEWUSER="robert"
-LOGFILE="/tmp/init-rpi.log"
+LOGFILE="/root/init-rpi.log"
 
 echo "init-rpi is running" > ${LOGFILE}
 # the -R option must be included
@@ -351,6 +351,7 @@ echo "apt update done" >> ${LOGFILE}
 apt -y install subversion
 # exit if error
 test $? -eq 0 || exitonerror "error installing subversion"
+echo "subversion installed" >> ${LOGFILE}
 
 # install files sudoers
 svn export --force ${SVNURL}/root/my-linux/sudoers.d/robert /etc/sudoers.d
