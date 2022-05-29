@@ -170,6 +170,7 @@ mountresource "${DEBHOMELABEL}" "debhome"
 ###################################
 echo "[Unit]
 Description=Reboot raspberry pi and then initialise rpi once.
+Requires=network.target
 After=network.target
 
 [Service]
