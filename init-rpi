@@ -10,20 +10,24 @@
 # this script initialises the repositories for apt-get, makes all the devices, sets links for myenvironment, myrc.local and
 # and installs subversion
 
-# this function will mount the correct disk drive
-# if they are on a  disk drive LABEL.
-# the function will exit the script if nothing is found
-# parameters passed: disk_label, root directory of svn | debhome
-
 usage() {
 	echo "-m disk label for debhome				default: ${DEBHOMELABEL}";
 	echo "-s disk label for svn      				default: ${SVNLABEL}";
 	echo "-S svn destination					default: original location";
-      	echo "-r release name [buster]				default: ${RELEASE}";
 	echo "-h help"
 	exit 0
 }
+# this function prints an error mesage and exists.
+# parameters passed , error message
+exitonerror() {
+	echo "$1" >> ${LOGFILE}
+	exit 1
+}
 
+# this function will mount the correct disk drive
+# if they are on a  disk drive LABEL.
+# the function will exit the script if nothing is found
+# parameters passed: disk_label, root directory of svn | debhome
 mountresource () {
 	# flag to inidicate
 	# disk was mounted and should be left mounted
@@ -101,6 +105,9 @@ changeuser() {
 			# change the group pi to robert
 			groupmod -n $2 $1
 		fi
+		echo "user robert does not exist" >> ${LOGFILE}
+	else
+		echo "user robert exists" >> ${LOGFILE}
 	fi
 }
 
@@ -121,6 +128,7 @@ makedirs() {
 
 	# change ownership of directories
 	chown --no-dereference $1.$1 /mnt/*
+	echo "made directories" >> ${LOGFILE}
 }
 #########################################################
 # subversion
@@ -158,6 +166,9 @@ setupsvn() {
 ########################################################
 # debhome
 # setup the link for debhome
+# subversion must already be installed
+# export the pubkey to /etc/apt/keyrings/debhomepubkey.asc
+# export debhome.sources to /etc/apt/sources.list.d
 # paramters: debhome newuser
 #######################################################
 debhome() {
@@ -169,15 +180,23 @@ debhome() {
 	# mountresource will exist if debhome is not available
 	mountresource "${DEBHOMELABEL}" "debhome"
 
-	# create debhome.list in /etc/apt/sources.list.d
-	DEBHOMEURL="file://${DEBHOMELINK}"
-	echo "deb ${DEBHOMEURL} home main" > /etc/apt/sources.list.d/debhome.list
+	# write debhome.sources to /etc/apt/sources.list.d/debhome.sources
 
 	# make the link for debhome
 	sudo -u $1 ln -s "/mnt/${DEBHOMELABEL}/debhome" "${DEBHOMELINK}"
 
-	# add key for repository
-	apt-key add "${DEBHOMELINK}/publickeyFile.gpg"
+	# get the public key for debhome
+	# mkdir /etc/apt/keyrings if it does not exist
+	test -d /etc/apt/keyrings || mkdir /etc/apt/keyrings
+	# export the public key
+	svn export --force ${SVNURL}/root/my-linux/sources/gpg/debhomepubkey.asc /etc/apt/keyrings/
+	test $? -eq 0 || exitonerror "could not export debhomepubkey.asc from subverison"
+
+	# export debhome
+	svn export --force ${SVNURL}/root/my-linux/sources/arm64/debhome.sources /etc/apt/sources.list.d/
+	test $? -eq 0 || exitonerror "could not export debhome.sources from subversion"
+
+	echo "setup debhome" >> ${LOGFILE}
 }
 
 #############################################
@@ -209,6 +228,10 @@ accountcolours() {
 	#########################
 	# setup  /home/robert account
 	#########################
+	# check user robert exists
+	groups robert > /dev/null 2>&1
+	test $? -eq 0 || exitonerror "user robert does not exist"
+
 	# copy .dircolors to /home/robert and set ownership
 	cp /root/.dircolors "/home/$1/"
 	chown $1.$1 /home/$1/.dircolors
@@ -241,6 +264,7 @@ accountcolours() {
 	       -e 's/^# set selectedcolor brightwhite,magenta/set selectedcolor brightwhite,magenta/' \
 	       -e 's/^# set numbercolor cyan/set numbercolor cyan/' \
 	       -e 's/^# set keycolor cyan/set keycolor cyan/' /etc/nanorc
+	echo "setup account colours" >> ${LOGFILE}
 }
 
 # defaults, links
@@ -256,41 +280,46 @@ DEBHOMELABEL="ad64"
 DEBHOMELINK="/mnt/debhome"
 SVNLABEL="ad64"
 SVNLINK="/mnt/svn"
-RELEASE="none"
 SVNDESTCHANGED="false"
 OLDUSER="pi"
 NEWUSER="robert"
+LOGFILE="/root/init-rpi.log"
 
-while getopts S:m:s:r:h opt
+echo "init-rpi is running" > ${LOGFILE}
+# the -R option must be included
+# since it works for init-rpi-first and
+# may be passed to init-rpi. It has
+# not effect on init-rpi
+while getopts RS:m:s:r:h opt
 do
 	case ${opt} in
 		m) DEBHOMELABEL="${OPTARG}";;
 		s) SVNLABEL="${OPTARG}";;
 		S) SVNDESTINATION="${OPTARG}"; SVNDESTCHANGED="true";;
-		r) RELEASE="${OPTARG}";;
+		R) RESET="true";;
 		h) usage;;
 		\?) usage;;
 	esac
 done
 # check if any process of pi is running
 ps -U "${OLDUSER}" > /dev/null 2>&1
-if test $? -eq 0; then
-	# a process from pi is running.
-	echo "a process from pi is running"
-	exit 1
-fi
+test $? -eq 0 && exitonerror "a process from pi is running"
+echo "old user does not exist" >> ${LOGFILE}
 
 # if SVNDESTINATION has not changed
 # then SVNDESTINATION = /mnt/${SVNLABEL}
 # because SVNLABEL may have changed
 if test "${SVNDESTCHANGED}" = "false"; then
 	SVNDESTINATION="/mnt/${SVNLABEL}"
+	echo "svn destination not changed" >> ${LOGFILE}
 fi
 
 # disable the service that started this script
 if test -f "/etc/systemd/system/init-rpi.service"; then
 	systemctl disable init-rpi.service
-	rm -v /etc/systemd/system/init-rpi.service
+	echo "disabled init-rpi.service" >> ${LOGFILE}
+
+#	rm -v /etc/systemd/system/init-rpi.service
 fi
 
 # change user from pi to robert
@@ -302,40 +331,29 @@ makedirs "${NEWUSER}"
 # setup subversion
 setupsvn "${NEWUSER}"
 
-# setup debhome
-debhome "${NEWUSER}"
-
-########################################################
-# sources.list
-########################################################
-# backup /etc/apt/sources.list if it is not backed up
-if test ! -f /etc/apt/sources.list.bak; then
-	cp /etc/apt/sources.list /etc/apt/sources.list.bak
-fi
-
-if test ! -f /etc/apt/sources.list.d/raspi.list.bak; then
-	cp /etc/apt/sources.list.d/raspi.list /etc/apt/sources.list.d/raspi.list.bak
-fi
-
-
 # update and install subversion
+# debhome must not be set up yet.
+# subversion must first be installed before
+# debhome can be set up.
+# also the public key must be installed.
 apt update
 
 # install subversion
 apt -y install subversion
-
-# get the keys for rpi
-svn export --force ${SVNURL}/root/my-linux/init-rpi/rpikeys.sh /usr/local/bin/
-/usr/local/bin/rpikeys.sh
+# exit if error
+test $? -eq 0 || exitonerror "error installing subversion"
 
 # install files sudoers
 svn export --force ${SVNURL}/root/my-linux/sudoers.d/robert /etc/sudoers.d
+test $? -eq 0 || exitonerror "could not export sudoers.d from subversion"
+
 # set ownership
 chown root.root /etc/sudoers.d/robert
 chmod 0440 /etc/sudoers.d/robert
 
 # setup fstab if it has not been setup already.
 svn export --force ${SVNURL}/root/my-linux/config-files/fstab-extension /etc
+test $? -eq 0 || exitonerror "could not export fstab-extension from subversion"
 
 # check if fstab-extention has been added to /etc/fstab
 grep -q "fstab-extension" /etc/fstab
@@ -348,6 +366,11 @@ then
 	cat /etc/fstab-extension >> /etc/fstab
 fi
 rm /etc/fstab-extension
+
+# setup debhome
+# this must be done after the installation of subversion
+# and the public key which comes from subversion
+debhome "${NEWUSER}"
 
 # setup up account colours
 accountcolours "${NEWUSER}"
