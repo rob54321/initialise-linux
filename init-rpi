@@ -14,6 +14,7 @@ usage() {
 	echo "-m disk label for debhome				default: ${DEBHOMELABEL}";
 	echo "-s disk label for svn      				default: ${SVNLABEL}";
 	echo "-S svn destination					default: original location";
+	echo "-R not used, only for init-rpi-first";
 	echo "-h help"
 	exit 0
 }
@@ -36,8 +37,7 @@ mountresource () {
 	# check if the disk label is attached
 	DEVICE=`blkid -L "$1"`
 	if test "$?" -ne 0; then
-		echo "$1 is not attached"
-		exit 1;
+		exitonerror "$1 is not attached"
 	else
 		# check if device is mounted and where
 		grep "${DEVICE}" /etc/mtab
@@ -54,8 +54,16 @@ mountresource () {
 	# make the mount directory if it does not exist
 	if test ! -d "/mnt/$1"; then
 		mkdir "/mnt/$1"
-		chown pi.pi "/mnt/$1"
+		# check which owner exists
+		groups ${NEWUSER} > /dev/null 2>&1
+		if test $? -eq 0; then
+			CURRENTUSER=${NEWUSER}
+		else
+			CURRENTUSER=${OLDUSER}
+		fi
 	fi
+	# set ownership 
+	chown ${CURRENTUSER}.${CURRENTUSER} /mnt/$1
 
 	#  if disk not mounted, mount it
 	findmnt "/mnt/$1"
@@ -83,7 +91,7 @@ mountresource () {
 			echo "unmounting /mnt/$1"
 			umount "/mnt/$1"
 		fi
-		exit 1;
+		exitonerror "/mnt/$1/$2 not found"
 	fi
 	# return success
 	return 0;
@@ -283,7 +291,7 @@ SVNLINK="/mnt/svn"
 SVNDESTCHANGED="false"
 OLDUSER="pi"
 NEWUSER="robert"
-LOGFILE="/root/init-rpi.log"
+LOGFILE="/tmp/init-rpi.log"
 
 echo "init-rpi is running" > ${LOGFILE}
 # the -R option must be included
@@ -304,7 +312,6 @@ done
 # check if any process of pi is running
 ps -U "${OLDUSER}" > /dev/null 2>&1
 test $? -eq 0 && exitonerror "a process from pi is running"
-echo "old user does not exist" >> ${LOGFILE}
 
 # if SVNDESTINATION has not changed
 # then SVNDESTINATION = /mnt/${SVNLABEL}
@@ -337,6 +344,8 @@ setupsvn "${NEWUSER}"
 # debhome can be set up.
 # also the public key must be installed.
 apt update
+test $? -eq 0 || exitonerror "apt update failed"
+echo "apt update done" >> ${LOGFILE}
 
 # install subversion
 apt -y install subversion
