@@ -173,8 +173,7 @@ else
 		fi
 	else
 		# file not found
-		echo "${INITP}/init-rpi not found"
-		exit 1;
+		exitonerror "${INITP}/init-rpi not found"
 	fi
 fi
 
