@@ -119,7 +119,7 @@ DEBHOMELINK="/mnt/debhome"
 SVNLABEL="ad64"
 SVNLINK="/mnt/svn"
 REBOOT="false"
-LOGFILE="/root/init-rpi-first.log"
+LOGFILE="/tmp/init-rpi-first.log"
 
 # rm log file
 rm -f ${LOGFILE}

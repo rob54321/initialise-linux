@@ -291,7 +291,7 @@ SVNLINK="/mnt/svn"
 SVNDESTCHANGED="false"
 OLDUSER="pi"
 NEWUSER="robert"
-LOGFILE="/root/init-rpi.log"
+LOGFILE="/tmp/init-rpi.log"
 
 echo "init-rpi is running" > ${LOGFILE}
 # the -R option must be included
