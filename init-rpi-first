@@ -55,18 +55,18 @@ mountresource () {
 	fi
 	# make the mount directory if it does not exist
 	# check which non root user exists
-	groups pi
+	groups pi > /dev/null 2>&1
 	if test -eq 0; then
 		CURUSER="pi"
 	else
-		groups robert
+		groups robert > /dev/null 2>&1
 		if test $? -eq 0; then
 			CURUSER="robert"
 		fi
 	fi
 	# make the directory and set the ownership
 	test -d "/mnt/$1" || mkdir "/mnt/$1"
-	chown ${CURUSER}.$CURUSER} "/mnt/$1"
+	chown ${CURUSER}.${CURUSER} "/mnt/$1"
 
 	#  if disk not mounted, mount it
 	findmnt "/mnt/$1"
