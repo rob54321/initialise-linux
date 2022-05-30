@@ -56,7 +56,7 @@ mountresource () {
 	# make the mount directory if it does not exist
 	# check which non root user exists
 	groups pi > /dev/null 2>&1
-	if test -eq 0; then
+	if test $? -eq 0; then
 		CURUSER="pi"
 	else
 		groups robert > /dev/null 2>&1
