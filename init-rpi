@@ -2,13 +2,16 @@
 
 # Script to initialise raspberry pi
 # this script is run automatically after init-rpi-first is run
-# which will boot the pi and then run this script automatically.
+# the raspberry pi will have booted into multi.user mode
+# ie console mode, not into x windows.
+# subversion was installed by init-rpi-first
+
 # multi-user.target is set so that user pi can be changed to robert
 # the clock and time zone are also set prior to this script
 #
 # the subversion repository must exist.
-# this script initialises the repositories for apt-get, makes all the devices, sets links for myenvironment, myrc.local and
-# and installs subversion
+# this script initialises the repositories for apt-get, makes all directories, sets links svn and debhome
+# user robert exists only at this stage hence directories persmisions can only be set here
 
 usage() {
 	echo "-m disk label for debhome				default: ${DEBHOMELABEL}";
@@ -21,7 +24,7 @@ usage() {
 # this function prints an error mesage and exists.
 # parameters passed , error message
 exitonerror() {
-	echo "$1" >> ${LOGFILE}
+	echo "$1" | tee -a ${LOGFILE}
 	exit 1
 }
 
@@ -71,12 +74,8 @@ mountresource () {
 		# mount it
 		mount -L "$1" "/mnt/$1"
 		# set mounted flag to false
+		test $? -eq 0 || exitonerror "could not mount $1"
 		WASMOUNTED="false"
-		if test $? -ne 0; then
-			# count not mount disk drive
-			echo "could not mount $1"
-			exit 1;
-		fi
 	else
 		# disk was mounted
 		# leave it mounted
@@ -131,6 +130,7 @@ makedirs() {
 		if [ ! -d /mnt/${dir} ]
 		then
 			mkdir /mnt/${dir}
+			test $? -eq 0 || exitonerror "could not make /mnt/${dir}"
 		fi
 	done
 
@@ -309,6 +309,10 @@ do
 		\?) usage;;
 	esac
 done
+# check if subversion is installed
+dpkg-query -W subversion > /dev/null 2>&1
+test $? -eq 0 || exitonerror "subversion is not installed"
+
 # check if any process of pi is running
 ps -U "${OLDUSER}" > /dev/null 2>&1
 test $? -eq 0 && exitonerror "a process from pi is running"
@@ -333,26 +337,13 @@ fi
 changeuser "${OLDUSER}" "${NEWUSER}"
 
 # make all mount directories
+# must be done before setupsvn()
 makedirs "${NEWUSER}"
 
 # setup subversion
 setupsvn "${NEWUSER}"
 
-# update and install subversion
-# debhome must not be set up yet.
-# subversion must first be installed before
-# debhome can be set up.
-# also the public key must be installed.
-apt update
-test $? -eq 0 || exitonerror "apt update failed"
-echo "apt update done" >> ${LOGFILE}
-
-# install subversion
-apt -y install subversion
-# exit if error
-test $? -eq 0 || exitonerror "error installing subversion"
-echo "subversion installed" >> ${LOGFILE}
-
+# subversion was installed by init-rpi-first
 # install files sudoers
 svn export --force ${SVNURL}/root/my-linux/sudoers.d/robert /etc/sudoers.d
 test $? -eq 0 || exitonerror "could not export sudoers.d from subversion"

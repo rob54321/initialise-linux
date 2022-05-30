@@ -2,7 +2,7 @@
 
 # this script should be run immediately after the rpi has
 # maximised the sdcard space, ie after the first boot.
-# it sets up rpi to boot to console and then runs init-rpi
+# it installs subversion and sets up rpi to boot to console and then runs init-rpi
 # through systemd service. init-rpi only runs once and does
 # the rest of the setup.
 
@@ -16,6 +16,12 @@ usage() {
    	echo "-R reboot                                         default: no reboot";
 	echo "-h help"
 	exit 0
+}
+# function to log error, print error and exit
+# parameter passed: error string
+exitonerror() {
+	echo "$1" | tee -a ${LOGFILE}
+	exit 1;
 }
 
 # function to check the existence of svn or deb.debian.org or archive.raspberrypi.org or debhome
@@ -31,9 +37,9 @@ mountresource () {
 
 	# check if the disk label is attached
 	DEVICE=`blkid -L "$1"`
+
 	if test "$?" -ne 0; then
-		echo "$1 is not attached"
-		exit 1;
+		exitonerror "$1 is not attached"
 	else
 		# check if device is mounted and where
 		grep "${DEVICE}" /etc/mtab
@@ -48,29 +54,34 @@ mountresource () {
 		fi
 	fi
 	# make the mount directory if it does not exist
-	if test ! -d "/mnt/$1"; then
-		mkdir "/mnt/$1"
-		chown pi.pi "/mnt/$1"
+	# check which non root user exists
+	groups pi
+	if test -eq 0; then
+		CURUSER="pi"
+	else
+		groups robert
+		if test $? -eq 0; then
+			CURUSER="robert"
+		fi
 	fi
+	# make the directory and set the ownership
+	test -d "/mnt/$1" || mkdir "/mnt/$1"
+	chown ${CURUSER}.$CURUSER} "/mnt/$1"
 
 	#  if disk not mounted, mount it
 	findmnt "/mnt/$1"
 	if test "$?" -ne 0; then
 		# mount it
 		mount -L "$1" "/mnt/$1"
-		# set mounted flag to false
+		# set mounted flag
+		test $? -eq 0 || exitonerror "could not mount $"
 		WASMOUNTED="false"
-		if test $? -ne 0; then
-			# count not mount disk drive
-			echo "could not mount $1"
-			exit 1;
-		fi
 	else
 		# disk was mounted
 		# leave it mounted
 		WASMOUNTED="true"
 	fi
-	# check if svn | deb.debian.org | archive.debian.org | debhome is accessible
+	# check if svn | debhome is accessible
 	if test ! -d "/mnt/$1/$2"; then
 		# svn or archive does not exist
 		echo "/mnt/$1/$2 not found"
@@ -82,13 +93,15 @@ mountresource () {
 			# is not unmounted twice
 			WASMOUNTED="unmounted"
 		fi
-		exit 1;
+		exitonerror "/mnt/$1/$2 not found"
 	fi
-	# return success
+
 	# unmount drvive if it was unmounted initially
 	if test "${WASMOUNTED}" = "false"; then
 		echo "unmounting /mnt/$1"
 		umount "/mnt/$1"
+		# check if unmounted
+		test $? -eq 0 || exitonerror "could not un mount /mnt/$1"
 	fi
 	return 0;
 }
@@ -106,6 +119,10 @@ DEBHOMELINK="/mnt/debhome"
 SVNLABEL="ad64"
 SVNLINK="/mnt/svn"
 REBOOT="false"
+LOGFILE="/root/init-rpi-first.log"
+
+# rm log file
+rm -f ${LOGFILE}
 
 # parameter S destinstion of svn is
 # only used in init-rpi, not in this script
@@ -121,9 +138,19 @@ do
 	esac
 done
 
+# install subversion if it is not installed
+# this used to be in init-rpi
+# solves a lot of problems installing it first
+dpkg-query -W subversion > /dev/null 2>&1
+if test $? -ne 0; then
+	apt update
+	test $? -eq 0 || exitonerror "error from apt update"
+
+	apt -y install subversion
+	test $? -eq 0 || exitonerror "error installing subversion"
+fi
 
 #####################################
-# subversion not installed so
 # init-rpi must to be copied to /usr/local/bin
 # find init-rpi
 # look in current dir, usr/local/bin, prompt
@@ -170,8 +197,8 @@ mountresource "${DEBHOMELABEL}" "debhome"
 ###################################
 echo "[Unit]
 Description=Reboot raspberry pi and then initialise rpi once.
-Requires=network.target
-After=network.target
+Requires=network-online.target
+After=network-online.target
 
 [Service]
 Type=simple
