@@ -24,6 +24,39 @@ exitonerror() {
 	exit 1;
 }
 
+#########################################################
+# subversion
+# setup subversion link and destintation
+# parameters: setupsvn current_user (non root)
+#########################################################
+setupsvn() {
+	# svn is always accessed at file:///mnt/svn
+	SVNURL="file://${SVNLINK}"
+	# remove any old links
+	rm -f "${SVNLINK}"
+
+	# mount disk label for svn
+	# mountresource will exit if svn is not available
+	mountresource "${SVNLABEL}" "svn"
+
+	# svn disk mounted and it exists
+	# copy svn to destination if destination given
+	# do not copy svn to itself
+	if test "${SVNDESTINATION}" != "/mnt/${SVNLABEL}"; then
+		# check if destination exists
+		if test ! -d "${SVNDESTINATION}"; then
+			mkdir -p "${SVNDESTINATION}"
+			chown $1.$1 "${SVNDESTINATION}"
+		fi
+		cp -a "/mnt/${SVNLABEL}/svn" "${SVNDESTINATION}/"
+		# setup the link, svn was moved
+		sudo -u $1 ln -s "${SVNDESTINATION}/svn" "${SVNLINK}"
+	else
+		# svn destination not changed, set the link
+		sudo -u $1 ln -s "/mnt/${SVNLABEL}/svn" "${SVNLINK}"
+	fi
+}
+
 # function to check the existence of svn or deb.debian.org or archive.raspberrypi.org or debhome
 # this function will mount the correct disk drive
 # if they are on a  disk drive LABEL.
@@ -138,22 +171,11 @@ do
 	esac
 done
 
-# install subversion if it is not installed
-# this used to be in init-rpi
-# solves a lot of problems installing it first
-dpkg-query -W subversion > /dev/null 2>&1
-if test $? -ne 0; then
-	apt update
-	test $? -eq 0 || exitonerror "error from apt update"
-
-	apt -y install subversion
-	test $? -eq 0 || exitonerror "error installing subversion"
-fi
-
 #####################################
 # init-rpi must to be copied to /usr/local/bin
 # find init-rpi
 # look in current dir, usr/local/bin, prompt
+# exit if init-rpi not found
 #####################################
 if test -f "/usr/local/bin/init-rpi"; then
 	# found init-rpi
@@ -177,10 +199,45 @@ else
 	fi
 fi
 
+
+######################################
+# install subversion if it is not installed
+# this used to be in init-rpi
+# solves a lot of problems installing it first
+######################################
+dpkg-query -W subversion > /dev/null 2>&1
+if test $? -ne 0; then
+	apt update
+	test $? -eq 0 || exitonerror "error from apt update"
+
+	apt -y install subversion
+	test $? -eq 0 || exitonerror "error installing subversion"
+fi
+
 #################################
 # check subversion repository exists
 #################################
 mountresource "${SVNLABEL}" "svn"
+
+# determine if user is robert or pi
+CURUSER="none"
+groups robert > /dev/null 2>&1
+test $? -eq 0  &&  CURUSER="robert"
+groups pi > /dev/null 2>&1
+test $? -eq 0 &&  CURUSER="pi"
+test ${CURUSER} = "none" && exitonerror "no current user found"
+
+# if SVNDESTINATION has not changed
+# then SVNDESTINATION = /mnt/${SVNLABEL}
+# because SVNLABEL may have changed
+if test "${SVNDESTCHANGED}" = "false"; then
+	SVNDESTINATION="/mnt/${SVNLABEL}"
+	echo "svn destination not changed" >> ${LOGFILE}
+fi
+
+# setup subversion
+setupsvn "${CURUSER}"
+
 
 ################################
 # check debhome repository exists

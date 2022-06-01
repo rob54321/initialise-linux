@@ -269,7 +269,7 @@ accountcolours() {
 	       -e 's/^# set smooth/set smooth/' \
 	       -e 's/^# set multibuffer/set multibuffer/' \
 	       -e 's/^# set positionlog/set positionlog/' \
-	       -e 's/^# set selectedcolor brightwhite,magenta/set selectedcolor brightwhite,magenta/' \
+	       -e 's/^# set selectedcolor lightwhite,magenta/set selectedcolor lightwhite,magenta/' \
 	       -e 's/^# set numbercolor cyan/set numbercolor cyan/' \
 	       -e 's/^# set keycolor cyan/set keycolor cyan/' /etc/nanorc
 	echo "setup account colours" >> ${LOGFILE}
@@ -309,7 +309,7 @@ do
 		\?) usage;;
 	esac
 done
-# check if subversion is installed
+# install subverion if it is not installed
 dpkg-query -W subversion > /dev/null 2>&1
 test $? -eq 0 || exitonerror "subversion is not installed"
 
