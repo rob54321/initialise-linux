@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # Script to initialise raspberry pi
-# this script is run automatically after init-rpi-first is run
+# this script is run by init-rpi-first or init-rpi.service
+# depending on if the original user was pi or robert
 # the raspberry pi will have booted into multi.user mode
 # ie console mode, not into x windows.
 # subversion was installed by init-rpi-first
@@ -13,87 +14,13 @@
 # this script initialises the repositories for apt-get, makes all directories, sets links svn and debhome
 # user robert exists only at this stage hence directories persmisions can only be set here
 
-usage() {
-	echo "-m disk label for debhome				default: ${DEBHOMELABEL}";
-	echo "-s disk label for svn      				default: ${SVNLABEL}";
-	echo "-S svn destination					default: original location";
-	echo "-R not used, only for init-rpi-first";
-	echo "-h help"
-	exit 0
-}
+###############################################################
 # this function prints an error mesage and exists.
 # parameters passed , error message
+###############################################################
 exitonerror() {
 	echo "$1" | tee -a ${LOGFILE}
 	exit 1
-}
-
-# this function will mount the correct disk drive
-# if they are on a  disk drive LABEL.
-# the function will exit the script if nothing is found
-# parameters passed: disk_label, root directory of svn | debhome
-mountresource () {
-	# flag to inidicate
-	# disk was mounted and should be left mounted
-	WASMOUNTED="false"
-
-	# check if the disk label is attached
-	DEVICE=`blkid -L "$1"`
-	if test "$?" -ne 0; then
-		exitonerror "$1 is not attached"
-	else
-		# check if device is mounted and where
-		grep "${DEVICE}" /etc/mtab
-		if test $? -eq 0; then
-			MOUNTPT=`grep "${DEVICE}" /etc/mtab | cut -d " " -f2`
-			# disk is  mounted at MOUNTPT
-			# unmount if MOUNTPT is not /mnt/disk_label
-			if test "${MOUNTPT}" != "/mnt/$1"; then
-				echo "unmounting ${MOUNTPT}"
-				umount "${MOUNTPT}"
-			fi
-		fi
-	fi
-	# make the mount directory if it does not exist
-	if test ! -d "/mnt/$1"; then
-		mkdir "/mnt/$1"
-		# check which owner exists
-		groups ${NEWUSER} > /dev/null 2>&1
-		if test $? -eq 0; then
-			CURRENTUSER=${NEWUSER}
-		else
-			CURRENTUSER=${OLDUSER}
-		fi
-	fi
-	# set ownership 
-	chown ${CURRENTUSER}.${CURRENTUSER} /mnt/$1
-
-	#  if disk not mounted, mount it
-	findmnt "/mnt/$1"
-	if test "$?" -ne 0; then
-		# mount it
-		mount -L "$1" "/mnt/$1"
-		# set mounted flag to false
-		test $? -eq 0 || exitonerror "could not mount $1"
-		WASMOUNTED="false"
-	else
-		# disk was mounted
-		# leave it mounted
-		WASMOUNTED="true"
-	fi
-	# check if svn | debhome is accessible
-	if test ! -d "/mnt/$1/$2"; then
-		# svn or archive does not exist
-		echo "/mnt/$1/$2 not found"
-		if test "${WASMOUNTED}" = "false"; then
-			# disk was not mounted, un mount it
-			echo "unmounting /mnt/$1"
-			umount "/mnt/$1"
-		fi
-		exitonerror "/mnt/$1/$2 not found"
-	fi
-	# return success
-	return 0;
 }
 
 # change user pi to robert with correct groups and permissions
@@ -137,74 +64,6 @@ makedirs() {
 	# change ownership of directories
 	chown --no-dereference $1.$1 /mnt/*
 	echo "made directories" >> ${LOGFILE}
-}
-#########################################################
-# subversion
-# setup subversion link and destintation
-# parameters: setupsvn newuser
-#########################################################
-setupsvn() {
-	# svn is always accessed at file:///mnt/svn
-	SVNURL="file://${SVNLINK}"
-	# remove any old links
-	rm -f "${SVNLINK}"
-
-	# mount disk label for svn
-	# mountresource will exit if svn is not available
-	mountresource "${SVNLABEL}" "svn"
-
-	# svn disk mounted and it exists
-	# copy svn to destination if destination given
-	# do not copy svn to itself
-	if test "${SVNDESTINATION}" != "/mnt/${SVNLABEL}"; then
-		# check if destination exists
-		if test ! -d "${SVNDESTINATION}"; then
-			mkdir -p "${SVNDESTINATION}"
-			chown $1.$1 "${SVNDESTINATION}"
-		fi
-		cp -a "/mnt/${SVNLABEL}/svn" "${SVNDESTINATION}/"
-		# setup the link, svn was moved
-		sudo -u $1 ln -s "${SVNDESTINATION}/svn" "${SVNLINK}"
-	else
-		# svn destination not changed, set the link
-		sudo -u $1 ln -s "/mnt/${SVNLABEL}/svn" "${SVNLINK}"
-	fi
-}
-
-########################################################
-# debhome
-# setup the link for debhome
-# subversion must already be installed
-# export the pubkey to /etc/apt/keyrings/debhomepubkey.asc
-# export debhome.sources to /etc/apt/sources.list.d
-# paramters: debhome newuser
-#######################################################
-debhome() {
-	# make the link for debhome
-	# debhome is always at /mnt/debhome
-	rm -f "${DEBHOMELINK}"
-
-	# mount disk label for debhome
-	# mountresource will exist if debhome is not available
-	mountresource "${DEBHOMELABEL}" "debhome"
-
-	# write debhome.sources to /etc/apt/sources.list.d/debhome.sources
-
-	# make the link for debhome
-	sudo -u $1 ln -s "/mnt/${DEBHOMELABEL}/debhome" "${DEBHOMELINK}"
-
-	# get the public key for debhome
-	# mkdir /etc/apt/keyrings if it does not exist
-	test -d /etc/apt/keyrings || mkdir /etc/apt/keyrings
-	# export the public key
-	svn export --force ${SVNURL}/root/my-linux/sources/gpg/debhomepubkey.asc /etc/apt/keyrings/
-	test $? -eq 0 || exitonerror "could not export debhomepubkey.asc from subverison"
-
-	# export debhome
-	svn export --force ${SVNURL}/root/my-linux/sources/arm64/debhome.sources /etc/apt/sources.list.d/
-	test $? -eq 0 || exitonerror "could not export debhome.sources from subversion"
-
-	echo "setup debhome" >> ${LOGFILE}
 }
 
 #############################################
@@ -275,40 +134,16 @@ accountcolours() {
 	echo "setup account colours" >> ${LOGFILE}
 }
 
-# defaults, links
-# /mnt/debhome    -> /mnt/DEBHOMELABEL/debhome
-# /mnt/svn        -> /mnt/SVNLABEL/svn
-# the links cannot be changed, the mountpoints can be changed
-# DEBHOMELABEL, SVNLABEL
-# are the labels of the disks containing debhome, svn and
-# are all mounted at /mnt/LABEL
-
 # only for raspberry pi
-DEBHOMELABEL="ad64"
-DEBHOMELINK="/mnt/debhome"
-SVNLABEL="ad64"
-SVNLINK="/mnt/svn"
-SVNDESTCHANGED="false"
 OLDUSER="pi"
 NEWUSER="robert"
 LOGFILE="/tmp/init-rpi.log"
 
+################################
+# main entry
+################################
 echo "init-rpi is running" > ${LOGFILE}
-# the -R option must be included
-# since it works for init-rpi-first and
-# may be passed to init-rpi. It has
-# not effect on init-rpi
-while getopts RS:m:s:r:h opt
-do
-	case ${opt} in
-		m) DEBHOMELABEL="${OPTARG}";;
-		s) SVNLABEL="${OPTARG}";;
-		S) SVNDESTINATION="${OPTARG}"; SVNDESTCHANGED="true";;
-		R) RESET="true";;
-		h) usage;;
-		\?) usage;;
-	esac
-done
+
 # install subverion if it is not installed
 dpkg-query -W subversion > /dev/null 2>&1
 test $? -eq 0 || exitonerror "subversion is not installed"
@@ -317,20 +152,11 @@ test $? -eq 0 || exitonerror "subversion is not installed"
 ps -U "${OLDUSER}" > /dev/null 2>&1
 test $? -eq 0 && exitonerror "a process from pi is running"
 
-# if SVNDESTINATION has not changed
-# then SVNDESTINATION = /mnt/${SVNLABEL}
-# because SVNLABEL may have changed
-if test "${SVNDESTCHANGED}" = "false"; then
-	SVNDESTINATION="/mnt/${SVNLABEL}"
-	echo "svn destination not changed" >> ${LOGFILE}
-fi
-
 # disable the service that started this script
-if test -f "/etc/systemd/system/init-rpi.service"; then
+systemctl is-enabled init-rpi.service
+if test $? -eq 0; then
 	systemctl disable init-rpi.service
 	echo "disabled init-rpi.service" >> ${LOGFILE}
-
-#	rm -v /etc/systemd/system/init-rpi.service
 fi
 
 # change user from pi to robert
@@ -339,39 +165,6 @@ changeuser "${OLDUSER}" "${NEWUSER}"
 # make all mount directories
 # must be done before setupsvn()
 makedirs "${NEWUSER}"
-
-# setup subversion
-setupsvn "${NEWUSER}"
-
-# subversion was installed by init-rpi-first
-# install files sudoers
-svn export --force ${SVNURL}/root/my-linux/sudoers.d/robert /etc/sudoers.d
-test $? -eq 0 || exitonerror "could not export sudoers.d from subversion"
-
-# set ownership
-chown root.root /etc/sudoers.d/robert
-chmod 0440 /etc/sudoers.d/robert
-
-# setup fstab if it has not been setup already.
-svn export --force ${SVNURL}/root/my-linux/config-files/fstab-extension /etc
-test $? -eq 0 || exitonerror "could not export fstab-extension from subversion"
-
-# check if fstab-extention has been added to /etc/fstab
-grep -q "fstab-extension" /etc/fstab
-if [ $? -ne 0 ]
-then
-	# first backup it up
-	cp -a /etc/fstab /etc/fstab.bak
-
-	# append fstab extension to fstab
-	cat /etc/fstab-extension >> /etc/fstab
-fi
-rm /etc/fstab-extension
-
-# setup debhome
-# this must be done after the installation of subversion
-# and the public key which comes from subversion
-debhome "${NEWUSER}"
 
 # setup up account colours
 accountcolours "${NEWUSER}"

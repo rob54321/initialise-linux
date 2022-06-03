@@ -24,6 +24,25 @@ exitonerror() {
 	exit 1;
 }
 
+###############################################
+# function to determine if user is robert or pi
+# the user is returned
+# no parameters are passed to this function
+###############################################
+getcuruser() {
+	# determine if user is robert or pi
+	groups robert > /dev/null 2>&1
+	if test $? -eq 0; then
+		CURUSER="robert"
+	else
+		groups pi > /dev/null 2>&1
+		if test $? -eq 0; then
+			CURUSER="pi"
+		else
+			exitonerror "user robert or pi not found"
+		fi
+	fi
+}
 #########################################################
 # subversion
 # setup subversion link and destintation
@@ -57,17 +76,50 @@ setupsvn() {
 	fi
 }
 
-# function to check the existence of svn or deb.debian.org or archive.raspberrypi.org or debhome
+########################################################
+# debhome
+# setup the link for debhome
+# subversion must already be installed
+# export the pubkey to /etc/apt/keyrings/debhomepubkey.asc
+# export debhome.sources to /etc/apt/sources.list.d
+# paramters: debhome newuser
+#######################################################
+debhome() {
+	# make the link for debhome
+	# debhome is always at /mnt/debhome
+	rm -f "${DEBHOMELINK}"
+
+	# mount disk label for debhome
+	# mountresource will exist if debhome is not available
+	mountresource "${DEBHOMELABEL}" "debhome"
+
+	# write debhome.sources to /etc/apt/sources.list.d/debhome.sources
+
+	# make the link for debhome
+	sudo -u $1 ln -s "/mnt/${DEBHOMELABEL}/debhome" "${DEBHOMELINK}"
+
+	# get the public key for debhome
+	# mkdir /etc/apt/keyrings if it does not exist
+	test -d /etc/apt/keyrings || mkdir /etc/apt/keyrings
+	# export the public key
+	svn export --force ${SVNURL}/root/my-linux/sources/gpg/debhomepubkey.asc /etc/apt/keyrings/
+	test $? -eq 0 || exitonerror "could not export debhomepubkey.asc from subverison"
+
+	# export debhome
+	svn export --force ${SVNURL}/root/my-linux/sources/arm64/debhome.sources /etc/apt/sources.list.d/
+	test $? -eq 0 || exitonerror "could not export debhome.sources from subversion"
+
+	echo "setup debhome" >> ${LOGFILE}
+}
+
+
+# function to check for svn or debhome
 # this function will mount the correct disk drive
 # if they are on a  disk drive LABEL.
-# the function will exit the script if nothing is found
-# parameters passed: disk_label, root directory of svn | deb.debian.org | archive.debian.org | debhome
+# the function will exit  on error if not found
+# parameters passed: disk_label, root directory of svn | root directory of debhome
 
 mountresource () {
-	# flag to inidicate
-	# disk was mounted and should be left mounted
-	WASMOUNTED="false"
-
 	# check if the disk label is attached
 	DEVICE=`blkid -L "$1"`
 
@@ -86,17 +138,8 @@ mountresource () {
 			fi
 		fi
 	fi
+
 	# make the mount directory if it does not exist
-	# check which non root user exists
-	groups pi > /dev/null 2>&1
-	if test $? -eq 0; then
-		CURUSER="pi"
-	else
-		groups robert > /dev/null 2>&1
-		if test $? -eq 0; then
-			CURUSER="robert"
-		fi
-	fi
 	# make the directory and set the ownership
 	test -d "/mnt/$1" || mkdir "/mnt/$1"
 	chown ${CURUSER}.${CURUSER} "/mnt/$1"
@@ -108,36 +151,19 @@ mountresource () {
 		mount -L "$1" "/mnt/$1"
 		# set mounted flag
 		test $? -eq 0 || exitonerror "could not mount $"
-		WASMOUNTED="false"
-	else
-		# disk was mounted
-		# leave it mounted
-		WASMOUNTED="true"
 	fi
+
 	# check if svn | debhome is accessible
 	if test ! -d "/mnt/$1/$2"; then
 		# svn or archive does not exist
 		echo "/mnt/$1/$2 not found"
-		if test "${WASMOUNTED}" = "false"; then
-			# disk was not mounted, un mount it
-			echo "unmounting /mnt/$1"
-			umount "/mnt/$1"
-			# reset WASMOUNTED so disk
-			# is not unmounted twice
-			WASMOUNTED="unmounted"
-		fi
-		exitonerror "/mnt/$1/$2 not found"
-	fi
-
-	# unmount drvive if it was unmounted initially
-	if test "${WASMOUNTED}" = "false"; then
 		echo "unmounting /mnt/$1"
 		umount "/mnt/$1"
-		# check if unmounted
-		test $? -eq 0 || exitonerror "could not un mount /mnt/$1"
+		exitonerror "/mnt/$1/$2 not found"
 	fi
 	return 0;
 }
+
 # defaults, links
 # /mnt/debhome    -> /mnt/DEBHOMELABEL/debhome
 # /mnt/svn        -> /mnt/SVNLABEL/svn
@@ -170,6 +196,9 @@ do
 		\?) usage;;
 	esac
 done
+#################################
+# get current user, robert or pi
+getcuruser
 
 #####################################
 # init-rpi must to be copied to /usr/local/bin
@@ -214,19 +243,6 @@ if test $? -ne 0; then
 	test $? -eq 0 || exitonerror "error installing subversion"
 fi
 
-#################################
-# check subversion repository exists
-#################################
-mountresource "${SVNLABEL}" "svn"
-
-# determine if user is robert or pi
-CURUSER="none"
-groups robert > /dev/null 2>&1
-test $? -eq 0  &&  CURUSER="robert"
-groups pi > /dev/null 2>&1
-test $? -eq 0 &&  CURUSER="pi"
-test ${CURUSER} = "none" && exitonerror "no current user found"
-
 # if SVNDESTINATION has not changed
 # then SVNDESTINATION = /mnt/${SVNLABEL}
 # because SVNLABEL may have changed
@@ -235,39 +251,42 @@ if test "${SVNDESTCHANGED}" = "false"; then
 	echo "svn destination not changed" >> ${LOGFILE}
 fi
 
-# setup subversion
+# check if subversion exists and set it up
 setupsvn "${CURUSER}"
 
 
 ################################
 # check debhome repository exists
 ###############################
-mountresource "${DEBHOMELABEL}" "debhome"
+debhome "${CURUSER}"
 
+################################
+# setup sudoers.d/robert
+# and fstab
 ###################################
-# launch service init-rpi
-# create the init-rpi service
-# the -R option may be passed to init-rpi
-# but it has no effect. init-rpi must
-# recognise it but not use it.
-###################################
-echo "[Unit]
-Description=Reboot raspberry pi and then initialise rpi once.
-BindsTo=multi-user.target
-After=multi-user.target
+# install files sudoers
+svn export --force ${SVNURL}/root/my-linux/sudoers.d/robert /etc/sudoers.d
+test $? -eq 0 || exitonerror "could not export sudoers.d from subversion"
 
-[Service]
-Type=simple
-ExecStart=/bin/bash /usr/local/bin/init-rpi $*
+# set ownership
+chown root.root /etc/sudoers.d/robert
+chmod 0440 /etc/sudoers.d/robert
 
-[Install]
-WantedBy=multi-user.target" > /etc/systemd/system/init-rpi.service
+# setup fstab if it has not been setup already.
+svn export --force ${SVNURL}/root/my-linux/config-files/fstab-extension /etc
+test $? -eq 0 || exitonerror "could not export fstab-extension from subversion"
 
-# set mode for init-rpi.service
-chmod 0644 /etc/systemd/system/init-rpi.service
+# check if fstab-extention has been added to /etc/fstab
+grep -q "fstab-extension" /etc/fstab
+if [ $? -ne 0 ]
+then
+	# first backup it up
+	cp -a /etc/fstab /etc/fstab.bak
 
-# enable the service for the next boot
-systemctl enable init-rpi
+	# append fstab extension to fstab
+	cat /etc/fstab-extension >> /etc/fstab
+fi
+rm /etc/fstab-extension
 
 #############################################
 # setup console boot, hostname timezone,
@@ -304,7 +323,41 @@ sed -i -e 's/quiet splash plymouth.ignore-serial-consoles//' /boot/cmdline.txt
 # disable overscan to remove border in x windows
 sed -i -e 's/^#disable_overscan/disable_overscan/' /boot/config.txt
 
-# reboot
-if test "${REBOOT}" = "true"; then
+#####################################
+# launch service init-rpi if necessary
+# create the init-rpi service
+# the -R option may be passed to init-rpi
+# but it has no effect. init-rpi must
+# recognise it but not use it.
+###################################
+# only use init-rpi.service if user robert
+# does not exist
+if test ${CURUSER} != "robert"; then
+echo "[Unit]
+Description=init-rpi.service reboot raspberry pi and then initialise rpi once.
+BindsTo=multi-user.target
+After=multi-user.target
+
+[Service]
+Type=simple
+ExecStart=/bin/bash /usr/local/bin/init-rpi
+
+[Install]
+WantedBy=multi-user.target" > /etc/systemd/system/init-rpi.service
+
+# set mode for init-rpi.service
+chmod 0644 /etc/systemd/system/init-rpi.service
+
+# enable the service for the next boot
+systemctl enable init-rpi
+fi
+############################################
+# reboot if it is necessary
+# only necessary if pi was changed to robert
+############################################
+if test "${REBOOT}" = "true" && ${CURUSER} = "pi"; then
 	shutdown -r now
+else
+	# excute init-rpi
+	/usr/local/bin/init-rpi
 fi
