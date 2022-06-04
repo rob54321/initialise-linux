@@ -355,8 +355,9 @@ fi
 # reboot if it is necessary
 # only necessary if pi was changed to robert
 ############################################
-if test "${REBOOT}" = "true" && ${CURUSER} != "robert"; then
-	shutdown -r now
+if test "${REBOOT}" = "true" && test ${CURUSER} != "robert"; then
+#	shutdown -r now
+echo "shutdown -r now"
 else
 	# excute init-rpi
 #	/usr/local/bin/init-rpi
