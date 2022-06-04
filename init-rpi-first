@@ -329,9 +329,6 @@ sed -i -e 's/^#disable_overscan/disable_overscan/' /boot/config.txt
 #####################################
 # launch service init-rpi if necessary
 # create the init-rpi service
-# the svn disk label must be passed
-# as a parameter since svn must be mounted
-# after a reboot
 ###################################
 # only use init-rpi.service if user robert
 # does not exist
@@ -343,7 +340,7 @@ After=multi-user.target
 
 [Service]
 Type=simple
-ExecStart=/bin/bash /usr/local/bin/init-rpi ${SVNLABEL}
+ExecStart=/bin/bash /usr/local/bin/init-rpi
 
 [Install]
 WantedBy=multi-user.target" > /etc/systemd/system/init-rpi.service
@@ -358,9 +355,10 @@ fi
 # reboot if it is necessary
 # only necessary if pi was changed to robert
 ############################################
-if test "${REBOOT}" = "true" && ${CURUSER} = "pi"; then
+if test "${REBOOT}" = "true" && ${CURUSER} != "robert"; then
 	shutdown -r now
 else
 	# excute init-rpi
-	/usr/local/bin/init-rpi
+#	/usr/local/bin/init-rpi
+	echo "execute init-rpi"
 fi

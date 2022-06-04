@@ -205,19 +205,21 @@ test $? -eq 0 && exitonerror "a process from pi is running"
 
 # how was init-rpi launched
 # by init-rpi-first or init-rpi.service?
+# if a reboot was done, svn debhome must be remounted
+# svn may be a directory on an already mounted device
+# debhome is always on a device
 # disable the service that started this script
 if test -f /etc/systemd/system/init-rpi.service; then
 	systemctl is-enabled init-rpi.service
 	if test $? -eq 0; then
 		systemctl disable init-rpi.service
 		echo "disabled init-rpi.service" >> ${LOGFILE}
-		# launched by init-rpi.service
-		# /mnt/svn -> svn
-		# /mnt/debhome -> debhome
-		# mount /mnt/svn if not mounted
-		# might be /home/robert/svn for eg.
+		# init-rpi launched by init-rpi.service, ie reboot
+		# svn device may need to be mounted
+		# debhome device should also be mounted
+		# /mnt/svn may point to a directory, not a device
 		test -d /mnt/svn || mount /mnt/svn
-		
+		mount /mnt/debhome
 	fi
 fi
 
