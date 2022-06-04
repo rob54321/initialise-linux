@@ -66,6 +66,56 @@ makedirs() {
 	echo "made directories" >> ${LOGFILE}
 }
 
+##################################################
+# function to check for svn or debhome
+# this function will mount the correct disk drive
+# if they are on a  disk drive LABEL.
+# the function will exit  on error if not found
+# parameters passed: disk_label, root directory of svn | root directory of debhome
+##################################################
+mountresource () {
+	# check if the disk label is attached
+	DEVICE=`blkid -L "$1"`
+
+	if test "$?" -ne 0; then
+		exitonerror "$1 is not attached"
+	else
+		# check if device is mounted and where
+		grep "${DEVICE}" /etc/mtab
+		if test $? -eq 0; then
+			MOUNTPT=`grep "${DEVICE}" /etc/mtab | cut -d " " -f2`
+			# disk is  mounted at MOUNTPT
+			# unmount if MOUNTPT is not /mnt/disk_label
+			if test "${MOUNTPT}" != "/mnt/$1"; then
+				echo "unmounting ${MOUNTPT}"
+				umount "${MOUNTPT}"
+			fi
+		fi
+	fi
+
+	# make the mount directory if it does not exist
+	# make the directory and set the ownership
+	test -d "/mnt/$1" || mkdir "/mnt/$1"
+	chown ${CURUSER}.${CURUSER} "/mnt/$1"
+	#  if disk not mounted, mount it
+	findmnt "/mnt/$1"
+	if test "$?" -ne 0; then
+		# mount it
+		mount -L "$1" "/mnt/$1"
+		# set mounted flag
+		test $? -eq 0 || exitonerror "could not mount $"
+	fi
+
+	# check if svn | debhome is accessible
+	if test ! -d "/mnt/$1/$2"; then
+		# svn or archive does not exist
+		echo "/mnt/$1/$2 not found"
+		echo "unmounting /mnt/$1"
+		umount "/mnt/$1"
+		exitonerror "/mnt/$1/$2 not found"
+	fi
+	return 0;
+}
 #############################################
 # setup colors for accounts and nano
 # parameters: accountcolours newuser
@@ -138,6 +188,7 @@ accountcolours() {
 OLDUSER="pi"
 NEWUSER="robert"
 LOGFILE="/tmp/init-rpi.log"
+SVNURL="file:///mnt/svn"
 
 ################################
 # main entry
@@ -152,21 +203,32 @@ test $? -eq 0 || exitonerror "subversion is not installed"
 ps -U "${OLDUSER}" > /dev/null 2>&1
 test $? -eq 0 && exitonerror "a process from pi is running"
 
+# how was init-rpi launched
+# by init-rpi-first or init-rpi.service?
 # disable the service that started this script
-systemctl is-enabled init-rpi.service
-if test $? -eq 0; then
-	systemctl disable init-rpi.service
-	echo "disabled init-rpi.service" >> ${LOGFILE}
+if test -f /etc/systemd/system/init-rpi.service; then
+	systemctl is-enabled init-rpi.service
+	if test $? -eq 0; then
+		systemctl disable init-rpi.service
+		echo "disabled init-rpi.service" >> ${LOGFILE}
+		# launched by init-rpi.service
+		# /mnt/svn -> svn
+		# /mnt/debhome -> debhome
+		# mount /mnt/svn if not mounted
+		# might be /home/robert/svn for eg.
+		test -d /mnt/svn || mount /mnt/svn
+		
+	fi
 fi
 
 # change user from pi to robert
 changeuser "${OLDUSER}" "${NEWUSER}"
 
 # make all mount directories
-# must be done before setupsvn()
 makedirs "${NEWUSER}"
 
 # setup up account colours
+# subversion repository must be accessible
 accountcolours "${NEWUSER}"
 
 # setup console

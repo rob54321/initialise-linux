@@ -112,13 +112,13 @@ debhome() {
 	echo "setup debhome" >> ${LOGFILE}
 }
 
-
+####################################################
 # function to check for svn or debhome
 # this function will mount the correct disk drive
 # if they are on a  disk drive LABEL.
 # the function will exit  on error if not found
 # parameters passed: disk_label, root directory of svn | root directory of debhome
-
+####################################################
 mountresource () {
 	# check if the disk label is attached
 	DEVICE=`blkid -L "$1"`
@@ -143,7 +143,6 @@ mountresource () {
 	# make the directory and set the ownership
 	test -d "/mnt/$1" || mkdir "/mnt/$1"
 	chown ${CURUSER}.${CURUSER} "/mnt/$1"
-
 	#  if disk not mounted, mount it
 	findmnt "/mnt/$1"
 	if test "$?" -ne 0; then
@@ -179,6 +178,7 @@ SVNLABEL="ad64"
 SVNLINK="/mnt/svn"
 REBOOT="false"
 LOGFILE="/tmp/init-rpi-first.log"
+SVNDESTCHANGED="false"
 
 # rm log file
 rm -f ${LOGFILE}
@@ -250,10 +250,13 @@ if test "${SVNDESTCHANGED}" = "false"; then
 	SVNDESTINATION="/mnt/${SVNLABEL}"
 	echo "svn destination not changed" >> ${LOGFILE}
 fi
+echo "${CURUSER}"
+# change the ownership of /mnt to current user
+# this must be done so links can be made.
+chown ${CURUSER}.${CURUSER} /mnt
 
 # check if subversion exists and set it up
 setupsvn "${CURUSER}"
-
 
 ################################
 # check debhome repository exists
@@ -326,9 +329,9 @@ sed -i -e 's/^#disable_overscan/disable_overscan/' /boot/config.txt
 #####################################
 # launch service init-rpi if necessary
 # create the init-rpi service
-# the -R option may be passed to init-rpi
-# but it has no effect. init-rpi must
-# recognise it but not use it.
+# the svn disk label must be passed
+# as a parameter since svn must be mounted
+# after a reboot
 ###################################
 # only use init-rpi.service if user robert
 # does not exist
@@ -340,7 +343,7 @@ After=multi-user.target
 
 [Service]
 Type=simple
-ExecStart=/bin/bash /usr/local/bin/init-rpi
+ExecStart=/bin/bash /usr/local/bin/init-rpi ${SVNLABEL}
 
 [Install]
 WantedBy=multi-user.target" > /etc/systemd/system/init-rpi.service
