@@ -163,11 +163,14 @@ accountcolours() {
 
 	# install git credentials
 	sudo -u $1 svn export --force ${SVNURL}/root/my-linux/git/.gitconfig /home/$1/
+	test $? -eq 0 || exitonerror "could not export .gitconfig"
+
 	sudo -u $1 svn export --force ${SVNURL}/root/my-linux/git/.git-credentials /home/$1/
+	test $? -eq 0 || exitonerror "could not export .git-credentials"
 
 	# export .bash_aliases from subversion
 	sudo -u $1 svn export --force ${SVNURL}/root/my-linux/config-files/bash_aliases/.bash_aliases /home/$1
-
+	test $? -eq 0 || exitonerror "could not export .bash_aliases"
 
 	# edit subversion config so .git and .gitignore are ignored
 	sed -i -e 's/^# global-ignores =/global-ignores = .git .gitignore/' /etc/subversion/config
@@ -218,8 +221,21 @@ if test -f /etc/systemd/system/init-rpi.service; then
 		# svn device may need to be mounted
 		# debhome device should also be mounted
 		# /mnt/svn may point to a directory, not a device
-		test -d /mnt/svn || mount /mnt/svn
-		mount /mnt/debhome
+		if test ! -d /mnt/svn; then
+			mount /mnt/svn
+			test $? -eq 0 || exitonerror "could not mount svn"
+		else
+			echo "svn already mounted" >> ${LOGFILE}
+		fi
+
+		# mount /mnt/debhome
+		if test ! -d /mnt/debhome; then
+			mount /mnt/debhome
+			test $? -eq 0 || exitonerror "could not mount debhome"
+		else
+			echo "debhome already mounted" >> ${LOGFILE}
+		fi
+
 	fi
 fi
 
