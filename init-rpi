@@ -41,6 +41,7 @@ changeuser() {
 		usermod -l $2 -d /home/$2 $1
 		# copy home of olduser to new user
 		cp -a /home/$1 /home/$2
+		test $? -eq 0 || exitonerror "could not copy $1 to $2"
 
 		# if group pi exists, change it to group robert
 		getent group $1
