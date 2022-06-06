@@ -215,6 +215,15 @@ test $? -eq 0 && exitonerror "a process from pi is running"
 if test -f /etc/systemd/system/init-rpi.service; then
 	systemctl is-enabled init-rpi.service
 	if test $? -eq 0; then
+		# only necessary to pass parameters if init-rpi.service is used
+		# to launch init-rpi
+		# 2 parameters passed svndestination and debhome (label)
+		# svn destination is the path to svn and may or may not be a device
+		# debhome (label) is always the device label.
+		test $# -eq 2 || exitonerror "error in parameters passed to init-rpi"
+		SVNDESTINATION="$1"
+		DEBHOMELABEL="$2"
+
 		systemctl disable init-rpi.service
 		echo "disabled init-rpi.service" >> ${LOGFILE}
 		# init-rpi launched by init-rpi.service, ie reboot
@@ -222,20 +231,11 @@ if test -f /etc/systemd/system/init-rpi.service; then
 		# debhome device should also be mounted
 		# /mnt/svn may point to a directory, not a device
 		# parameters passed to init-rpi: svndestination debhomelabel
-		if test ! -d ${SVNDESTINATION}/svn; then
-			# 2 parameters passed only if this script is launched
-			# init-rpi.service. Otherwise they are not needed.
-			# 2 parameters passed svndestination and debhome (label)
-			# svn destination is the path to svn and may or may not be a device
-			# debhome (label) is always the device label.
-			test $# -eq 2 || exitonerror "error in parameters passed to init-rpi"
-			SVNDESTINATION="$1"
-			DEBHOMELABEL="$2"
-
+		SVNLABEL=`echo "${SVNDESTINATION}" | cut -d / -f 3`
+		if test ! -d /mnt/${SVNLABEL}; then
 			# svn destination must be mounted of form: /mnt/DISKLABEL
-			SVNLABEL=`echo "${SVNDESTINATION}" | cut -d / -f 3`
-echo "svndestination ${SVNDESTINATION} svnlabel ${SVNLABEL}"
-exit 0
+echo "svndestination ${SVNDESTINATION} svnlabel ${SVNLABEL}" >> ${LOGFILE}
+
 			# the directory must exist
 			test -d "/mnt/${SVNLABEL}" || mkdir "/mnt/${SVNLABEL}"
 
@@ -258,7 +258,7 @@ exit 0
 		test $? -eq 0 || exitonerror "could not mount device ${DEBHOMELABEL}"
 	fi
 fi
-exit 0;
+
 # change user from pi to robert
 changeuser "${OLDUSER}" "${NEWUSER}"
 
