@@ -28,6 +28,10 @@ exitonerror() {
 # parameters: changeuser OLDUSER NEWUSER
 # ie changeuser pi robert
 changeuser() {
+	# check if any process of pi is still running
+	ps -U "$1" > /dev/null 2>&1
+	test $? -eq 0 && exitonerror "a process from user $1 is still running"
+
 	groups $2 > /dev/null 2>&1
 	if test $? -ne 0; then
 		# user robert does not exist, create it
@@ -39,9 +43,9 @@ changeuser() {
 			# change the group pi to robert
 			groupmod -n $2 $1
 		fi
-		echo "user robert does not exist" >> ${LOGFILE}
+		echo "$1 user changed to user $2" >> ${LOGFILE}
 	else
-		echo "user robert exists" >> ${LOGFILE}
+		echo "user $2 already exists" >> ${LOGFILE}
 	fi
 }
 
@@ -202,9 +206,8 @@ echo "init-rpi is running" > ${LOGFILE}
 dpkg-query -W subversion > /dev/null 2>&1
 test $? -eq 0 || exitonerror "subversion is not installed"
 
-# check if any process of pi is running
-ps -U "${OLDUSER}" > /dev/null 2>&1
-test $? -eq 0 && exitonerror "a process from pi is running"
+# change user from pi to robert
+changeuser "${OLDUSER}" "${NEWUSER}"
 
 # how was init-rpi launched
 # by init-rpi-first or init-rpi.service?
@@ -231,19 +234,28 @@ if test -f /etc/systemd/system/init-rpi.service; then
 		# debhome device should also be mounted
 		# /mnt/svn may point to a directory, not a device
 		# parameters passed to init-rpi: svndestination debhomelabel
-		SVNLABEL=`echo "${SVNDESTINATION}" | cut -d / -f 3`
-		if test ! -d /mnt/${SVNLABEL}; then
-			# svn destination must be mounted of form: /mnt/DISKLABEL
+		# check if svndestination/svn exists
+		if test ! -d ${SVNDESTINATION}/svn; then
+			#  svn does not exist, it must be a device
+			# get the label
+			SVNLABEL=`echo "${SVNDESTINATION}" | cut -d / -f 3`
 echo "svndestination ${SVNDESTINATION} svnlabel ${SVNLABEL}" >> ${LOGFILE}
+			findmnt /mnt/${SVNLABEL}
+			if test $? -ne 0; then
+				# svn destination must be mounted of form: /mnt/DISKLABEL
 
-			# the directory must exist
-			test -d "/mnt/${SVNLABEL}" || mkdir "/mnt/${SVNLABEL}"
+				# the directory must exist
+				test -d "/mnt/${SVNLABEL}" || mkdir "/mnt/${SVNLABEL}"
 
-			# mount svn if not mounted
-			findmnt /mnt/${SVNLABEL} || mount -L ${SVNLABEL} /mnt/${SVNLABEL}
-			test $? -eq 0 || exitonerror "could not mount svn"
+				# mount svn
+				mount -L ${SVNLABEL} /mnt/${SVNLABEL}
+				test $? -eq 0 || exitonerror "could not mount svn"
+				echo "mounted /mnt/${SVNLABEL}" >> ${LOGFILE}
+			else
+				echo "svn already mounted" >> ${LOGFILE}
+			fi
 		else
-			echo "svn already mounted" >> ${LOGFILE}
+			echo "${SVNDESTINATION} exists" >> ${LOGFILE}
 		fi
 
 		# mount debhome
@@ -258,9 +270,6 @@ echo "svndestination ${SVNDESTINATION} svnlabel ${SVNLABEL}" >> ${LOGFILE}
 		test $? -eq 0 || exitonerror "could not mount device ${DEBHOMELABEL}"
 	fi
 fi
-
-# change user from pi to robert
-changeuser "${OLDUSER}" "${NEWUSER}"
 
 # make all mount directories
 makedirs "${NEWUSER}"
