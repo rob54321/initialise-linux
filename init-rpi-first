@@ -65,14 +65,19 @@ setupsvn() {
 		# check if destination exists
 		if test ! -d "${SVNDESTINATION}"; then
 			mkdir -p "${SVNDESTINATION}"
+			test $? -eq 0 || exitonerror "could not make ${SVNDESTINATION}"
 			chown $1.$1 "${SVNDESTINATION}"
 		fi
 		cp -a "/mnt/${SVNLABEL}/svn" "${SVNDESTINATION}/"
+		test $? -eq 0 || exitonerror "could not copy svn to ${SVNDESTINATION}"
+
 		# setup the link, svn was moved
 		sudo -u $1 ln -s "${SVNDESTINATION}/svn" "${SVNLINK}"
+		test $? -eq 0 || exitonerror "could not make link to ${SVNDESTINATION}/svn"
 	else
 		# svn destination not changed, set the link
 		sudo -u $1 ln -s "/mnt/${SVNLABEL}/svn" "${SVNLINK}"
+		test $? -eq 0 || exitonerror "could not make link to /mnt/${SVNLABEL}/svn"
 	fi
 }
 
@@ -329,6 +334,9 @@ sed -i -e 's/^#disable_overscan/disable_overscan/' /boot/config.txt
 #####################################
 # launch service init-rpi if necessary
 # create the init-rpi service
+# the svn destination and/or debhome label may have changed
+# so they must be passed to init-rpi
+# since a reboot will occur
 ###################################
 # only use init-rpi.service if user robert
 # does not exist
@@ -340,7 +348,7 @@ After=multi-user.target
 
 [Service]
 Type=simple
-ExecStart=/bin/bash /usr/local/bin/init-rpi
+ExecStart=/bin/bash /usr/local/bin/init-rpi ${SVNDESTINATION} ${DEBHOMELABEL}
 
 [Install]
 WantedBy=multi-user.target" > /etc/systemd/system/init-rpi.service
