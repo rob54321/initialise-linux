@@ -35,7 +35,12 @@ changeuser() {
 	groups $2 > /dev/null 2>&1
 	if test $? -ne 0; then
 		# user robert does not exist, create it
-		usermod -l $2 -m -d /home/$2 $1
+		# since svn might be copied to newuser home
+		# the olduser dir must be copied to the newuser directory
+		# usermod refuses to move if newuser home exists
+		usermod -l $2 -d /home/$2 $1
+		# copy home of olduser to new user
+		cp -a /home/$1 /home/$2
 
 		# if group pi exists, change it to group robert
 		getent group $1
@@ -43,6 +48,9 @@ changeuser() {
 			# change the group pi to robert
 			groupmod -n $2 $1
 		fi
+		# set permissions of new user home
+		chown $2.$2 -R /home/$2
+
 		echo "$1 user changed to user $2" >> ${LOGFILE}
 	else
 		echo "user $2 already exists" >> ${LOGFILE}
