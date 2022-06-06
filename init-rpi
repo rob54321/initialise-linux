@@ -196,15 +196,7 @@ SVNURL="file:///mnt/svn"
 ################################
 # main entry
 ################################
-# check the number of passed parameters is 2
 echo "init-rpi is running" > ${LOGFILE}
-test $# -eq 2 || exitonerror "error in parameters passed to init-rpi"
-
-# 2 parameters passed svndestination and debhome (label)
-# svn destination is the path to svn and may or may not be a device
-# debhome (label) is always the device label.
-SVNDESTINATION="$1"
-DEBHOMELABEL="$2"
 
 # install subverion if it is not installed
 dpkg-query -W subversion > /dev/null 2>&1
@@ -231,6 +223,15 @@ if test -f /etc/systemd/system/init-rpi.service; then
 		# /mnt/svn may point to a directory, not a device
 		# parameters passed to init-rpi: svndestination debhomelabel
 		if test ! -d ${SVNDESTINATION}/svn; then
+			# 2 parameters passed only if this script is launched
+			# init-rpi.service. Otherwise they are not needed.
+			# 2 parameters passed svndestination and debhome (label)
+			# svn destination is the path to svn and may or may not be a device
+			# debhome (label) is always the device label.
+			test $# -eq 2 || exitonerror "error in parameters passed to init-rpi"
+			SVNDESTINATION="$1"
+			DEBHOMELABEL="$2"
+
 			# svn destination must be mounted of form: /mnt/DISKLABEL
 			SVNLABEL=`echo "${SVNDESTINATION}" | cut -d / -f 3`
 echo "svndestination ${SVNDESTINATION} svnlabel ${SVNLABEL}"
