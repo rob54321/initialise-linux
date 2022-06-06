@@ -236,21 +236,24 @@ if test -f /etc/systemd/system/init-rpi.service; then
 echo "svndestination ${SVNDESTINATION} svnlabel ${SVNLABEL}"
 exit 0
 			# the directory must exist
-			test $? -d "/mnt/${SVNLABEL}" || mkdir "/mnt/${SVNLABEL}"
+			test -d "/mnt/${SVNLABEL}" || mkdir "/mnt/${SVNLABEL}"
 
-			# mount svn
-			mount -L ${SVNLABEL} /mnt/${SVNLABEL}
+			# mount svn if not mounted
+			findmnt /mnt/${SVNLABEL} || mount -L ${SVNLABEL} /mnt/${SVNLABEL}
 			test $? -eq 0 || exitonerror "could not mount svn"
 		else
 			echo "svn already mounted" >> ${LOGFILE}
 		fi
 
 		# mount debhome
+
 		# check directory exists for safety
 		test -d "/mnt/${DEBHOMELABEL}" || mkdir "/mnt/${DEBHOMELABEL}"
 
 		# mount the debhome device
-		mount -L ${DEBHOMELABEL} /mnt/${DEBHOMELABEL}
+		# debhome and svn may be on the same device
+		# check if it is already mounted
+		findmnt /mnt/${DEBHOMELABEL} ||	mount -L ${DEBHOMELABEL} /mnt/${DEBHOMELABEL}
 		test $? -eq 0 || exitonerror "could not mount device ${DEBHOMELABEL}"
 	fi
 fi
