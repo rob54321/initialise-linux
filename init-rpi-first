@@ -24,6 +24,27 @@ exitonerror() {
 	exit 1;
 }
 
+setupservice() {
+	# setup init-rpi.service to launch init-rpi on reboot
+	# network must be up and running
+	echo "[Unit]
+	Description=init-rpi.service reboot raspberry pi and then initialise rpi once.
+	BindsTo=multi-user.target
+	After=multi-user.target
+
+	[Service]
+	Type=simple
+	ExecStart=/bin/bash /usr/local/bin/init-rpi $*
+
+	[Install]
+	WantedBy=multi-user.target" > /etc/systemd/system/init-rpi.service
+
+	# set mode for init-rpi.service
+	chmod 0644 /etc/systemd/system/init-rpi.service
+
+	# enable the service for the next boot
+	systemctl enable init-rpi
+}
 ###############################################
 # function to determine if user is robert or pi
 # the user is returned
@@ -42,79 +63,6 @@ getcuruser() {
 			exitonerror "user robert or pi not found"
 		fi
 	fi
-}
-#########################################################
-# subversion
-# setup subversion link and destintation
-# parameters: setupsvn current_user (non root)
-#########################################################
-setupsvn() {
-	# svn is always accessed at file:///mnt/svn
-	SVNURL="file://${SVNLINK}"
-	# remove any old links
-	rm -f "${SVNLINK}"
-
-	# mount disk label for svn
-	# mountresource will exit if svn is not available
-	mountresource "${SVNLABEL}" "svn"
-
-	# svn disk mounted and it exists
-	# copy svn to destination if destination given
-	# do not copy svn to itself
-	if test "${SVNDESTINATION}" != "/mnt/${SVNLABEL}"; then
-		# check if destination exists
-		if test ! -d "${SVNDESTINATION}"; then
-			mkdir -p "${SVNDESTINATION}"
-			test $? -eq 0 || exitonerror "could not make ${SVNDESTINATION}"
-			chown $1.$1 "${SVNDESTINATION}"
-		fi
-		cp -a "/mnt/${SVNLABEL}/svn" "${SVNDESTINATION}/"
-		test $? -eq 0 || exitonerror "could not copy svn to ${SVNDESTINATION}"
-
-		# setup the link, svn was moved
-		sudo -u $1 ln -s "${SVNDESTINATION}/svn" "${SVNLINK}"
-		test $? -eq 0 || exitonerror "could not make link to ${SVNDESTINATION}/svn"
-	else
-		# svn destination not changed, set the link
-		sudo -u $1 ln -s "/mnt/${SVNLABEL}/svn" "${SVNLINK}"
-		test $? -eq 0 || exitonerror "could not make link to /mnt/${SVNLABEL}/svn"
-	fi
-}
-
-########################################################
-# debhome
-# setup the link for debhome
-# subversion must already be installed
-# export the pubkey to /etc/apt/keyrings/debhomepubkey.asc
-# export debhome.sources to /etc/apt/sources.list.d
-# paramters: debhome newuser
-#######################################################
-debhome() {
-	# make the link for debhome
-	# debhome is always at /mnt/debhome
-	rm -f "${DEBHOMELINK}"
-
-	# mount disk label for debhome
-	# mountresource will exist if debhome is not available
-	mountresource "${DEBHOMELABEL}" "debhome"
-
-	# write debhome.sources to /etc/apt/sources.list.d/debhome.sources
-
-	# make the link for debhome
-	sudo -u $1 ln -s "/mnt/${DEBHOMELABEL}/debhome" "${DEBHOMELINK}"
-
-	# get the public key for debhome
-	# mkdir /etc/apt/keyrings if it does not exist
-	test -d /etc/apt/keyrings || mkdir /etc/apt/keyrings
-	# export the public key
-	svn export --force ${SVNURL}/root/my-linux/sources/gpg/debhomepubkey.asc /etc/apt/keyrings/
-	test $? -eq 0 || exitonerror "could not export debhomepubkey.asc from subverison"
-
-	# export debhome
-	svn export --force ${SVNURL}/root/my-linux/sources/arm64/debhome.sources /etc/apt/sources.list.d/
-	test $? -eq 0 || exitonerror "could not export debhome.sources from subversion"
-
-	echo "setup debhome" >> ${LOGFILE}
 }
 
 ####################################################
@@ -178,24 +126,23 @@ mountresource () {
 
 # only for raspberry pi
 DEBHOMELABEL="ad64"
-DEBHOMELINK="/mnt/debhome"
 SVNLABEL="ad64"
-SVNLINK="/mnt/svn"
 REBOOT="false"
 LOGFILE="/tmp/init-rpi-first.log"
-SVNDESTCHANGED="false"
 
 # rm log file
 rm -f ${LOGFILE}
 
 # parameter S destinstion of svn is
 # only used in init-rpi, not in this script
+# svndestination is only used by init-rpi
+# it must be defined here as it is passed to init-rpi
 while getopts RS:m:s:r:h opt
 do
 	case ${opt} in
 		m) DEBHOMELABEL="${OPTARG}";;
 		s) SVNLABEL="${OPTARG}";;
-		S) SVNDESTINATION="${OPTARG}"; SVNDESTCHANGED="true";;
+		S) SVNDESTINATION="${OPTARG}";;
 		R) REBOOT="true";;
 		h) usage;;
 		\?) usage;;
@@ -248,53 +195,17 @@ if test $? -ne 0; then
 	test $? -eq 0 || exitonerror "error installing subversion"
 fi
 
-# if SVNDESTINATION has not changed
-# then SVNDESTINATION = /mnt/${SVNLABEL}
-# because SVNLABEL may have changed
-if test "${SVNDESTCHANGED}" = "false"; then
-	SVNDESTINATION="/mnt/${SVNLABEL}"
-	echo "svn destination not changed" >> ${LOGFILE}
-fi
-echo "${CURUSER}"
 # change the ownership of /mnt to current user
 # this must be done so links can be made.
 chown ${CURUSER}.${CURUSER} /mnt
 
-# check if subversion exists and set it up
-setupsvn "${CURUSER}"
+# check if subversion repository exists
+mountresource "${SVNLABEL}" "svn"
 
 ################################
 # check debhome repository exists
 ###############################
-debhome "${CURUSER}"
-
-################################
-# setup sudoers.d/robert
-# and fstab
-###################################
-# install files sudoers
-svn export --force ${SVNURL}/root/my-linux/sudoers.d/robert /etc/sudoers.d
-test $? -eq 0 || exitonerror "could not export sudoers.d from subversion"
-
-# set ownership
-chown root.root /etc/sudoers.d/robert
-chmod 0440 /etc/sudoers.d/robert
-
-# setup fstab if it has not been setup already.
-svn export --force ${SVNURL}/root/my-linux/config-files/fstab-extension /etc
-test $? -eq 0 || exitonerror "could not export fstab-extension from subversion"
-
-# check if fstab-extention has been added to /etc/fstab
-grep -q "fstab-extension" /etc/fstab
-if [ $? -ne 0 ]
-then
-	# first backup it up
-	cp -a /etc/fstab /etc/fstab.bak
-
-	# append fstab extension to fstab
-	cat /etc/fstab-extension >> /etc/fstab
-fi
-rm /etc/fstab-extension
+mountresource "${DEBHOMELABEL}" "debhome"
 
 #############################################
 # setup console boot, hostname timezone,
@@ -340,25 +251,8 @@ sed -i -e 's/^#disable_overscan/disable_overscan/' /boot/config.txt
 ###################################
 # only use init-rpi.service if user robert
 # does not exist
-if test ${CURUSER} != "robert"; then
-echo "[Unit]
-Description=init-rpi.service reboot raspberry pi and then initialise rpi once.
-BindsTo=multi-user.target
-After=multi-user.target
+test ${CURUSER} != "robert" && setupservice
 
-[Service]
-Type=simple
-ExecStart=/bin/bash /usr/local/bin/init-rpi ${SVNDESTINATION} ${DEBHOMELABEL}
-
-[Install]
-WantedBy=multi-user.target" > /etc/systemd/system/init-rpi.service
-
-# set mode for init-rpi.service
-chmod 0644 /etc/systemd/system/init-rpi.service
-
-# enable the service for the next boot
-systemctl enable init-rpi
-fi
 ############################################
 # reboot if it is necessary
 # only necessary if pi was changed to robert
