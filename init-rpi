@@ -44,8 +44,9 @@ exitonerror() {
 
 #########################################################
 # function to setup subversion link and destintation
-# if the destination was changed
 # the new user must already exist
+# the owner.group of the /mnt directory must
+# be set to new user
 # the SVNLABEL is the disk label of the source for svn
 # DESTINATION  is a directory and is optional
 # parameters: setupsvn newuser (non root)
@@ -163,7 +164,8 @@ changeuser() {
 }
 
 # make all the mount directories
-# set ownership to newuser
+# the new user must already exist
+# set ownership to newuser of new directories and /mnt
 # parameters: makedirs ${NEWUSER}
 
 makedirs() {
@@ -353,15 +355,17 @@ if test $? -eq 0; then
 	log "disabled init-rpi.service"
 fi
 
+# make all mount directories
+# and set ownership to newuser
+# must be done before setupsvn, debhome
+makedirs "${NEWUSER}"
+
 # mount svn and make link
 # cp svn if destination was changed
 setupsvn "${NEWUSER}"
 
 # mount debhome and make link
 debhome "${NEWUSER}"
-
-# make all mount directories
-makedirs "${NEWUSER}"
 
 # setup up account colours
 # subversion repository must be accessible
