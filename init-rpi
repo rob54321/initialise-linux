@@ -14,6 +14,25 @@
 # this script initialises the repositories for apt-get, makes all directories, sets links svn and debhome
 # user robert exists only at this stage hence directories persmisions can only be set here
 
+usage() {
+	echo "-m disk label for debhome				default: ${DEBHOMELABEL}";
+	echo "-s disk label for svn      				default: ${SVNLABEL}";
+	echo "-S svn destination					default: none";
+   	echo "-R reboot                                         default: no reboot";
+	echo "-h help"
+	exit 0
+}
+###############################################################
+# function to log output
+# first parameter is string to log
+# second parameter is used to start
+# a new log file
+###############################################################
+log() {
+	test "$2" = "new"  && rm -f ${LOGFILE}
+	echo "$1" | tee -a ${LOGFILE}
+}
+
 ###############################################################
 # this function prints an error mesage and exists.
 # parameters passed , error message
@@ -24,24 +43,29 @@ exitonerror() {
 }
 
 #########################################################
-# subversion
-# setup subversion link and destintation
-# parameters: setupsvn current_user (non root)
+# function to setup subversion link and destintation
+# if the destination was changed
+# the new user must already exist
+# the SVNLABEL is the disk label of the source for svn
+# DESTINATION  is a directory and is optional
+# parameters: setupsvn newuser (non root)
 #########################################################
 setupsvn() {
+	# check new user exists
+	getent passwd $1 > /dev/null 2>&1
+	test $? -eq 0 || exitonerror "new user $1 does not exist"
+
 	# svn is always accessed at file:///mnt/svn
 	SVNURL="file://${SVNLINK}"
 	# remove any old links
 	rm -f "${SVNLINK}"
 
-	# mount disk label for svn
-	# mountresource will exit if svn is not available
-	mountresource "${SVNLABEL}" "svn"
+	# mount svn label if it is not mounted
+	mountresource "$1" "${SVNLABEL}" "svn"
 
-	# svn disk mounted and it exists
-	# copy svn to destination if destination given
+	# copy svn to destination if destination was changed
 	# do not copy svn to itself
-	if test "${SVNDESTINATION}" != "/mnt/${SVNLABEL}"; then
+	if test "${SVNDESTCHANGED}" = "true"; then
 		# check if destination exists
 		if test ! -d "${SVNDESTINATION}"; then
 			mkdir -p "${SVNDESTINATION}"
@@ -54,29 +78,37 @@ setupsvn() {
 		# setup the link, svn was moved
 		sudo -u $1 ln -s "${SVNDESTINATION}/svn" "${SVNLINK}"
 		test $? -eq 0 || exitonerror "could not make link to ${SVNDESTINATION}/svn"
+		log "made /mnt/svn -> /mnt/${SVNDESTINATION}/svn"
 	else
 		# svn destination not changed, set the link
 		sudo -u $1 ln -s "/mnt/${SVNLABEL}/svn" "${SVNLINK}"
 		test $? -eq 0 || exitonerror "could not make link to /mnt/${SVNLABEL}/svn"
+		log "made /mnt/svn -> /mnt/${SVNLABEL}/svn"
 	fi
 }
 
 ########################################################
 # debhome
-# setup the link for debhome
 # subversion must already be installed
+# svn must already be accesible
+# the new user must already exist
+# mount the debhome device
+# setup the link for debhome
 # export the pubkey to /etc/apt/keyrings/debhomepubkey.asc
 # export debhome.sources to /etc/apt/sources.list.d
 # paramters: debhome newuser
 #######################################################
 debhome() {
+	# check new user exists
+	getent passwd $1 > /dev/null 2>&1
+	test $? -eq 0 || exitonerror "new user $1 does not exist"
+
 	# make the link for debhome
 	# debhome is always at /mnt/debhome
 	rm -f "${DEBHOMELINK}"
 
-	# mount disk label for debhome
-	# mountresource will exist if debhome is not available
-	mountresource "${DEBHOMELABEL}" "debhome"
+	# mount debhome if it is not mounted
+	mountresource "$1" "${DEBHOMELABEL}" "debhome"
 
 	# write debhome.sources to /etc/apt/sources.list.d/debhome.sources
 
@@ -94,7 +126,7 @@ debhome() {
 	svn export --force ${SVNURL}/root/my-linux/sources/arm64/debhome.sources /etc/apt/sources.list.d/
 	test $? -eq 0 || exitonerror "could not export debhome.sources from subversion"
 
-	echo "setup debhome" >> ${LOGFILE}
+	log "setup debhome"
 }
 
 
@@ -113,12 +145,7 @@ changeuser() {
 		# since svn might be copied to newuser home
 		# the olduser dir must be copied to the newuser directory
 		# usermod refuses to move if newuser home exists
-		usermod -l $2 -d /home/$2 $1
-		# copy home of olduser to new user
-		# directory /home/newuser may exist
-		# since svn might have been copied to it.
-		cp -a /home/$1 /home/$2
-		test $? -eq 0 || exitonerror "could not copy $1 to $2"
+		usermod -l $2 -m -d /home/$2 $1
 
 		# if group pi exists, change it to group robert
 		getent group $1
@@ -129,9 +156,9 @@ changeuser() {
 		# set permissions of new user home
 		chown $2.$2 -R /home/$2
 
-		echo "$1 user changed to user $2" >> ${LOGFILE}
+		log "$1 user changed to user $2"
 	else
-		echo "user $2 already exists" >> ${LOGFILE}
+		log "user $2 already exists"
 	fi
 }
 
@@ -153,7 +180,7 @@ makedirs() {
 
 	# change ownership of directories
 	chown --no-dereference $1.$1 /mnt/*
-	echo "made directories" >> ${LOGFILE}
+	log "made directories"
 }
 
 ##################################################
@@ -161,48 +188,52 @@ makedirs() {
 # this function will mount the correct disk drive
 # if they are on a  disk drive LABEL.
 # the function will exit  on error if not found
-# parameters passed: disk_label, root directory of svn | root directory of debhome
+# parameters passed: newuser, disk_label, root directory of svn | root directory of debhome
 ##################################################
 mountresource () {
 	# check if the disk label is attached
-	DEVICE=`blkid -L "$1"`
+	DEVICE=`blkid -L "$2"`
 
 	if test "$?" -ne 0; then
-		exitonerror "$1 is not attached"
+		exitonerror "$2 is not attached"
 	else
 		# check if device is mounted and where
+		# unmount it if not mounted at /mnt/$2
 		grep "${DEVICE}" /etc/mtab
 		if test $? -eq 0; then
 			MOUNTPT=`grep "${DEVICE}" /etc/mtab | cut -d " " -f2`
 			# disk is  mounted at MOUNTPT
 			# unmount if MOUNTPT is not /mnt/disk_label
-			if test "${MOUNTPT}" != "/mnt/$1"; then
-				echo "unmounting ${MOUNTPT}"
+			if test "${MOUNTPT}" != "/mnt/$2"; then
+				log "unmounting ${MOUNTPT}"
 				umount "${MOUNTPT}"
+				# check if unmounted
+				test $? -eq 0 || exitonerror "could not un mount ${MOUNTPOINT}"
 			fi
 		fi
 	fi
 
 	# make the mount directory if it does not exist
 	# make the directory and set the ownership
-	test -d "/mnt/$1" || mkdir "/mnt/$1"
-	chown ${CURUSER}.${CURUSER} "/mnt/$1"
+	test -d "/mnt/$2" || mkdir "/mnt/$2"
+	chown $1.$1 "/mnt/$2"
 	#  if disk not mounted, mount it
-	findmnt "/mnt/$1"
+	findmnt "/mnt/$2"
 	if test "$?" -ne 0; then
 		# mount it
-		mount -L "$1" "/mnt/$1"
+		mount -L "$2" "/mnt/$2"
+		log "mounted $2 on /mnt/$2"
 		# set mounted flag
-		test $? -eq 0 || exitonerror "could not mount $"
+		test $? -eq 0 || exitonerror "could not mount $2 at /mnt/$2"
 	fi
 
 	# check if svn | debhome is accessible
-	if test ! -d "/mnt/$1/$2"; then
+	if test ! -d "/mnt/$2/$3"; then
 		# svn or archive does not exist
-		echo "/mnt/$1/$2 not found"
-		echo "unmounting /mnt/$1"
-		umount "/mnt/$1"
-		exitonerror "/mnt/$1/$2 not found"
+		umount "/mnt/$2"
+		exitonerror "/mnt/$2/$3 not found, unmounting /mnt/$2"
+	else
+		log "found /mnt/$2/$3"
 	fi
 	return 0;
 }
@@ -274,7 +305,7 @@ accountcolours() {
 	       -e 's/^# set selectedcolor lightwhite,magenta/set selectedcolor lightwhite,magenta/' \
 	       -e 's/^# set numbercolor cyan/set numbercolor cyan/' \
 	       -e 's/^# set keycolor cyan/set keycolor cyan/' /etc/nanorc
-	echo "setup account colours" >> ${LOGFILE}
+	log "setup account colours"
 }
 
 # only for raspberry pi
@@ -291,7 +322,7 @@ SVNDESTCHANGED="false"
 ################################
 # main entry
 ################################
-echo "init-rpi is running" > ${LOGFILE}
+log "init-rpi is running" "new"
 
 # parameter S destinstion of svn is
 # only used in init-rpi, not in this script
@@ -314,69 +345,20 @@ test $? -eq 0 || exitonerror "subversion is not installed"
 # change user from pi to robert
 changeuser "${OLDUSER}" "${NEWUSER}"
 
-# if SVNDESTINATION has not changed
-# then SVNDESTINATION = /mnt/${SVNLABEL}
-# because SVNLABEL may have changed
-if test "${SVNDESTCHANGED}" = "false"; then
-	SVNDESTINATION="/mnt/${SVNLABEL}"
-	echo "svn destination not changed" >> ${LOGFILE}
+# disable the init-rpi.service if it is enabled
+systemctl is-enabled init-rpi.service
+if test $? -eq 0; then
+	# disable the init-rpi.service
+	systemctl disable init-rpi.service
+	log "disabled init-rpi.service"
 fi
 
+# mount svn and make link
+# cp svn if destination was changed
+setupsvn "${NEWUSER}"
 
-# how was init-rpi launched
-# by init-rpi-first or init-rpi.service?
-# if a reboot was done, svn debhome must be remounted
-# svn may be a directory on an already mounted device
-# debhome is always on a device
-# disable the service that started this script
-if test -f /etc/systemd/system/init-rpi.service; then
-	systemctl is-enabled init-rpi.service
-	if test $? -eq 0; then
-		# disable the init-rpi.service
-		systemctl disable init-rpi.service
-		echo "disabled init-rpi.service" >> ${LOGFILE}
-
-		# init-rpi launched by init-rpi.service, ie reboot
-		# svn device may or may not need to be mounted
-		# debhome device should also be mounted
-		# /mnt/svn may point to a directory, not a device
-		# parameters passed to init-rpi: svndestination debhomelabel
-		# check if svndestination/svn exists
-		if test ! -d ${SVNDESTINATION}/svn; then
-			#  svn does not exist, it must be a device
-			# get the label
-			SVNLABEL=`echo "${SVNDESTINATION}" | cut -d / -f 3`
-echo "svndestination ${SVNDESTINATION} svnlabel ${SVNLABEL}" >> ${LOGFILE}
-			findmnt /mnt/${SVNLABEL}
-			if test $? -ne 0; then
-				# svn destination must be mounted of form: /mnt/DISKLABEL
-
-				# the directory must exist
-				test -d "/mnt/${SVNLABEL}" || mkdir "/mnt/${SVNLABEL}"
-
-				# mount svn
-				mount -L ${SVNLABEL} /mnt/${SVNLABEL}
-				test $? -eq 0 || exitonerror "could not mount svn"
-				echo "mounted /mnt/${SVNLABEL}" >> ${LOGFILE}
-			else
-				echo "svn already mounted" >> ${LOGFILE}
-			fi
-		else
-			echo "${SVNDESTINATION} exists" >> ${LOGFILE}
-		fi
-
-		# mount debhome
-
-		# check directory exists for safety
-		test -d "/mnt/${DEBHOMELABEL}" || mkdir "/mnt/${DEBHOMELABEL}"
-
-		# mount the debhome device
-		# debhome and svn may be on the same device
-		# check if it is already mounted
-		findmnt /mnt/${DEBHOMELABEL} ||	mount -L ${DEBHOMELABEL} /mnt/${DEBHOMELABEL}
-		test $? -eq 0 || exitonerror "could not mount device ${DEBHOMELABEL}"
-	fi
-fi
+# mount debhome and make link
+debhome "${NEWUSER}"
 
 # make all mount directories
 makedirs "${NEWUSER}"

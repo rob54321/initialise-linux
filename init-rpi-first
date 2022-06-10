@@ -45,25 +45,6 @@ setupservice() {
 	# enable the service for the next boot
 	systemctl enable init-rpi
 }
-###############################################
-# function to determine if user is robert or pi
-# the user is returned
-# no parameters are passed to this function
-###############################################
-getcuruser() {
-	# determine if user is robert or pi
-	groups robert > /dev/null 2>&1
-	if test $? -eq 0; then
-		CURUSER="robert"
-	else
-		groups pi > /dev/null 2>&1
-		if test $? -eq 0; then
-			CURUSER="pi"
-		else
-			exitonerror "user robert or pi not found"
-		fi
-	fi
-}
 
 ####################################################
 # function to check for svn or debhome
@@ -95,7 +76,6 @@ mountresource () {
 	# make the mount directory if it does not exist
 	# make the directory and set the ownership
 	test -d "/mnt/$1" || mkdir "/mnt/$1"
-	chown ${CURUSER}.${CURUSER} "/mnt/$1"
 	#  if disk not mounted, mount it
 	findmnt "/mnt/$1"
 	if test "$?" -ne 0; then
@@ -148,9 +128,14 @@ do
 		\?) usage;;
 	esac
 done
-#################################
-# get current user, robert or pi
-getcuruser
+
+# check if subversion repository exists
+mountresource "${SVNLABEL}" "svn"
+
+################################
+# check debhome repository exists
+###############################
+mountresource "${DEBHOMELABEL}" "debhome"
 
 #####################################
 # init-rpi must to be copied to /usr/local/bin
@@ -194,18 +179,6 @@ if test $? -ne 0; then
 	apt -y install subversion
 	test $? -eq 0 || exitonerror "error installing subversion"
 fi
-
-# change the ownership of /mnt to current user
-# this must be done so links can be made.
-chown ${CURUSER}.${CURUSER} /mnt
-
-# check if subversion repository exists
-mountresource "${SVNLABEL}" "svn"
-
-################################
-# check debhome repository exists
-###############################
-mountresource "${DEBHOMELABEL}" "debhome"
 
 #############################################
 # setup console boot, hostname timezone,
@@ -251,15 +224,20 @@ sed -i -e 's/^#disable_overscan/disable_overscan/' /boot/config.txt
 ###################################
 # only use init-rpi.service if user robert
 # does not exist
-test ${CURUSER} != "robert" && setupservice
+getent passwd robert > /dev/null 2>&1
+RC=$?
+echo "setupservice $*"
+test ${RC} -ne 0 && setupservice $*
 
 ############################################
 # reboot if it is necessary
 # only necessary if pi was changed to robert
 ############################################
-if test "${REBOOT}" = "true" && test ${CURUSER} != "robert"; then
-	shutdown -r now
+if test "${REBOOT}" = "true" && test ${RC} -ne 0; then
+#	shutdown -r now
+	echo "reboot"
 else
 	# excute init-rpi
-	/usr/local/bin/init-rpi
+#	/usr/local/bin/init-rpi
+	echo "execute init-rpi"
 fi
