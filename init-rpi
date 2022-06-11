@@ -189,45 +189,33 @@ makedirs() {
 ##################################################
 # function to check for svn or debhome
 # this function will mount the correct disk drive
-# if they are on a  disk drive LABEL.
 # the function will exit  on error if not found
+# Note: svn and debhome may or may not be on the same disk label
 # parameters passed: newuser, disk_label, root directory of svn | root directory of debhome
 ##################################################
 mountresource () {
-	# check if the disk label is attached
+	# exit if label not attached
 	DEVICE=`blkid -L "$2"`
 
 	if test "$?" -ne 0; then
 		exitonerror "$2 is not attached"
-	else
-		# check if device is mounted and where
-		# unmount it if not mounted at /mnt/$2
-		grep "${DEVICE}" /etc/mtab
-		if test $? -eq 0; then
-			MOUNTPT=`grep "${DEVICE}" /etc/mtab | cut -d " " -f2`
-			# disk is  mounted at MOUNTPT
-			# unmount if MOUNTPT is not /mnt/disk_label
-			if test "${MOUNTPT}" != "/mnt/$2"; then
-				log "unmounting ${MOUNTPT}"
-				umount "${MOUNTPT}"
-				# check if unmounted
-				test $? -eq 0 || exitonerror "could not un mount ${MOUNTPOINT}"
-			fi
-		fi
 	fi
 
-	# make the mount directory if it does not exist
-	# make the directory and set the ownership
+	# make mount directories if they do not exist
 	test -d "/mnt/$2" || mkdir "/mnt/$2"
-	chown $1.$1 "/mnt/$2"
-	#  if disk not mounted, mount it
+	test $? -eq 0 || exitonerror "could not make /mnt/$2"
+	chmod $1.$1 "/mnt/$2"
+
+	# if not mounted mount it
 	findmnt "/mnt/$2"
-	if test "$?" -ne 0; then
-		# mount it
+	if test $? -ne 0; then
 		mount -L "$2" "/mnt/$2"
-		log "mounted $2 on /mnt/$2"
-		# set mounted flag
 		test $? -eq 0 || exitonerror "could not mount $2 at /mnt/$2"
+		chown $1.$1 "/mnt/$2"
+		log "mounted $2 on /mnt/$2"
+	else
+		# already mounted
+		log "/mnt/$2 is already mounted"
 	fi
 
 	# check if svn | debhome is accessible
