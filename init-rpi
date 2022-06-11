@@ -391,3 +391,4 @@ then
 	cat /etc/fstab-extension >> /etc/fstab
 fi
 rm /etc/fstab-extension
+log "success"
