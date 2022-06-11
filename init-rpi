@@ -73,7 +73,8 @@ setupsvn() {
 			test $? -eq 0 || exitonerror "could not make ${SVNDESTINATION}"
 			chown $1.$1 "${SVNDESTINATION}"
 		fi
-		cp -a "/mnt/${SVNLABEL}/svn" "${SVNDESTINATION}/"
+		# copy files as new user
+		sudo -u $1 cp -a "/mnt/${SVNLABEL}/svn" "${SVNDESTINATION}/"
 		test $? -eq 0 || exitonerror "could not copy svn to ${SVNDESTINATION}"
 
 		# setup the link, svn was moved
