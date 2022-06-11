@@ -337,13 +337,14 @@ test $? -eq 0 || exitonerror "subversion is not installed"
 changeuser "${OLDUSER}" "${NEWUSER}"
 
 # disable the init-rpi.service if it is enabled
-systemctl is-enabled init-rpi.service
-if test $? -eq 0; then
-	# disable the init-rpi.service
-	systemctl disable init-rpi.service
-	log "disabled init-rpi.service"
+if test -f /etc/systemd/system/init-rpi.service; then
+	systemctl is-enabled init-rpi.service
+	if test $? -eq 0; then
+		# disable the init-rpi.service
+		systemctl disable init-rpi.service
+		log "disabled init-rpi.service"
+	fi
 fi
-
 # make all mount directories
 # and set ownership to newuser
 # must be done before setupsvn, debhome

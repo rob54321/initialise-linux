@@ -234,10 +234,9 @@ test ${RC} -ne 0 && setupservice $*
 # only necessary if pi was changed to robert
 ############################################
 if test "${REBOOT}" = "true" && test ${RC} -ne 0; then
-#	shutdown -r now
-	echo "reboot"
+	shutdown -r now
 else
 	# excute init-rpi
-#	/usr/local/bin/init-rpi
-	echo "execute init-rpi"
+	/usr/local/bin/init-rpi $*
+
 fi
