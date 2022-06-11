@@ -204,7 +204,7 @@ mountresource () {
 	# make mount directories if they do not exist
 	test -d "/mnt/$2" || mkdir "/mnt/$2"
 	test $? -eq 0 || exitonerror "could not make /mnt/$2"
-	chmod $1.$1 "/mnt/$2"
+	chown $1.$1 "/mnt/$2"
 
 	# if not mounted mount it
 	findmnt "/mnt/$2"
