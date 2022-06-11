@@ -80,7 +80,7 @@ setupsvn() {
 		# setup the link, svn was moved
 		sudo -u $1 ln -s "${SVNDESTINATION}/svn" "${SVNLINK}"
 		test $? -eq 0 || exitonerror "could not make link to ${SVNDESTINATION}/svn"
-		log "made /mnt/svn -> /mnt/${SVNDESTINATION}/svn"
+		log "made ${SVNLINK} -> ${SVNDESTINATION}/svn"
 	else
 		# svn destination not changed, set the link
 		sudo -u $1 ln -s "/mnt/${SVNLABEL}/svn" "${SVNLINK}"
