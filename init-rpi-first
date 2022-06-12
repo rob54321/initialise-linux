@@ -215,6 +215,14 @@ sed -i -e 's/quiet splash plymouth.ignore-serial-consoles//' /boot/cmdline.txt
 # disable overscan to remove border in x windows
 sed -i -e 's/^#disable_overscan/disable_overscan/' /boot/config.txt
 
+# disable wi-fi and bluetooth
+# prevent multiple copies
+sed -i -e '/# disable wifi/,/disable-bt/d' /boot/config.txt
+sed -i -e '/^# Additional overlays/a\# disable wifi\
+dtoverlay=disable-wifi\
+#disable bluetooth\
+dtoverlay=disable-bt' /boot/config.txt
+
 #####################################
 # launch service init-rpi if necessary
 # create the init-rpi service

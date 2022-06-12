@@ -240,6 +240,8 @@ accountcolours() {
 	if test ! -f /root/.bashrc.bak; then
 		cp -f /root/.bashrc /root/.bashrc.bak
 	fi
+	# prevent multiple copies of the prompt
+	sed -i -e '/^PS1=/d' /root/.bashrc
 	# make the prompt
 	sed -i -e '/^# PS1/i \PS1='\''\${debian_chroot:+(\$debian_chroot)}\\[\\033[01;31m\\]\\u@\\h\\[\\033[00m\\]:\\[\\033[01;36m\\]\\w \#\\[\\033[00m\\] '\''' /root/.bashrc
 	# setup the aliases for colour
@@ -247,7 +249,7 @@ accountcolours() {
 
 	# setup to use .dircolors
 	sed -i -e 's/^# export LS/export LS/' /root/.bashrc
-	sed -i -e 's/^# eval \"`dircolors`\"/eval \"\$(dircolors -b ~\/.dircolors)\"/' /root/.bashrc
+	sed -i -e 's/^# eval \"\$(dircolors)\"/eval \"\$(dircolors -b ~\/.dircolors)\"/' /root/.bashrc
 
 	# set up dircolors for root
 	dircolors --print-database > /root/.dircolors
