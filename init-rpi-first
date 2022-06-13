@@ -207,7 +207,7 @@ sed -i -e 's/FONTFACE=\".*\"/FONTFACE="Terminus"/' \
 
 # setup keyboard
 sed -i -e 's/XKBLAYOUT=\".*\"/XKBLAYOUT="za"/' /etc/default/keyboard
-setupcon
+setupcon --save
 
 # remove splash screen and make boot verbose
 sed -i -e 's/quiet splash plymouth.ignore-serial-consoles//' /boot/cmdline.txt
