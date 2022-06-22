@@ -24,6 +24,129 @@ exitonerror() {
 	exit 1;
 }
 
+###############################################################
+# function to log output
+# first parameter is string to log
+# second parameter is used to start
+# a new log file
+###############################################################
+log() {
+	test "$2" = "new"  && rm -f ${LOGFILE}
+	echo "$1" | tee -a ${LOGFILE}
+}
+
+#########################################################
+# function to setup subversion link and destintation
+# the new user must already exist
+# the owner.group of the /mnt directory must
+# be set to new user
+# the SVNLABEL is the disk label of the source for svn
+# DESTINATION  is a directory and is optional
+# parameters: setupsvn newuser (non root)
+#########################################################
+setupsvn() {
+	# check new user exists
+	getent passwd $1 > /dev/null 2>&1
+	test $? -eq 0 || exitonerror "new user $1 does not exist"
+
+	# svn is always accessed at file:///mnt/svn
+	SVNURL="file://${SVNLINK}"
+	# remove any old links
+	rm -f "${SVNLINK}"
+
+	# mount svn label if it is not mounted
+	mountresource "$1" "${SVNLABEL}" "svn"
+
+	# copy svn to destination if destination was changed
+	# do not copy svn to itself
+	if test "${SVNDESTCHANGED}" = "true"; then
+		# check if destination exists
+		if test ! -d "${SVNDESTINATION}"; then
+			mkdir -p "${SVNDESTINATION}"
+			test $? -eq 0 || exitonerror "could not make ${SVNDESTINATION}"
+			chown $1.$1 "${SVNDESTINATION}"
+		fi
+		# copy files as new user
+		sudo -u $1 cp -a "/mnt/${SVNLABEL}/svn" "${SVNDESTINATION}/"
+		test $? -eq 0 || exitonerror "could not copy svn to ${SVNDESTINATION}"
+
+		# setup the link, svn was moved
+		sudo -u $1 ln -s "${SVNDESTINATION}/svn" "${SVNLINK}"
+		test $? -eq 0 || exitonerror "could not make link to ${SVNDESTINATION}/svn"
+		log "made ${SVNLINK} -> ${SVNDESTINATION}/svn"
+	else
+		# svn destination not changed, set the link
+		sudo -u $1 ln -s "/mnt/${SVNLABEL}/svn" "${SVNLINK}"
+		test $? -eq 0 || exitonerror "could not make link to /mnt/${SVNLABEL}/svn"
+		log "made /mnt/svn -> /mnt/${SVNLABEL}/svn"
+	fi
+}
+
+########################################################
+# debhome
+# subversion must already be installed
+# svn must already be accesible
+# the new user must already exist
+# mount the debhome device
+# setup the link for debhome
+# export the pubkey to /etc/apt/keyrings/debhomepubkey.asc
+# export debhome.sources to /etc/apt/sources.list.d
+# paramters: debhome newuser
+#######################################################
+debhome() {
+	# check new user exists
+	getent passwd $1 > /dev/null 2>&1
+	test $? -eq 0 || exitonerror "new user $1 does not exist"
+
+	# make the link for debhome
+	# debhome is always at /mnt/debhome
+	rm -f "${DEBHOMELINK}"
+
+	# mount debhome if it is not mounted
+	mountresource "$1" "${DEBHOMELABEL}" "debhome"
+
+	# write debhome.sources to /etc/apt/sources.list.d/debhome.sources
+
+	# make the link for debhome
+	sudo -u $1 ln -s "/mnt/${DEBHOMELABEL}/debhome" "${DEBHOMELINK}"
+
+	# get the public key for debhome
+	# mkdir /etc/apt/keyrings if it does not exist
+	test -d /etc/apt/keyrings || mkdir /etc/apt/keyrings
+	# export the public key
+	svn export --force ${SVNURL}/root/my-linux/sources/gpg/debhomepubkey.asc /etc/apt/keyrings/
+	test $? -eq 0 || exitonerror "could not export debhomepubkey.asc from subverison"
+
+	# export debhome
+	svn export --force ${SVNURL}/root/my-linux/sources/arm64/debhome.sources /etc/apt/sources.list.d/
+	test $? -eq 0 || exitonerror "could not export debhome.sources from subversion"
+
+	log "setup debhome"
+}
+
+###########################################
+# make all the mount directories
+# the new user must already exist
+# set ownership to newuser of new directories and /mnt
+# parameters: makedirs ${NEWUSER}
+###########################################
+makedirs() {
+	chown $1.$1 /mnt
+	dirlist="hd2 hd3 ad64 ssd axiz axiz2 king sah trans ver ver8 chaos ad scd1 scd2"
+	for dir in $dirlist
+	do
+		if [ ! -d /mnt/${dir} ]
+		then
+			mkdir /mnt/${dir}
+			test $? -eq 0 || exitonerror "could not make /mnt/${dir}"
+		fi
+	done
+
+	# change ownership of directories
+	chown --no-dereference $1.$1 /mnt/*
+	log "made directories"
+}
+
 setupservice() {
 	# setup init-rpi.service to launch init-rpi on reboot
 	# network must be up and running
@@ -98,14 +221,21 @@ mountresource () {
 
 # only for raspberry pi
 DEBHOMELABEL="ad64"
+DEBHOMELINK="/mnt/debhome"
 SVNLABEL="ad64"
-REBOOT="false"
+SVNLINK="/mnt/svn"
+SVNURL="file:///mnt/svn"
+SVNDESTCHANGED="false"
+OLDUSER="pi"
+NEWUSER="robert"
 LOGFILE="/tmp/init-rpi-first.log"
 # the current non root user, either robert or pi
 CURUSER="none"
 
-# rm log file
-rm -f ${LOGFILE}
+################################
+# main entry
+################################
+log "init-rpi-first is running" "new"
 
 # parameter S destinstion of svn is
 # only used in init-rpi, not in this script
@@ -116,7 +246,7 @@ do
 	case ${opt} in
 		m) DEBHOMELABEL="${OPTARG}";;
 		s) SVNLABEL="${OPTARG}";;
-		S) SVNDESTINATION="${OPTARG}";;
+		S) SVNDESTINATION="${OPTARG}"; SVNDESTCHANGED="true";;
 		R) REBOOT="true";;
 		h) usage;;
 		\?) usage;;
@@ -139,14 +269,6 @@ else
 		exitonerror "user robert or pi does not exist"
 	fi
 fi
-
-# check if subversion repository exists
-mountresource "${CURUSER}" "${SVNLABEL}" "svn"
-
-################################
-# check debhome repository exists
-###############################
-mountresource "${CURUSER}" "${DEBHOMELABEL}" "debhome"
 
 #####################################
 # init-rpi must to be copied to /usr/local/bin
@@ -175,7 +297,20 @@ else
 		exitonerror "${INITP}/init-rpi not found"
 	fi
 fi
+########################################
+# make directories and set ownership
+########################################
+makedirs "${CURUSER}"
 
+#######################################
+# setup svn and set link
+#######################################
+setupsvn "${CURUSER}"
+
+################################
+# set up debhome and set link
+###############################
+debhome "${CURUSER}"
 
 ######################################
 # install subversion if it is not installed

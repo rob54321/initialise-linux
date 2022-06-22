@@ -163,12 +163,12 @@ changeuser() {
 		log "user $2 already exists"
 	fi
 }
-
+###########################################
 # make all the mount directories
 # the new user must already exist
 # set ownership to newuser of new directories and /mnt
 # parameters: makedirs ${NEWUSER}
-
+###########################################
 makedirs() {
 	chown $1.$1 /mnt
 	dirlist="hd2 hd3 ad64 ssd axiz axiz2 king sah trans ver ver8 chaos ad scd1 scd2"
