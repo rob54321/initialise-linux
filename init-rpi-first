@@ -45,53 +45,45 @@ setupservice() {
 	# enable the service for the next boot
 	systemctl enable init-rpi
 }
-
-####################################################
+##################################################
 # function to check for svn or debhome
 # this function will mount the correct disk drive
-# if they are on a  disk drive LABEL.
 # the function will exit  on error if not found
-# parameters passed: disk_label, root directory of svn | root directory of debhome
-####################################################
+# Note: svn and debhome may or may not be on the same disk label
+# parameters passed: newuser, disk_label, root directory of svn | root directory of debhome
+##################################################
 mountresource () {
-	# check if the disk label is attached
-	DEVICE=`blkid -L "$1"`
+	# exit if label not attached
+	DEVICE=`blkid -L "$2"`
 
 	if test "$?" -ne 0; then
-		exitonerror "$1 is not attached"
-	else
-		# check if device is mounted and where
-		grep "${DEVICE}" /etc/mtab
-		if test $? -eq 0; then
-			MOUNTPT=`grep "${DEVICE}" /etc/mtab | cut -d " " -f2`
-			# disk is  mounted at MOUNTPT
-			# unmount if MOUNTPT is not /mnt/disk_label
-			if test "${MOUNTPT}" != "/mnt/$1"; then
-				echo "unmounting ${MOUNTPT}"
-				umount "${MOUNTPT}"
-			fi
-		fi
+		exitonerror "$2 is not attached"
 	fi
 
-	# make the mount directory if it does not exist
-	# make the directory and set the ownership
-	test -d "/mnt/$1" || mkdir "/mnt/$1"
-	#  if disk not mounted, mount it
-	findmnt "/mnt/$1"
-	if test "$?" -ne 0; then
-		# mount it
-		mount -L "$1" "/mnt/$1"
-		# set mounted flag
-		test $? -eq 0 || exitonerror "could not mount $"
+	# make mount directories if they do not exist
+	test -d "/mnt/$2" || mkdir "/mnt/$2"
+	test $? -eq 0 || exitonerror "could not make /mnt/$2"
+	chown $1.$1 "/mnt/$2"
+
+	# if not mounted mount it
+	findmnt "/mnt/$2"
+	if test $? -ne 0; then
+		mount -L "$2" "/mnt/$2"
+		test $? -eq 0 || exitonerror "could not mount $2 at /mnt/$2"
+		chown $1.$1 "/mnt/$2"
+		log "mounted $2 on /mnt/$2"
+	else
+		# already mounted
+		log "/mnt/$2 is already mounted"
 	fi
 
 	# check if svn | debhome is accessible
-	if test ! -d "/mnt/$1/$2"; then
+	if test ! -d "/mnt/$2/$3"; then
 		# svn or archive does not exist
-		echo "/mnt/$1/$2 not found"
-		echo "unmounting /mnt/$1"
-		umount "/mnt/$1"
-		exitonerror "/mnt/$1/$2 not found"
+		umount "/mnt/$2"
+		exitonerror "/mnt/$2/$3 not found, unmounting /mnt/$2"
+	else
+		log "found /mnt/$2/$3"
 	fi
 	return 0;
 }
