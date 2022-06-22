@@ -50,7 +50,7 @@ setupservice() {
 # this function will mount the correct disk drive
 # the function will exit  on error if not found
 # Note: svn and debhome may or may not be on the same disk label
-# parameters passed: newuser, disk_label, root directory of svn | root directory of debhome
+# parameters passed: current non root user, disk_label, root directory of svn | root directory of debhome
 ##################################################
 mountresource () {
 	# exit if label not attached
@@ -101,6 +101,8 @@ DEBHOMELABEL="ad64"
 SVNLABEL="ad64"
 REBOOT="false"
 LOGFILE="/tmp/init-rpi-first.log"
+# the current non root user, either robert or pi
+CURUSER="none"
 
 # rm log file
 rm -f ${LOGFILE}
@@ -121,13 +123,30 @@ do
 	esac
 done
 
+# determine if user robert or pi exists.
+getent passwd robert > /dev/null 2>&1
+if test $? -eq 0; then
+	# non root user = robert
+	CURUSER="robert"
+else
+	# check for pi
+	getent passwd pi > /dev/null 2>&1
+	if test $? -eq 0; then
+		# non root user = pi
+		CURUSER="pi"
+	else
+		# non root user is unknown
+		exitonerror "user robert or pi does not exist"
+	fi
+fi
+
 # check if subversion repository exists
-mountresource "${SVNLABEL}" "svn"
+mountresource "${CURUSER}" "${SVNLABEL}" "svn"
 
 ################################
 # check debhome repository exists
 ###############################
-mountresource "${DEBHOMELABEL}" "debhome"
+mountresource "${CURUSER}" "${DEBHOMELABEL}" "debhome"
 
 #####################################
 # init-rpi must to be copied to /usr/local/bin
