@@ -482,7 +482,12 @@ debhome "${CURUSER}"
 # subversion repository must be accessible
 accountcolours "${CURUSER}"
 
-
+####################################
+# setup linux sudoers, console, host
+# config boot parameters, keyboard,
+# autologin, multi-user
+####################################
+setuplinux
 
 log "success"
 
