@@ -6,7 +6,7 @@
 # so that init-rpi and init-rpi-first can be tested
 
 # change robert to pi, groups as well
-groups pi > /dev/null 2>&1
+getent passwd pi > /dev/null 2>&1
 if test $? -ne 0; then
 	# user pi does not exist, create it
 	usermod -l pi -m -d /home/pi robert
@@ -23,9 +23,6 @@ if test $? -ne 0; then
 		# change the group robert to pi
 		groupmod -n pi robert
 	fi
-else
-	echo "user pi exists"
-	exit 1;
 fi
 
 # fix fstab
@@ -46,11 +43,19 @@ fi
 findmnt /mnt/ad64
 if test $? -eq 0; then
 	umount /mnt/ad64
+	test $? -ne 0 && exit 1;
 fi
 cd /mnt
-rm svn
-rm hdd
-rmdir *
+rm -v svn
+rm -v debhome
+rmdir -v *
+chown root.root /mnt
+
+# rm debhome.sources
+rm -vf /etc/apt/sources.list.d/debhome.sources
+
+# rm keyrings
+rm -rfv /etc/apt/keyrings
 
 # rm sudoers
 if test -f /etc/sudoers.d/robert; then
@@ -83,6 +88,8 @@ else
 fi
 
 # restore .bashrc  in pi , robert already changed to pi
+rm -fv /home/pi/.git*
+
 if test -f /home/pi/.bashrc.bak; then
 	mv -vf /home/pi/.bashrc.bak /home/pi/.bashrc
 else
@@ -107,8 +114,8 @@ sed -i -e 's/FONTFACE=\".*\"/FONTFACE=""/' /etc/default/console-setup
 sed -i -e 's/FONTSIZE=\".*\"/FONTSIZE=""/' /etc/default/console-setup
 
 # reset keyboard
-sed -i -e 's/XKBLAYOUT=\".*\"/XKBLAYOUT="gb"/' /etc/default/keyboard
-setupcon
+# sed -i -e 's/XKBLAYOUT=\".*\"/XKBLAYOUT="gb"/' /etc/default/keyboard
+setupcon --save
 
 # edit /boot/config.txt
 sed -i -e 's/^disable_overscan/#disable_overscan/' /boot/config.txt

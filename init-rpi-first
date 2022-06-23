@@ -317,11 +317,8 @@ accountcolours() {
 	sed -i -e 's/^LINK 01;36/LINK 01;33/' /root/.dircolors
 
 	#########################
-	# setup  /home/robert account
+	# setup  non root account for current user
 	#########################
-	# check user robert exists
-	groups robert > /dev/null 2>&1
-	test $? -eq 0 || exitonerror "user robert does not exist"
 
 	# copy .dircolors to /home/robert and set ownership
 	cp /root/.dircolors "/home/$1/"
@@ -332,7 +329,7 @@ accountcolours() {
 		sudo -u $1 cp /home/$1/.bashrc /home/$1/.bashrc.bak
 	fi
 	# change colour of prompt
-	sudo -u robert sed -i -e 's/#force_color_prompt/force_color_prompt/' /home/$1/.bashrc
+	sudo -u $1 sed -i -e 's/#force_color_prompt/force_color_prompt/' /home/$1/.bashrc
 	sudo -u $1 sed -i -e 's/\[\\033\[01;34m\\\]/\[\\033\[01;36m\\\]/' /home/$1/.bashrc
 
 	# install git credentials
