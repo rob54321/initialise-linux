@@ -497,15 +497,17 @@ log "success"
 ###################################
 # only use init-rpi.service if user robert
 # does not exist
-getent passwd robert > /dev/null 2>&1
+getent passwd pi > /dev/null 2>&1
 RC=$?
-log "setupservice $*"
-test ${RC} -ne 0 && setupservice $*
+if test ${RC} -eq 0; then
+	setupservice $*
+	log "setupservice $*"
+fi
 
 ############################################
 # reboot only if option set and
 # user is pi. init-rpi will change pi to robert
 ############################################
-if test "${REBOOT}" = "true" && test ${RC} -ne 0; then
+if test "${REBOOT}" = "true" && test ${RC} -eq 0; then
 	shutdown -r now
 fi
