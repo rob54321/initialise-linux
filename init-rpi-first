@@ -497,19 +497,13 @@ log "success"
 # does not exist
 getent passwd robert > /dev/null 2>&1
 RC=$?
-echo "setupservice $*"
+log "setupservice $*"
 test ${RC} -ne 0 && setupservice $*
 
 ############################################
-# reboot if it is necessary
-# only necessary if pi was changed to robert
+# reboot only if option set and
+# user is pi. init-rpi will change pi to robert
 ############################################
 if test "${REBOOT}" = "true" && test ${RC} -ne 0; then
-#	shutdown -r now
-	echo "shutdown -r now"
-else
-	# excute init-rpi
-#	/usr/local/bin/init-rpi $*
-	echo "/usr/local/bin/init-rpi $*"
-
+	shutdown -r now
 fi
