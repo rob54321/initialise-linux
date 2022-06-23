@@ -35,6 +35,83 @@ log() {
 	echo "$1" | tee -a ${LOGFILE}
 }
 
+################################
+# setup sudoers.d/robert
+# and fstab
+# setup console boot, hostname timezone,
+# console fonts, keyboard, splash screen,
+# disable overscan
+# no parameters passed
+###################################
+setuplinux() {
+	# install files sudoers
+	svn export --force ${SVNURL}/root/my-linux/sudoers.d/robert /etc/sudoers.d
+	test $? -eq 0 || exitonerror "could not export sudoers.d from subversion"
+
+	# set ownership
+	chown root.root /etc/sudoers.d/robert
+	chmod 0440 /etc/sudoers.d/robert
+
+	# setup fstab if it has not been setup already.
+	svn export --force ${SVNURL}/root/my-linux/config-files/fstab-extension /etc
+	test $? -eq 0 || exitonerror "could not export fstab-extension from subversion"
+
+	# check if fstab-extention has been added to /etc/fstab
+	grep -q "fstab-extension" /etc/fstab
+	if [ $? -ne 0 ]
+	then
+		# first backup it up
+		cp -a /etc/fstab /etc/fstab.bak
+
+		# append fstab extension to fstab
+		cat /etc/fstab-extension >> /etc/fstab
+	fi
+	rm /etc/fstab-extension
+
+	#############################################
+	# setup console boot, hostname timezone,
+	# console fonts, keyboard, splash screen,
+	# disable overscan
+	#############################################
+	# set the rpi to boot to console and no autologin
+	systemctl set-default multi-user.target
+	ln -fs /lib/systemd/system/getty@.service /etc/systemd/system/getty.target.wants/getty@tty1.service
+	if test -e /etc/systemd/system/getty@tty1.service.d/autologin.conf; then
+		rm /etc/systemd/system/getty@tty1.service.d/autologin.conf
+	fi
+
+	# set the time and zone
+	timedatectl set-timezone Africa/Johannesburg
+
+	# set hostname
+	hostnamectl set-hostname rpi
+	# change it in /etc/hosts
+	sed -i -e 's/raspberrypi/rpi/' /etc/hosts
+
+	# setup default console with Terminus
+	cd /etc/default
+	sed -i -e 's/FONTFACE=\".*\"/FONTFACE="Terminus"/' \
+	       -e 's/FONTSIZE=\".*\"/FONTSIZE="16x32"/' /etc/default/console-setup
+
+	# setup keyboard
+	sed -i -e 's/XKBLAYOUT=\".*\"/XKBLAYOUT="za"/' /etc/default/keyboard
+	setupcon --save
+
+	# remove splash screen and make boot verbose
+	sed -i -e 's/quiet splash plymouth.ignore-serial-consoles//' /boot/cmdline.txt
+
+	# disable overscan to remove border in x windows
+	sed -i -e 's/^#disable_overscan/disable_overscan/' /boot/config.txt
+
+	# disable wi-fi and bluetooth
+	# prevent multiple copies
+	sed -i -e '/# disable wifi/,/disable-bt/d' /boot/config.txt
+	sed -i -e '/^# Additional overlays/a\# disable wifi\
+	dtoverlay=disable-wifi\
+	#disable bluetooth\
+	dtoverlay=disable-bt' /boot/config.txt
+}
+
 #########################################################
 # function to setup subversion link and destintation
 # the new user must already exist
@@ -210,6 +287,79 @@ mountresource () {
 	fi
 	return 0;
 }
+#############################################
+# setup colors for accounts and nano
+# parameters: accountcolours current user
+# svn must be set up
+#############################################
+accountcolours() {
+	#############################
+	# setup /root account
+	#############################
+	# root .bashrc edit so directories will be in colour for root and red prompt
+	if test ! -f /root/.bashrc.bak; then
+		cp -f /root/.bashrc /root/.bashrc.bak
+	fi
+	# prevent multiple copies of the prompt
+	sed -i -e '/^PS1=.*36m.*/d' /root/.bashrc
+	# make the prompt
+	sed -i -e '/^# PS1/i \PS1='\''\${debian_chroot:+(\$debian_chroot)}\\[\\033[01;31m\\]\\u@\\h\\[\\033[00m\\]:\\[\\033[01;36m\\]\\w \#\\[\\033[00m\\] '\''' /root/.bashrc
+	# setup the aliases for colour
+	sed -i -e 's/^# alias l/alias l/' /root/.bashrc
+
+	# setup to use .dircolors
+	sed -i -e 's/^# export LS/export LS/' /root/.bashrc
+	sed -i -e 's/^# eval.*dircolors.*/eval \"\$(dircolors -b ~\/.dircolors)\"/' /root/.bashrc
+
+	# set up dircolors for root
+	dircolors --print-database > /root/.dircolors
+	sed -i -e 's/^DIR 01;34/DIR 01;36/' /root/.dircolors
+	sed -i -e 's/^LINK 01;36/LINK 01;33/' /root/.dircolors
+
+	#########################
+	# setup  /home/robert account
+	#########################
+	# check user robert exists
+	groups robert > /dev/null 2>&1
+	test $? -eq 0 || exitonerror "user robert does not exist"
+
+	# copy .dircolors to /home/robert and set ownership
+	cp /root/.dircolors "/home/$1/"
+	chown $1.$1 /home/$1/.dircolors
+
+	# edit .bashrc for pi so directories will be in colour
+	if test ! -f /home/$1/.bashrc.bak; then
+		sudo -u $1 cp /home/$1/.bashrc /home/$1/.bashrc.bak
+	fi
+	# change colour of prompt
+	sudo -u robert sed -i -e 's/#force_color_prompt/force_color_prompt/' /home/$1/.bashrc
+	sudo -u $1 sed -i -e 's/\[\\033\[01;34m\\\]/\[\\033\[01;36m\\\]/' /home/$1/.bashrc
+
+	# install git credentials
+	sudo -u $1 svn export --force ${SVNURL}/root/my-linux/git/.gitconfig /home/$1/
+	test $? -eq 0 || exitonerror "could not export .gitconfig"
+
+	sudo -u $1 svn export --force ${SVNURL}/root/my-linux/git/.git-credentials /home/$1/
+	test $? -eq 0 || exitonerror "could not export .git-credentials"
+
+	# export .bash_aliases from subversion
+	sudo -u $1 svn export --force ${SVNURL}/root/my-linux/config-files/bash_aliases/.bash_aliases /home/$1
+	test $? -eq 0 || exitonerror "could not export .bash_aliases"
+
+	# edit subversion config so .git and .gitignore are ignored
+	sed -i -e 's/^# global-ignores =/global-ignores = .git .gitignore/' /etc/subversion/config
+
+	# edit nanorc
+	sed -i -e 's/^# set autoindent/set autoindent/' \
+	       -e 's/^# set linenumbers/set linenumbers/' \
+	       -e 's/^# set smooth/set smooth/' \
+	       -e 's/^# set multibuffer/set multibuffer/' \
+	       -e 's/^# set positionlog/set positionlog/' \
+	       -e 's/^# set selectedcolor lightwhite,magenta/set selectedcolor lightwhite,magenta/' \
+	       -e 's/^# set numbercolor cyan/set numbercolor cyan/' \
+	       -e 's/^# set keycolor cyan/set keycolor cyan/' /etc/nanorc
+	log "setup account colours"
+}
 
 # defaults, links
 # /mnt/debhome    -> /mnt/DEBHOMELABEL/debhome
@@ -253,7 +403,23 @@ do
 	esac
 done
 
+######################################
+# install subversion if it is not installed
+# this used to be in init-rpi
+# solves a lot of problems installing it first
+######################################
+dpkg-query -W subversion > /dev/null 2>&1
+if test $? -ne 0; then
+	apt update
+	test $? -eq 0 || exitonerror "error from apt update"
+
+	apt -y install subversion
+	test $? -eq 0 || exitonerror "error installing subversion"
+fi
+
+#########################################
 # determine if user robert or pi exists.
+#########################################
 getent passwd robert > /dev/null 2>&1
 if test $? -eq 0; then
 	# non root user = robert
@@ -312,62 +478,13 @@ setupsvn "${CURUSER}"
 ###############################
 debhome "${CURUSER}"
 
-######################################
-# install subversion if it is not installed
-# this used to be in init-rpi
-# solves a lot of problems installing it first
-######################################
-dpkg-query -W subversion > /dev/null 2>&1
-if test $? -ne 0; then
-	apt update
-	test $? -eq 0 || exitonerror "error from apt update"
+# setup up account colours
+# subversion repository must be accessible
+accountcolours "${CURUSER}"
 
-	apt -y install subversion
-	test $? -eq 0 || exitonerror "error installing subversion"
-fi
 
-#############################################
-# setup console boot, hostname timezone,
-# console fonts, keyboard, splash screen,
-# disable overscan
-#############################################
-# set the rpi to boot to console and no autologin
-systemctl set-default multi-user.target
-ln -fs /lib/systemd/system/getty@.service /etc/systemd/system/getty.target.wants/getty@tty1.service
-if test -e /etc/systemd/system/getty@tty1.service.d/autologin.conf; then
-	rm /etc/systemd/system/getty@tty1.service.d/autologin.conf
-fi
 
-# set the time and zone
-timedatectl set-timezone Africa/Johannesburg
-
-# set hostname
-hostnamectl set-hostname rpi
-# change it in /etc/hosts
-sed -i -e 's/raspberrypi/rpi/' /etc/hosts
-
-# setup default console with Terminus
-cd /etc/default
-sed -i -e 's/FONTFACE=\".*\"/FONTFACE="Terminus"/' \
-       -e 's/FONTSIZE=\".*\"/FONTSIZE="16x32"/' /etc/default/console-setup
-
-# setup keyboard
-sed -i -e 's/XKBLAYOUT=\".*\"/XKBLAYOUT="za"/' /etc/default/keyboard
-setupcon --save
-
-# remove splash screen and make boot verbose
-sed -i -e 's/quiet splash plymouth.ignore-serial-consoles//' /boot/cmdline.txt
-
-# disable overscan to remove border in x windows
-sed -i -e 's/^#disable_overscan/disable_overscan/' /boot/config.txt
-
-# disable wi-fi and bluetooth
-# prevent multiple copies
-sed -i -e '/# disable wifi/,/disable-bt/d' /boot/config.txt
-sed -i -e '/^# Additional overlays/a\# disable wifi\
-dtoverlay=disable-wifi\
-#disable bluetooth\
-dtoverlay=disable-bt' /boot/config.txt
+log "success"
 
 #####################################
 # launch service init-rpi if necessary
@@ -388,9 +505,11 @@ test ${RC} -ne 0 && setupservice $*
 # only necessary if pi was changed to robert
 ############################################
 if test "${REBOOT}" = "true" && test ${RC} -ne 0; then
-	shutdown -r now
+#	shutdown -r now
+	echo "shutdown -r now"
 else
 	# excute init-rpi
-	/usr/local/bin/init-rpi $*
+#	/usr/local/bin/init-rpi $*
+	echo "/usr/local/bin/init-rpi $*"
 
 fi

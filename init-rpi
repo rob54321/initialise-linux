@@ -1,27 +1,10 @@
 #!/bin/bash
 
-# Script to initialise raspberry pi
-# this script is run by init-rpi-first or init-rpi.service
-# depending on if the original user was pi or robert
-# the raspberry pi will have booted into multi.user mode
-# ie console mode, not into x windows.
-# subversion was installed by init-rpi-first
-
-# multi-user.target is set so that user pi can be changed to robert
-# the clock and time zone are also set prior to this script
+# this script is run by init-rpi.service and
+# only changes user pi to robert after a reboot
+# it also changes ownership of directories from pi to robert
+# if the initial user is robert it is not run at all.
 #
-# the subversion repository must exist.
-# this script initialises the repositories for apt-get, makes all directories, sets links svn and debhome
-# user robert exists only at this stage hence directories persmisions can only be set here
-
-usage() {
-	echo "-m disk label for debhome				default: ${DEBHOMELABEL}";
-	echo "-s disk label for svn      				default: ${SVNLABEL}";
-	echo "-S svn destination					default: none";
-   	echo "-R reboot                                         default: no reboot";
-	echo "-h help"
-	exit 0
-}
 ###############################################################
 # function to log output
 # first parameter is string to log
@@ -51,7 +34,7 @@ changeuser() {
 	ps -U "$1" > /dev/null 2>&1
 	test $? -eq 0 && exitonerror "a process from user $1 is still running"
 
-	groups $2 > /dev/null 2>&1
+	getent passwd $2 > /dev/null 2>&1
 	if test $? -ne 0; then
 		# user robert does not exist, create it
 		# since svn might be copied to newuser home
@@ -74,179 +57,41 @@ changeuser() {
 	fi
 }
 ###########################################
-# make all the mount directories
-# the new user must already exist
-# set ownership to newuser of new directories and /mnt
-# parameters: makedirs ${NEWUSER}
+# set ownership of /mnt/ dirs to robert.robert
+# after pi changed to robert
+# parameter passed is user robert
 ###########################################
-makedirs() {
-	chown $1.$1 /mnt
-	dirlist="hd2 hd3 ad64 ssd axiz axiz2 king sah trans ver ver8 chaos ad scd1 scd2"
-	for dir in $dirlist
-	do
-		if [ ! -d /mnt/${dir} ]
-		then
-			mkdir /mnt/${dir}
-			test $? -eq 0 || exitonerror "could not make /mnt/${dir}"
-		fi
-	done
-
+setowner() {
+	chown -R --no-dereference $1.$1 /mnt
 	# change ownership of directories
-	chown --no-dereference $1.$1 /mnt/*
-	log "made directories"
+
+	log "set ownership of directories"
 }
 
-##################################################
-# function to check for svn or debhome
-# this function will mount the correct disk drive
-# the function will exit  on error if not found
-# Note: svn and debhome may or may not be on the same disk label
-# parameters passed: newuser, disk_label, root directory of svn | root directory of debhome
-##################################################
-mountresource () {
-	# exit if label not attached
-	DEVICE=`blkid -L "$2"`
-
-	if test "$?" -ne 0; then
-		exitonerror "$2 is not attached"
-	fi
-
-	# make mount directories if they do not exist
-	test -d "/mnt/$2" || mkdir "/mnt/$2"
-	test $? -eq 0 || exitonerror "could not make /mnt/$2"
-	chown $1.$1 "/mnt/$2"
-
-	# if not mounted mount it
-	findmnt "/mnt/$2"
-	if test $? -ne 0; then
-		mount -L "$2" "/mnt/$2"
-		test $? -eq 0 || exitonerror "could not mount $2 at /mnt/$2"
-		chown $1.$1 "/mnt/$2"
-		log "mounted $2 on /mnt/$2"
-	else
-		# already mounted
-		log "/mnt/$2 is already mounted"
-	fi
-
-	# check if svn | debhome is accessible
-	if test ! -d "/mnt/$2/$3"; then
-		# svn or archive does not exist
-		umount "/mnt/$2"
-		exitonerror "/mnt/$2/$3 not found, unmounting /mnt/$2"
-	else
-		log "found /mnt/$2/$3"
-	fi
-	return 0;
-}
-#############################################
-# setup colors for accounts and nano
-# parameters: accountcolours newuser
-#############################################
-accountcolours() {
-	#############################
-	# setup /root account
-	#############################
-	# root .bashrc edit so directories will be in colour for root and red prompt
-	if test ! -f /root/.bashrc.bak; then
-		cp -f /root/.bashrc /root/.bashrc.bak
-	fi
-	# prevent multiple copies of the prompt
-	sed -i -e '/^PS1=.*36m.*/d' /root/.bashrc
-	# make the prompt
-	sed -i -e '/^# PS1/i \PS1='\''\${debian_chroot:+(\$debian_chroot)}\\[\\033[01;31m\\]\\u@\\h\\[\\033[00m\\]:\\[\\033[01;36m\\]\\w \#\\[\\033[00m\\] '\''' /root/.bashrc
-	# setup the aliases for colour
-	sed -i -e 's/^# alias l/alias l/' /root/.bashrc
-
-	# setup to use .dircolors
-	sed -i -e 's/^# export LS/export LS/' /root/.bashrc
-	sed -i -e 's/^# eval.*dircolors.*/eval \"\$(dircolors -b ~\/.dircolors)\"/' /root/.bashrc
-
-	# set up dircolors for root
-	dircolors --print-database > /root/.dircolors
-	sed -i -e 's/^DIR 01;34/DIR 01;36/' /root/.dircolors
-	sed -i -e 's/^LINK 01;36/LINK 01;33/' /root/.dircolors
-
-	#########################
-	# setup  /home/robert account
-	#########################
-	# check user robert exists
-	groups robert > /dev/null 2>&1
-	test $? -eq 0 || exitonerror "user robert does not exist"
-
-	# copy .dircolors to /home/robert and set ownership
-	cp /root/.dircolors "/home/$1/"
-	chown $1.$1 /home/$1/.dircolors
-
-	# edit .bashrc for pi so directories will be in colour
-	if test ! -f /home/$1/.bashrc.bak; then
-		sudo -u $1 cp /home/$1/.bashrc /home/$1/.bashrc.bak
-	fi
-	# change colour of prompt
-	sudo -u robert sed -i -e 's/#force_color_prompt/force_color_prompt/' /home/$1/.bashrc
-	sudo -u $1 sed -i -e 's/\[\\033\[01;34m\\\]/\[\\033\[01;36m\\\]/' /home/$1/.bashrc
-
-	# install git credentials
-	sudo -u $1 svn export --force ${SVNURL}/root/my-linux/git/.gitconfig /home/$1/
-	test $? -eq 0 || exitonerror "could not export .gitconfig"
-
-	sudo -u $1 svn export --force ${SVNURL}/root/my-linux/git/.git-credentials /home/$1/
-	test $? -eq 0 || exitonerror "could not export .git-credentials"
-
-	# export .bash_aliases from subversion
-	sudo -u $1 svn export --force ${SVNURL}/root/my-linux/config-files/bash_aliases/.bash_aliases /home/$1
-	test $? -eq 0 || exitonerror "could not export .bash_aliases"
-
-	# edit subversion config so .git and .gitignore are ignored
-	sed -i -e 's/^# global-ignores =/global-ignores = .git .gitignore/' /etc/subversion/config
-
-	# edit nanorc
-	sed -i -e 's/^# set autoindent/set autoindent/' \
-	       -e 's/^# set linenumbers/set linenumbers/' \
-	       -e 's/^# set smooth/set smooth/' \
-	       -e 's/^# set multibuffer/set multibuffer/' \
-	       -e 's/^# set positionlog/set positionlog/' \
-	       -e 's/^# set selectedcolor lightwhite,magenta/set selectedcolor lightwhite,magenta/' \
-	       -e 's/^# set numbercolor cyan/set numbercolor cyan/' \
-	       -e 's/^# set keycolor cyan/set keycolor cyan/' /etc/nanorc
-	log "setup account colours"
-}
 
 # only for raspberry pi
-DEBHOMELABEL="ad64"
-DEBHOMELINK="/mnt/debhome"
-SVNLABEL="ad64"
-SVNLINK="/mnt/svn"
+LOGFILE="/tmp/init-rpi.log"
 OLDUSER="pi"
 NEWUSER="robert"
-LOGFILE="/tmp/init-rpi.log"
-SVNURL="file:///mnt/svn"
-SVNDESTCHANGED="false"
 
 ################################
 # main entry
 ################################
 log "init-rpi is running" "new"
 
-# parameter S destinstion of svn is
-# only used in init-rpi, not in this script
-while getopts RS:m:s:r:h opt
-do
-	case ${opt} in
-		m) DEBHOMELABEL="${OPTARG}";;
-		s) SVNLABEL="${OPTARG}";;
-		S) SVNDESTINATION="${OPTARG}"; SVNDESTCHANGED="true";;
-		R) REBOOT="true";;
-		h) usage;;
-		\?) usage;;
-	esac
-done
+# if user is robert, exit nothing to be done
+getent passwd robert > /dev/null 2>&1
+test $? -eq 0 && exitonerror "nothing to be done"
 
-# exit if subverion is not installed
-dpkg-query -W subversion > /dev/null 2>&1
-test $? -eq 0 || exitonerror "subversion is not installed"
+# if user not pi exit
+getent passwd pi > /dev/null 2>&1
+test $? -eq 0 || exitonerror "old user is not pi"
 
 # change user from pi to robert
 changeuser "${OLDUSER}" "${NEWUSER}"
+
+# set ownership of /mnt directories
+setowner "${NEWUSER}"
 
 # disable the init-rpi.service if it is enabled
 if test -f /etc/systemd/system/init-rpi.service; then
@@ -257,49 +102,3 @@ if test -f /etc/systemd/system/init-rpi.service; then
 		log "disabled init-rpi.service"
 	fi
 fi
-
-# set ownership of directories to robert.robert
-# the user may have changed from pi to robert
-
-# mount svn and make link
-# cp svn if destination was changed
-setupsvn "${NEWUSER}"
-
-# mount debhome and make link
-debhome "${NEWUSER}"
-
-# setup up account colours
-# subversion repository must be accessible
-accountcolours "${NEWUSER}"
-
-# setup console
-setupcon
-
-################################
-# setup sudoers.d/robert
-# and fstab
-###################################
-# install files sudoers
-svn export --force ${SVNURL}/root/my-linux/sudoers.d/robert /etc/sudoers.d
-test $? -eq 0 || exitonerror "could not export sudoers.d from subversion"
-
-# set ownership
-chown root.root /etc/sudoers.d/robert
-chmod 0440 /etc/sudoers.d/robert
-
-# setup fstab if it has not been setup already.
-svn export --force ${SVNURL}/root/my-linux/config-files/fstab-extension /etc
-test $? -eq 0 || exitonerror "could not export fstab-extension from subversion"
-
-# check if fstab-extention has been added to /etc/fstab
-grep -q "fstab-extension" /etc/fstab
-if [ $? -ne 0 ]
-then
-	# first backup it up
-	cp -a /etc/fstab /etc/fstab.bak
-
-	# append fstab extension to fstab
-	cat /etc/fstab-extension >> /etc/fstab
-fi
-rm /etc/fstab-extension
-log "success"
