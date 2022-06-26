@@ -107,9 +107,14 @@ setuplinux() {
 	# prevent multiple copies
 	sed -i -e '/# disable wifi/,/disable-bt/d' /boot/config.txt
 	sed -i -e '/^# Additional overlays/a\# disable wifi\
-	dtoverlay=disable-wifi\
-	#disable bluetooth\
-	dtoverlay=disable-bt' /boot/config.txt
+dtoverlay=disable-wifi\
+#disable bluetooth\
+dtoverlay=disable-bt' /boot/config.txt
+
+	# setup hdmi 4k
+	sed -i -e '/hdmi_enable_4kp60=1/d' /boot/config.txt
+	sed -i -e '$a\hdmi_enable_4kp60=1' /boot/config.txt
+
 }
 
 #########################################################
