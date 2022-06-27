@@ -75,18 +75,8 @@ setuplinux() {
 	#############################################
 	# set the rpi to boot to console and no autologin
 	systemctl set-default multi-user.target
-	ln -fs /lib/systemd/system/getty@.service /etc/systemd/system/getty.target.wants/getty@tty1.service
-	if test -e /etc/systemd/system/getty@tty1.service.d/autologin.conf; then
-		rm /etc/systemd/system/getty@tty1.service.d/autologin.conf
-	fi
-
 	# set the time and zone
 	timedatectl set-timezone Africa/Johannesburg
-
-	# set hostname
-	hostnamectl set-hostname rpi
-	# change it in /etc/hosts
-	sed -i -e 's/raspberrypi/rpi/' /etc/hosts
 
 	# setup default console with Terminus
 	cd /etc/default
@@ -97,24 +87,39 @@ setuplinux() {
 	sed -i -e 's/XKBLAYOUT=\".*\"/XKBLAYOUT="za"/' /etc/default/keyboard
 	setupcon --save
 
-	# remove splash screen and make boot verbose
-	sed -i -e 's/quiet splash plymouth.ignore-serial-consoles//' /boot/cmdline.txt
+	###################################################################
+	# for raspberry pi only
+	###################################################################
+	if test ${ARCH} = "aarch64"; then
+		# remove splash screen and make boot verbose
+		sed -i -e 's/quiet splash plymouth.ignore-serial-consoles//' /boot/cmdline.txt
 
-	# disable overscan to remove border in x windows
-	sed -i -e 's/^#disable_overscan/disable_overscan/' /boot/config.txt
+		# disable overscan to remove border in x windows
+		sed -i -e 's/^#disable_overscan/disable_overscan/' /boot/config.txt
 
-	# disable wi-fi and bluetooth
-	# prevent multiple copies
-	sed -i -e '/# disable wifi/,/disable-bt/d' /boot/config.txt
-	sed -i -e '/^# Additional overlays/a\# disable wifi\
+		# set the raspberry pi to not do auto login
+		ln -fs /lib/systemd/system/getty@.service /etc/systemd/system/getty.target.wants/getty@tty1.service
+		if test -e /etc/systemd/system/getty@tty1.service.d/autologin.conf; then
+			rm /etc/systemd/system/getty@tty1.service.d/autologin.conf
+		fi
+
+		# set hostname
+		hostnamectl set-hostname rpi
+		# change it in /etc/hosts
+		sed -i -e 's/raspberrypi/rpi/' /etc/hosts
+
+		# disable wi-fi and bluetooth
+		# prevent multiple copies
+		sed -i -e '/# disable wifi/,/disable-bt/d' /boot/config.txt
+		sed -i -e '/^# Additional overlays/a\# disable wifi\
 dtoverlay=disable-wifi\
 #disable bluetooth\
 dtoverlay=disable-bt' /boot/config.txt
 
-	# setup hdmi 4k
-	sed -i -e '/hdmi_enable_4kp60=1/d' /boot/config.txt
-	sed -i -e '$a\hdmi_enable_4kp60=1' /boot/config.txt
-
+		# setup hdmi 4k
+		sed -i -e '/hdmi_enable_4kp60=1/d' /boot/config.txt
+		sed -i -e '$a\hdmi_enable_4kp60=1' /boot/config.txt
+	fi
 }
 
 #########################################################
@@ -199,10 +204,18 @@ debhome() {
 	svn export --force ${SVNURL}/root/my-linux/sources/gpg/debhomepubkey.asc /etc/apt/keyrings/
 	test $? -eq 0 || exitonerror "could not export debhomepubkey.asc from subverison"
 
-	# export debhome
-	svn export --force ${SVNURL}/root/my-linux/sources/arm64/debhome.sources /etc/apt/sources.list.d/
-	test $? -eq 0 || exitonerror "could not export debhome.sources from subversion"
-
+	if test "${ARCH}" = "aarch64"; then
+		# export debhome.source for arm64
+		svn export --force ${SVNURL}/root/my-linux/sources/arm64/debhome.sources /etc/apt/sources.list.d/
+		test $? -eq 0 || exitonerror "could not export debhome.sources from subversion"
+	elif "${ARCH}" = "x86_64"; then
+		# export debhome.source for amd64
+		svn export --force ${SVNURL}/root/my-linux/sources/amd64/debhome.sources /etc/apt/sources.list.d/
+		test $? -eq 0 || exitonerror "could not export debhome.sources from subversion"
+	else
+		# unknown architecture
+		exitonerror "unknown architecture"
+	fi
 	log "setup debhome"
 }
 
@@ -383,11 +396,12 @@ NEWUSER="robert"
 LOGFILE="/tmp/init-rpi-first.log"
 # the current non root user, either robert or pi
 CURUSER="none"
+ARCH=`arch`
 
 ################################
 # main entry
 ################################
-log "init-rpi-first is running" "new"
+log "init-rpi-first is running for ${ARCH}" "new"
 
 # parameter S destinstion of svn is
 # only used in init-rpi, not in this script
