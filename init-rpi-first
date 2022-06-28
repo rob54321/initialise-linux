@@ -74,7 +74,8 @@ setuplinux() {
 	# disable overscan
 	#############################################
 	# set the rpi to boot to console and no autologin
-	systemctl set-default multi-user.target
+	DEFAULT=`systemctl get-default`
+	test "${DEFAULT}" = "multi-user.target" || systemctl set-default multi-user.target
 	# set the time and zone
 	timedatectl set-timezone Africa/Johannesburg
 
@@ -208,7 +209,7 @@ debhome() {
 		# export debhome.source for arm64
 		svn export --force ${SVNURL}/root/my-linux/sources/arm64/debhome.sources /etc/apt/sources.list.d/
 		test $? -eq 0 || exitonerror "could not export debhome.sources from subversion"
-	elif "${ARCH}" = "x86_64"; then
+	elif test "${ARCH}" = "x86_64"; then
 		# export debhome.source for amd64
 		svn export --force ${SVNURL}/root/my-linux/sources/amd64/debhome.sources /etc/apt/sources.list.d/
 		test $? -eq 0 || exitonerror "could not export debhome.sources from subversion"
