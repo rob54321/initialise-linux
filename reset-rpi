@@ -122,3 +122,6 @@ sed -i -e 's/^disable_overscan/#disable_overscan/' /boot/config.txt
 
 # reset back to normal boot
 systemctl set-default graphical.target
+
+# rm init-rpi-first from /usr/local/bin
+test -f /usr/local/bin/init-rpi-first && rm -v /usr/local/bin/init-rpi-first
