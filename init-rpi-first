@@ -1,19 +1,30 @@
 #! /bin/sh
 
 # this script should be run immediately after the rpi has
-# maximised the sdcard space, ie after the first boot.
-# it installs subversion and sets up rpi to boot to console and then runs init-rpi
-# through systemd service. init-rpi only runs once and does
-# the rest of the setup.
-
-# this is done so user pi is not active
-# and usermod and groupmod can be run.
+# maximised the sdcard space, or on ubuntu after install.
+# it installs subversion and sets up rpi/ubuntu to
+# 1. boot to console
+# 2. set console font and keyboard
+# 3. set boot paramters for rpi/ubuntu and fstab
+# 4. export sudoers robert
+# 5. set aliases and bashrc for root and robert
+# 6. install subversion
+# 6. setup subversion resporitory
+# 7. setup debhome repository with debhomepubkey.asc and debhome.sources
+# 8. makes all mount directories and sets ownership
+# 9. if the user is pi, setup init service to create user robert after boot
+#    by using systemd service
+#    this is done so user pi is not active
+#    and usermod and groupmod can be run.
+#    this script is run by systemd after boot with a parameter
+#    to change user pi to robert only if the initial user was pi
 
 usage() {
 	echo "-m disk label for debhome				default: ${DEBHOMELABEL}";
 	echo "-s disk label for svn      				default: ${SVNLABEL}";
 	echo "-S svn destination					default: none";
    	echo "-R reboot                                         default: no reboot";
+   	echo "-c changeuser, used automatically if user is pi  default: none";
 	echo "-h help"
 	exit 0
 }
@@ -243,17 +254,24 @@ makedirs() {
 	log "made directories"
 }
 
+##############################################
+# setupsevice is only used if initial user is pi
+# the service is enabled so the user is changed
+# from pi to robert after reboot.
+# this script is called with -c option for change user
+# and then exits after setting diretory and link permissions
+##############################################
 setupservice() {
 	# setup init-rpi.service to launch init-rpi on reboot
 	# network must be up and running
 	echo "[Unit]
-	Description=init-rpi.service reboot raspberry pi and then initialise rpi once.
+	Description=init-rpi.service reboot raspberry pi and change user from pi to robert
 	BindsTo=multi-user.target
 	After=multi-user.target
 
 	[Service]
 	Type=simple
-	ExecStart=/bin/bash /usr/local/bin/init-rpi $*
+	ExecStart=/bin/bash /usr/local/bin/init-rpi-first -c
 
 	[Install]
 	WantedBy=multi-user.target" > /etc/systemd/system/init-rpi.service
@@ -376,6 +394,82 @@ accountcolours() {
 	       -e 's/^# set keycolor cyan/set keycolor cyan/' /etc/nanorc
 	log "setup account colours"
 }
+################################################
+# disable the init-rpi.service if it is enabled
+# invoked by changeuser
+################################################
+disable_init-rpi() {
+	if test -f /etc/systemd/system/init-rpi.service; then
+		systemctl is-enabled init-rpi.service
+		if test $? -eq 0; then
+			# disable the init-rpi.service
+			systemctl disable init-rpi.service
+			log "disabled init-rpi.service"
+		fi
+	fi
+}
+
+###########################################
+# invoked by changeuser function.
+# set ownership of /mnt/ dirs to robert.robert
+# after pi changed to robert
+# parameter passed is user robert
+###########################################
+setowner() {
+	chown -R --no-dereference $1.$1 /mnt
+	# change ownership of directories
+
+	log "set ownership of directories"
+}
+
+##############################################################
+# this function is only run after a reboot by systemd
+# to make sure no pi processes are running.
+# this function will exit if pi processes are running
+# change user pi to robert with correct groups and permissions
+# check if user robert exists
+# parameters: changeuser OLDUSER NEWUSER
+# ie changeuser pi robert
+##############################################################
+changeuser() {
+	# disable init-rpi.service
+	disable_init-rpi
+
+	# check if any process of pi is still running
+	ps -U "$1" > /dev/null 2>&1
+	test $? -eq 0 && exitonerror "a process from user $1 is still running"
+
+	getent passwd $2 > /dev/null 2>&1
+	if test $? -ne 0; then
+		# user robert does not exist, create it
+		# since svn might be copied to newuser home
+		# the olduser dir must be copied to the newuser directory
+		# usermod refuses to move if newuser home exists
+		usermod -l $2 -m -d /home/$2 $1
+
+		# if group pi exists, change it to group robert
+		getent group $1
+		if test $? -eq 0; then
+			# change the group pi to robert
+			groupmod -n $2 $1
+		fi
+		# set permissions of new user home
+		# and of the mount directories and links
+		chown $2.$2 -R /home/$2
+		setowner "$2"
+
+		log "$1 user changed to user $2"
+	else
+		log "user $2 already exists"
+	fi
+
+	# nothing more to be done.
+	# this function was invoked after a reboot
+	# initial user pi was changed to robert.
+	# so exit
+	log "success, exiting after user $1 changed to $2"
+	exit 0
+}
 
 # defaults, links
 # /mnt/debhome    -> /mnt/DEBHOMELABEL/debhome
@@ -408,13 +502,16 @@ log "init-rpi-first is running for ${ARCH}" "new"
 # only used in init-rpi, not in this script
 # svndestination is only used by init-rpi
 # it must be defined here as it is passed to init-rpi
-while getopts RS:m:s:r:h opt
+# option c is only used automatically by this script
+# if the initial user is pi
+while getopts RS:m:s:r:ch opt
 do
 	case ${opt} in
 		m) DEBHOMELABEL="${OPTARG}";;
 		s) SVNLABEL="${OPTARG}";;
 		S) SVNDESTINATION="${OPTARG}"; SVNDESTCHANGED="true";;
 		R) REBOOT="true";;
+		c) changeuser "${OLDUSER}" "${NEWUSER}";;
 		h) usage;;
 		\?) usage;;
 	esac
@@ -447,6 +544,10 @@ else
 	if test $? -eq 0; then
 		# non root user = pi
 		CURUSER="pi"
+
+		# user can be changed only after reboot
+		# setup service for reboot
+		setupservice
 	else
 		# non root user is unknown
 		exitonerror "user robert or pi does not exist"
@@ -454,32 +555,15 @@ else
 fi
 
 #####################################
-# init-rpi must to be copied to /usr/local/bin
-# find init-rpi
-# look in current dir, usr/local/bin, prompt
-# exit if init-rpi not found
+# init-rpi-first must to be copied to /usr/local/bin
 #####################################
-if test -f "/usr/local/bin/init-rpi"; then
-	# found init-rpi
-	echo "found /usr/local/bin/init-rpi"
-elif test -f "init-rpi"; then
-	# look in current directory
-	echo "found init-rpi"
-	cp -v init-rpi /usr/local/bin/
-
-else
-	# prompt for init-rpi
-	echo "Enter the path of init-rpi"
-	read INITP
-	if test -f "${INITP}/init-rpi"; then
-		if test "/usr/local/bin" != "${INITP}"; then
-			cp -v "${INITP}/init-rpi" "/usr/local/bin/"
-		fi
-	else
-		# file not found
-		exitonerror "${INITP}/init-rpi not found"
-	fi
+# copy this script to /usr/local/bin
+# incase init-rpi.service needs to run it
+# only copy if not run from /usr/local/bin
+if test "$0" != "/usr/local/bin/init-rpi-first"; then
+	cp -vf $0 /usr/local/bin/
 fi
+
 ########################################
 # make directories and set ownership
 ########################################
@@ -508,26 +592,12 @@ setuplinux
 
 log "success"
 
-#####################################
-# launch service init-rpi if necessary
-# create the init-rpi service
-# the svn destination and/or debhome label may have changed
-# so they must be passed to init-rpi
-# since a reboot will occur
-###################################
-# only use init-rpi.service if user robert
-# does not exist
-getent passwd pi > /dev/null 2>&1
-RC=$?
-if test ${RC} -eq 0; then
-	setupservice $*
-	log "setupservice $*"
-fi
-
 ############################################
 # reboot only if option set and
 # user is pi. init-rpi will change pi to robert
 ############################################
-if test "${REBOOT}" = "true" && test ${RC} -eq 0; then
+if test "${REBOOT}" = "true" && test "${CURUSER} = "${OLDUSER}"; then
 	shutdown -r now
+elif test "${CURUSER}" = "${OLDUSER}"; then
+	echo "reboot to change user"
 fi

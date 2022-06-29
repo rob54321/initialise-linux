@@ -25,10 +25,12 @@ exitonerror() {
 	exit 1
 }
 
+##############################################################
 # change user pi to robert with correct groups and permissions
 # check if user robert exists
 # parameters: changeuser OLDUSER NEWUSER
 # ie changeuser pi robert
+##############################################################
 changeuser() {
 	# check if any process of pi is still running
 	ps -U "$1" > /dev/null 2>&1
