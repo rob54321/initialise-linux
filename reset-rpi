@@ -3,7 +3,7 @@
 # this script resets the pi back
 # to it's original state.
 # user robert change to pi
-# so that init-rpi and init-rpi-first can be tested
+# so that init-linux can be tested
 
 # change robert to pi, groups as well
 getent passwd pi > /dev/null 2>&1
@@ -123,5 +123,5 @@ sed -i -e 's/^disable_overscan/#disable_overscan/' /boot/config.txt
 # reset back to normal boot
 systemctl set-default graphical.target
 
-# rm init-rpi-first from /usr/local/bin
-test -f /usr/local/bin/init-rpi-first && rm -v /usr/local/bin/init-rpi-first
+# rm init-linux from /usr/local/bin
+test -f /usr/local/bin/init-linux && rm -v /usr/local/bin/init-linux
