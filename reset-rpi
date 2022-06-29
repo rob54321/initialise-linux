@@ -88,6 +88,7 @@ else
 fi
 
 # restore .bashrc  in pi , robert already changed to pi
+rm -v .git*
 
 if test -f /home/pi/.bashrc.bak; then
 	mv -vf /home/pi/.bashrc.bak /home/pi/.bashrc
