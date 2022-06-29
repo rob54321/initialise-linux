@@ -398,7 +398,7 @@ accountcolours() {
 # disable the init-rpi.service if it is enabled
 # invoked by changeuser
 ################################################
-disable_init-rpi() {
+disableinitrpi() {
 	if test -f /etc/systemd/system/init-rpi.service; then
 		systemctl is-enabled init-rpi.service
 		if test $? -eq 0; then
@@ -433,7 +433,7 @@ setowner() {
 ##############################################################
 changeuser() {
 	# disable init-rpi.service
-	disable_init-rpi
+	disableinitrpi
 
 	# check if any process of pi is still running
 	ps -U "$1" > /dev/null 2>&1
@@ -467,7 +467,7 @@ changeuser() {
 	# this function was invoked after a reboot
 	# initial user pi was changed to robert.
 	# so exit
-	log "success, exiting after user $1 changed to $2"
+	log "success, exiting"
 	exit 0
 }
 
@@ -596,7 +596,7 @@ log "success"
 # reboot only if option set and
 # user is pi. init-rpi will change pi to robert
 ############################################
-if test "${REBOOT}" = "true" && test "${CURUSER} = "${OLDUSER}"; then
+if test "${REBOOT}" = "true" && test "${CURUSER}" = "${OLDUSER}"; then
 	shutdown -r now
 elif test "${CURUSER}" = "${OLDUSER}"; then
 	echo "reboot to change user"
