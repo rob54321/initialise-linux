@@ -517,6 +517,16 @@ do
 	esac
 done
 
+#####################################
+# init-rpi-first must to be copied to /usr/local/bin
+#####################################
+# copy this script to /usr/local/bin
+# incase init-rpi.service needs to run it
+# only copy if not run from /usr/local/bin
+if test "$0" != "/usr/local/bin/init-rpi-first"; then
+	cp -vf $0 /usr/local/bin/
+fi
+
 ######################################
 # install subversion if it is not installed
 # this used to be in init-rpi
@@ -552,16 +562,6 @@ else
 		# non root user is unknown
 		exitonerror "user robert or pi does not exist"
 	fi
-fi
-
-#####################################
-# init-rpi-first must to be copied to /usr/local/bin
-#####################################
-# copy this script to /usr/local/bin
-# incase init-rpi.service needs to run it
-# only copy if not run from /usr/local/bin
-if test "$0" != "/usr/local/bin/init-rpi-first"; then
-	cp -vf $0 /usr/local/bin/
 fi
 
 ########################################
