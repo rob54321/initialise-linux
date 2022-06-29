@@ -271,7 +271,7 @@ setupservice() {
 
 	[Service]
 	Type=simple
-	ExecStart=/bin/bash /usr/local/bin/init-rpi-first -c
+	ExecStart=/bin/bash /usr/local/bin/init-linux -c
 
 	[Install]
 	WantedBy=multi-user.target" > /etc/systemd/system/init-rpi.service
@@ -488,7 +488,7 @@ SVNURL="file:///mnt/svn"
 SVNDESTCHANGED="false"
 OLDUSER="pi"
 NEWUSER="robert"
-LOGFILE="/tmp/init-rpi-first.log"
+LOGFILE="/tmp/init-linux.log"
 # the current non root user, either robert or pi
 CURUSER="none"
 ARCH=`arch`
@@ -496,7 +496,7 @@ ARCH=`arch`
 ################################
 # main entry
 ################################
-log "init-rpi-first is running for ${ARCH}" "new"
+log "init-linux is running for ${ARCH}" "new"
 
 # parameter S destinstion of svn is
 # only used in init-rpi, not in this script
@@ -518,12 +518,12 @@ do
 done
 
 #####################################
-# init-rpi-first must to be copied to /usr/local/bin
+# init-linux must to be copied to /usr/local/bin
 #####################################
 # copy this script to /usr/local/bin
 # incase init-rpi.service needs to run it
 # only copy if not run from /usr/local/bin
-if test "$0" != "/usr/local/bin/init-rpi-first"; then
+if test "$0" != "/usr/local/bin/init-linux"; then
 	cp -vf $0 /usr/local/bin/
 fi
 
