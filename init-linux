@@ -92,14 +92,14 @@ setuplinux() {
 	cd /etc/default
 	# make a backup
 
-	cp -v /etc/default/console-setup /etc/default/console-setup.bak
+	test -f /etc/default/console-setup.bak || cp -v /etc/default/console-setup /etc/default/console-setup.bak
 
 	sed -i -e 's/FONTFACE=\".*\"/FONTFACE="Terminus"/' \
 	       -e 's/FONTSIZE=\".*\"/FONTSIZE="16x32"/' /etc/default/console-setup
 
 	# setup keyboard
 	# make a backup
-	cp -v /etc/default/keyboard /etc/default/keyboard.bak
+	test -f /etc/default/keyboard.bak || cp -v /etc/default/keyboard /etc/default/keyboard.bak
 
 	sed -i -e 's/XKBLAYOUT=\".*\"/XKBLAYOUT="za"/' /etc/default/keyboard
 	setupcon --save
