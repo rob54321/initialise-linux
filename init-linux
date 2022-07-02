@@ -146,6 +146,7 @@ dtoverlay=disable-bt' /boot/config.txt
 
 		# edit grub default to remove splash
 		sed -i -e 's/GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=\"\"/' /etc/default/grub
+		update-grub
 	fi
 }
 
