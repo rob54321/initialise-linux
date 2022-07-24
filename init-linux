@@ -154,7 +154,7 @@ dtoverlay=disable-bt' /boot/config.txt
 
 		# edit grub default to enable os prober
 		sed -i -e '/GRUB_DISABLE_OS_PROBER/d' /etc/default/grub
-		set -i -e '$a\GRUB_DISABLE_OS_PROBER="false"' /etc/default/grub
+		sed -i -e '$a\GRUB_DISABLE_OS_PROBER="false"' /etc/default/grub
 
 		# edit grub default to remove splash
 		sed -i -e 's/GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=\"\"/' /etc/default/grub
