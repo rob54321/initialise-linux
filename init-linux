@@ -143,13 +143,18 @@ dtoverlay=disable-bt' /boot/config.txt
 	# for amd64 only
 	#########################################################################
 	elif test "${ARCH}" = "x86_64"; then
+		echo "setting up linux ${ARCH}"
+
+		# export custom.cfg from subversion
+		svn export file:///mnt/svn/root/my-linux/grub/custom.cfg /boot/grub/
+
 		# set clock to local time
 		timedatectl set-local-rtc 1
 		hwclock -w
 
 		# edit grub default to enable os prober
 		sed -i -e '/GRUB_DISABLE_OS_PROBER/d' /etc/default/grub
-		set -i -e '$a\$GRUB_DISABLE_OS_PROBER="false"' /etc/default/grub
+		set -i -e '$a\GRUB_DISABLE_OS_PROBER="false"' /etc/default/grub
 
 		# edit grub default to remove splash
 		sed -i -e 's/GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=\"\"/' /etc/default/grub
