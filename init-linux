@@ -153,6 +153,7 @@ dtoverlay=disable-bt' /boot/config.txt
 		hwclock -w
 
 		# edit grub default to enable os prober
+		sed -i -e 's/^GRUB_TIMEOUT_STYLE/#GRUB_TIMEOUT_STYLE/' /etc/default/grub
 		sed -i -e '/GRUB_DISABLE_OS_PROBER/d' /etc/default/grub
 		sed -i -e '$a\GRUB_DISABLE_OS_PROBER="false"' /etc/default/grub
 
