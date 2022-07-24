@@ -146,7 +146,7 @@ dtoverlay=disable-bt' /boot/config.txt
 		echo "setting up linux ${ARCH}"
 
 		# export custom.cfg from subversion
-		svn export file:///mnt/svn/root/my-linux/grub/custom.cfg /boot/grub/
+		svn export --force file:///mnt/svn/root/my-linux/grub/custom.cfg /boot/grub/
 
 		# set clock to local time
 		timedatectl set-local-rtc 1
