@@ -145,6 +145,12 @@ dtoverlay=disable-bt' /boot/config.txt
 	elif test "${ARCH}" = "x86_64"; then
 		echo "setting up linux ${ARCH}"
 
+		# disable editfstab.service since it will be enabled
+		# after installation of linux on amd64. It is enabled
+		# in the live system.
+		systemctl is-enabled editfstab
+		systemctl is-enabled editfstab && systemctl disable editfstab
+
 		# export custom.cfg from subversion
 		svn export --force file:///mnt/svn/root/my-linux/grub/custom.cfg /boot/grub/
 
