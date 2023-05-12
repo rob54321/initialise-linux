@@ -148,8 +148,11 @@ dtoverlay=disable-bt' /boot/config.txt
 		# disable editfstab.service since it will be enabled
 		# after installation of linux on amd64. It is enabled
 		# in the live system.
-		systemctl is-enabled editfstab
-		systemctl is-enabled editfstab && systemctl disable editfstab
+		# note editfstab service will not exist if linux was installed
+		# from the iso image. First check if it exists
+		systemctl is-enabled editfstab > /dev/null 2>&1
+		
+		test $? -eq 0 && systemctl disable editfstab
 
 		# export custom.cfg from subversion
 		svn export --force file:///mnt/svn/root/my-linux/grub/custom.cfg /boot/grub/
