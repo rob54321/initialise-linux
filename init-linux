@@ -60,7 +60,7 @@ setuplinux() {
 	test $? -eq 0 || exitonerror "could not export sudoers.d from subversion"
 
 	# set ownership
-	chown root.root /etc/sudoers.d/robert
+	chown root:root /etc/sudoers.d/robert
 	chmod 0440 /etc/sudoers.d/robert
 
 	# setup fstab if it has not been setup already.
@@ -207,7 +207,7 @@ setupsvn() {
 		if test ! -d "${SVNDESTINATION}"; then
 			mkdir -p "${SVNDESTINATION}"
 			test $? -eq 0 || exitonerror "could not make ${SVNDESTINATION}"
-			chown $1.$1 "${SVNDESTINATION}"
+			chown $1:$1 "${SVNDESTINATION}"
 		fi
 		# copy files as new user
 		sudo -u $1 cp -a "/mnt/${SVNLABEL}/svn" "${SVNDESTINATION}/"
@@ -282,7 +282,7 @@ debhome() {
 # parameters: makedirs ${NEWUSER}
 ###########################################
 makedirs() {
-	chown $1.$1 /mnt
+	chown $1:$1 /mnt
 	dirlist="hd2 hd3 ad64 ssd axiz axiz2 king sah trans ver ver8 chaos ad scd1 scd2"
 	for dir in $dirlist
 	do
@@ -294,7 +294,7 @@ makedirs() {
 	done
 
 	# change ownership of directories
-	chown --no-dereference $1.$1 /mnt/*
+	chown --no-dereference $1:$1 /mnt/*
 	log "made directories"
 }
 
@@ -344,14 +344,14 @@ mountresource () {
 	# make mount directories if they do not exist
 	test -d "/mnt/$2" || mkdir "/mnt/$2"
 	test $? -eq 0 || exitonerror "could not make /mnt/$2"
-	chown $1.$1 "/mnt/$2"
+	chown $1:$1 "/mnt/$2"
 
 	# if not mounted mount it
 	findmnt "/mnt/$2"
 	if test $? -ne 0; then
 		mount -L "$2" "/mnt/$2"
 		test $? -eq 0 || exitonerror "could not mount $2 at /mnt/$2"
-		chown $1.$1 "/mnt/$2"
+		chown $1:$1 "/mnt/$2"
 		log "mounted $2 on /mnt/$2"
 	else
 		# already mounted
@@ -416,7 +416,7 @@ accountcolours() {
 
 	# copy .dircolors to /home/robert and set ownership
 	cp /root/.dircolors "/home/$1/"
-	chown $1.$1 /home/$1/.dircolors
+	chown $1:$1 /home/$1/.dircolors
 
 	# edit .bashrc for pi so directories will be in colour
 	if test ! -f /home/$1/.bashrc.bak; then
@@ -473,7 +473,7 @@ disableinitrpi() {
 # parameter passed is user robert
 ###########################################
 setowner() {
-	chown -R --no-dereference $1.$1 /mnt
+	chown -R --no-dereference $1:$1 /mnt
 	# change ownership of directories
 
 	log "set ownership of directories"
@@ -512,7 +512,7 @@ changeuser() {
 		fi
 		# set permissions of new user home
 		# and of the mount directories and links
-		chown $2.$2 -R /home/$2
+		chown $2:$2 -R /home/$2
 		setowner "$2"
 
 		log "$1 user changed to user $2"
