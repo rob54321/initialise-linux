@@ -264,10 +264,22 @@ debhome() {
 		# export debhome.source for arm64
 		svn export --force ${SVNURL}/root/my-linux/sources/arm64/debhome.sources /etc/apt/sources.list.d/
 		test $? -eq 0 || exitonerror "could not export debhome.sources from subversion"
+
+		# set permissions to 0644
+		chmod 0644 /etc/apt/sources.list.d/debhome.sources
+
+		# set permisions of directory
+		chmod 0755 /etc/apt/sources.list.d
+
 	elif test "${ARCH}" = "x86_64"; then
 		# export debhome.source for amd64
 		svn export --force ${SVNURL}/root/my-linux/sources/amd64/debhome.sources /etc/apt/sources.list.d/
 		test $? -eq 0 || exitonerror "could not export debhome.sources from subversion"
+		# set permissions to 0644
+		chmod 0644 /etc/apt/sources.list.d/debhome.sources
+
+		# set permisions of directory
+		chmod 0755 /etc/apt/sources.list.d
 	else
 		# unknown architecture
 		exitonerror "unknown architecture"
@@ -283,7 +295,7 @@ debhome() {
 ###########################################
 makedirs() {
 	chown $1:$1 /mnt
-	dirlist="hd2 hd3 ad64 ssd axiz axiz2 king sah trans ver ver8 chaos ad scd1 scd2"
+	dirlist="hd2 hd3 ad64 axiz axiz2 king sah trans ver ver8 chaos ad scd1 scd2 myp MSIRECOVERY MSISources RECOVERALL MACRIUM ele"
 	for dir in $dirlist
 	do
 		if [ ! -d /mnt/${dir} ]
