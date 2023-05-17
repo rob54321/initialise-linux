@@ -295,7 +295,7 @@ debhome() {
 ###########################################
 makedirs() {
 	chown $1:$1 /mnt
-	dirlist="hd2 hd3 ad64 axiz axiz2 king sah trans ver ver8 chaos ad scd1 scd2 myp MSIRECOVERY MSISources RECOVERALL MACRIUM ele"
+	dirlist="hd2 hd3 ad64 axiz axiz2 king tosh8 sah trans trans16 ver ver8 chaos ad16 xmini scd1 scd2 myp MSIRECOVERY MSISources RECOVERALL MACRIUM ele"
 	for dir in $dirlist
 	do
 		if [ ! -d /mnt/${dir} ]
