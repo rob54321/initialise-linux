@@ -603,7 +603,7 @@ fi
 test -d /tmp/editfstab && rm -rf /tmp/editfstab
 git clone -v --tags -b dev /mnt/ad64/git/initialise-linux.git /tmp/editfstab
 exitonerror $? "Could not clone editfstab"
-mv -v /tmp/editfstab /usr/local/bin/
+mv -v /tmp/editfstab/editfstab /usr/local/bin/
 
 
 ######################################
