@@ -586,39 +586,12 @@ done
 if test "$0" != "/usr/local/bin/init-linux"; then
 	cp -vf $0 /usr/local/bin/
 fi
+####################################
+# note: git, subversion, editfstab
+# init-linux are all install in filesystem.squashfs
+# by liveinstall.sh when makeing the image
+####################################
 
-######################################
-# install git if it is not installed
-# then install editfstab
-######################################
-dpkg-query -s git > /dev/null 2>&1
-if test $? -ne 0; then
-	# install git
-	apt -y install git
-fi
-
-# use editfstab to make directories in /mnt and
-# to edit fstab so all disk drives match /mnt directories
-# get the editfstab
-test -d /tmp/editfstab && rm -rf /tmp/editfstab
-git clone -v --tags -b dev /mnt/ad64/git/initialise-linux.git /tmp/editfstab
-exitonerror $? "Could not clone editfstab"
-mv -v /tmp/editfstab/editfstab /usr/local/bin/
-
-
-######################################
-# install subversion if it is not installed
-# this used to be in init-rpi
-# solves a lot of problems installing it first
-######################################
-dpkg-query -W subversion > /dev/null 2>&1
-if test $? -ne 0; then
-	apt update
-	exitonerror $? "error from apt update"
-
-	apt -y install subversion
-	exitonerror $? "error installing subversion"
-fi
 
 #########################################
 # determine if user robert or pi exists.
