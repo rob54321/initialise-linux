@@ -436,6 +436,10 @@ accountcolours() {
 	sudo -u $1 svn export --force ${SVNURL}/root/my-linux/git/.git-credentials /home/$1/
 	exitonerror $? "could not export .git-credentials"
 
+	# install rclone.conf
+	test -d /home/$1/.config || mkdir /home/$1/.config
+	sudo -u $1 svn export --force ${SVNURL}/root/my-linux/rclone /home/$1/.config/rclone
+
 	# export .bash_aliases from subversion
 	sudo -u $1 svn export --force ${SVNURL}/root/my-linux/config-files/bash_aliases/.bash_aliases /home/$1
 	exitonerror $? "could not export .bash_aliases"
