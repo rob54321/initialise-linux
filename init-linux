@@ -171,8 +171,8 @@ dtoverlay=disable-bt' /boot/config.txt
 		sed -i -e '/^GRUB_SAVEDEFAULT=/d' /etc/default/grub
 		sed -i -e '$a\GRUB_SAVEDEFAULT="true"' /etc/default/grub
 
-		# edit grub default to remove splash
-		sed -i -e 's/GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=\"\"/' /etc/default/grub
+		# edit grub default to remove splash and create a block cursor for console
+		sed -i -e 's/GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=\"vt.cur_default=8\"/' /etc/default/grub
 		update-grub
 	fi
 }
