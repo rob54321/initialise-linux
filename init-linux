@@ -110,8 +110,8 @@ setuplinux() {
 	# for raspberry pi only
 	###################################################################
 	if test "${ARCH}" = "aarch64"; then
-		# remove splash screen and make boot verbose
-		sed -i -e 's/quiet splash plymouth.ignore-serial-consoles//' /boot/cmdline.txt
+		# remove splash screen and make boot verbose and make the console cursor a block
+		sed -i -e 's/quiet splash plymouth.ignore-serial-consoles/vt.cur_default=8/' /boot/cmdline.txt
 
 		# disable overscan to remove border in x windows
 		sed -i -e 's/^#disable_overscan/disable_overscan/' /boot/config.txt
