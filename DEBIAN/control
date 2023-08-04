@@ -1,0 +1,8 @@
+Package: initialise-linux
+Version: 1.0.0
+Architecture: all
+Maintainer: Robert Key robkey@mighty.co.za
+Depends: subversion, editfstab, git
+Section: myown
+Priority: optional
+Description: init-linux initialises linux on desktop and raspberry pi after install. It sets up accounts, multi-user.target, aliases etc.
