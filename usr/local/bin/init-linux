@@ -153,10 +153,6 @@ dtoverlay=disable-bt' /boot/config.txt
 		timedatectl --adjust-system-clock set-local-rtc 1
 		hwclock -w
 
-		systemctl is-enabled editfstab > /dev/null 2>&1
-
-		test $? -eq 0 && systemctl disable editfstab
-
 		# for live system only
 		if test `hostname` = "live"; then
 			# for the live system
@@ -178,6 +174,10 @@ dtoverlay=disable-bt' /boot/config.txt
 			fi
 
 		else
+			# disable editfstab.service for desktop
+			systemctl is-enabled editfstab > /dev/null 2>&1
+			test $? -eq 0 && systemctl disable editfstab
+
 			# export custom.cfg from subversion
 			svn export --force file:///mnt/svn/root/my-linux/grub/custom.cfg /boot/grub/
 
@@ -648,14 +648,18 @@ fi
 makedirs "${CURUSER}"
 
 #######################################
-# setup svn and set link
+# setup svn and set link for desktop and rpi
 #######################################
-setupsvn "${CURUSER}"
+if test `hostname` != "live"; then
+	setupsvn "${CURUSER}"
+fi
 
 ################################
-# set up debhome and set link
+# set up debhome and set link for desktop and rpi
 ###############################
-debhome "${CURUSER}"
+if test `hostname != "live"; then
+	debhome "${CURUSER}"
+fi
 
 # setup up account colours
 # subversion repository must be accessible
