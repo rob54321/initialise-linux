@@ -149,31 +149,58 @@ dtoverlay=disable-bt' /boot/config.txt
 		# in the live system.
 		# note editfstab service will not exist if linux was installed
 		# from the iso image. First check if it exists
-		systemctl is-enabled editfstab > /dev/null 2>&1
-
-		test $? -eq 0 && systemctl disable editfstab
-
-		# export custom.cfg from subversion
-		svn export --force file:///mnt/svn/root/my-linux/grub/custom.cfg /boot/grub/
-
 		# set clock to local time
 		timedatectl set-local-rtc 1
 		hwclock -w
 
-		# edit grub default to enable os prober
-		sed -i -e 's/^GRUB_TIMEOUT_STYLE/#GRUB_TIMEOUT_STYLE/' /etc/default/grub
-		sed -i -e 's/^GRUB_TIMEOUT.*/GRUB_TIMEOUT=10/' /etc/default/grub
-		sed -i -e '/GRUB_DISABLE_OS_PROBER/d' /etc/default/grub
-		sed -i -e '$a\GRUB_DISABLE_OS_PROBER="false"' /etc/default/grub
-		sed -i -e 's/^GRUB_DEFAULT=.*/GRUB_DEFAULT=\"saved\"/' /etc/default/grub
+		systemctl is-enabled editfstab > /dev/null 2>&1
 
-		# set grub to boot last boot on menu
-		sed -i -e '/^GRUB_SAVEDEFAULT=/d' /etc/default/grub
-		sed -i -e '$a\GRUB_SAVEDEFAULT="true"' /etc/default/grub
+		test $? -eq 0 && systemctl disable editfstab
 
-		# edit grub default to remove splash and create a block cursor for console
-		sed -i -e 's/GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=\"vt.cur_default=8\"/' /etc/default/grub
-		update-grub
+		# for live system only
+		if test `hostname` = "live"; then
+			# for the live system
+			# this is the Ubuntu live system
+			usermod -u 1000 robert
+			groupmod -g 1000 robert
+			chown -R robert:robert /home/robert/
+			# move mbl data files to /home/robert
+			# they only exist if system is live
+			# and mountblv has been installed
+			if test -f /root/.mbl.rc; then
+				mv -fv .mbl.rc /home/robert
+				chown robert:robert /home/robert/.mbl.rc
+			fi
+
+			if test -f /root/.mbldata.rc; then
+				mv -fv .mbldata.rc /home/robert
+				chown robert:robert /home/robert/.mbldata.rc
+			fi
+			# install files sudoers
+			svn export --force ${SVNURL}/root/my-linux/sudoers.d/robert /etc/sudoers.d
+			# set ownership
+			chown root:root /etc/sudoers.d/robert
+			chmod 0440 /etc/sudoers.d/robert
+
+		else
+			# export custom.cfg from subversion
+			svn export --force file:///mnt/svn/root/my-linux/grub/custom.cfg /boot/grub/
+
+			# edit grub default to enable os prober
+			sed -i -e 's/^GRUB_TIMEOUT_STYLE/#GRUB_TIMEOUT_STYLE/' /etc/default/grub
+			sed -i -e 's/^GRUB_TIMEOUT.*/GRUB_TIMEOUT=10/' /etc/default/grub
+			sed -i -e '/GRUB_DISABLE_OS_PROBER/d' /etc/default/grub
+			sed -i -e '$a\GRUB_DISABLE_OS_PROBER="false"' /etc/default/grub
+			sed -i -e 's/^GRUB_DEFAULT=.*/GRUB_DEFAULT=\"saved\"/' /etc/default/grub
+
+			# set grub to boot last boot on menu
+			sed -i -e '/^GRUB_SAVEDEFAULT=/d' /etc/default/grub
+			sed -i -e '$a\GRUB_SAVEDEFAULT="true"' /etc/default/grub
+
+			# edit grub default to remove splash and create a block cursor for console
+			sed -i -e 's/GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=\"vt.cur_default=8\"/' /etc/default/grub
+			update-grub
+		fi
 	fi
 }
 
