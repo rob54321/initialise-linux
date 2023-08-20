@@ -1,7 +1,11 @@
 #!/bin/sh
 
+###########################################################
+# note: -m and -s options do not work for a live system
+# TBD.
+###########################################################
 # this script should be run immediately after the rpi has
-# maximised the sdcard space, or on ubuntu after install.
+# maximised the sdcard space, or on ubuntu after install or on live install
 # it installs subversion and sets up rpi/ubuntu to
 # 1. boot to console
 # 2. set console font and keyboard
