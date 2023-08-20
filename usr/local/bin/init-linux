@@ -657,7 +657,7 @@ fi
 ################################
 # set up debhome and set link for desktop and rpi
 ###############################
-if test `hostname != "live"; then
+if test `hostname` != "live"; then
 	debhome "${CURUSER}"
 fi
 
