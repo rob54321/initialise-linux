@@ -24,9 +24,8 @@
 #    to change user pi to robert only if the initial user was pi
 
 usage() {
-	echo "-m disk label for debhome				default: ${DEBHOMELABEL}";
-	echo "-s disk label for svn      				default: ${SVNLABEL}";
-	echo "-S svn destination					default: none";
+	echo "-m disk label for debhome				default: ${DEBHOMEDEVICE}";
+	echo "-s full path to svn      				default: ${SVNPATH}";
    	echo "-R reboot                                         default: no reboot";
    	echo "-c changeuser, used automatically if user is pi  default: none";
 	echo "-h help"
@@ -204,49 +203,49 @@ dtoverlay=disable-bt' /boot/config.txt
 }
 
 #########################################################
-# function to setup subversion link and destintation
+# function to setup subversion link to the new path
 # the new user must already exist
 # the owner.group of the /mnt directory must
 # be set to new user
-# the SVNLABEL is the disk label of the source for svn
-# DESTINATION  is a directory and is optional
-# parameters: setupsvn newuser (non root)
+# check that the link exists and points to subversion respository
+# the SVNPATH is the full path to subversion
+# parameters: setupsvn newuser ($1 non root) svnpath ($2)
 #########################################################
 setupsvn() {
 	# check new user exists
 	getent passwd $1 > /dev/null 2>&1
 	exitonerror $? "new user $1 does not exist"
 
-	# svn is always accessed at file:///mnt/svn
-	SVNURL="file://${SVNLINK}"
-	# remove any old links
-	rm -f "${SVNLINK}"
+	# if the link exists and points to subversion do nothing
+	if test -L "${SVNLINK}"; then
+		# link exists
+		# check it points to subversion
+		if test -d "${SVNLINK}"; then
+			log "${SVNLINK} -> $2 and subversion respository exists";
+		else
+			# subversion directory does not exist
+			# the link might be stale
+			rm -rf "${SVNLINK}"
+			exitonerror $? "could not remove link ${SVNLINK}"
 
-	# mount svn label if it is not mounted
-	mountresource "$1" "${SVNLABEL}" "svn"
+			# now make a new link and check
+			sudo -u $1 ln -s "$2" "${SVNLINK}"
+			exitonerror $? "could not make link ${SVNLINK}"
 
-	# copy svn to destination if destination was changed
-	# do not copy svn to itself
-	if test "${SVNDESTCHANGED}" = "true"; then
-		# check if destination exists
-		if test ! -d "${SVNDESTINATION}"; then
-			mkdir -p "${SVNDESTINATION}"
-			exitonerror $? "could not make ${SVNDESTINATION}"
-			chown $1:$1 "${SVNDESTINATION}"
+			# check that it points to subversion respository
+			test -d "${SVNLINK}"
+			exitonerror $? "subversion respository not found at $2";
 		fi
-		# copy files as new user
-		sudo -u $1 cp -a "/mnt/${SVNLABEL}/svn" "${SVNDESTINATION}/"
-		exitonerror $? "could not copy svn to ${SVNDESTINATION}"
-
-		# setup the link, svn was moved
-		sudo -u $1 ln -s "${SVNDESTINATION}/svn" "${SVNLINK}"
-		exitonerror $? "could not make link to ${SVNDESTINATION}/svn"
-		log "made ${SVNLINK} -> ${SVNDESTINATION}/svn"
 	else
-		# svn destination not changed, set the link
-		sudo -u $1 ln -s "/mnt/${SVNLABEL}/svn" "${SVNLINK}"
-		exitonerror $? "could not make link to /mnt/${SVNLABEL}/svn"
-		log "made /mnt/svn -> /mnt/${SVNLABEL}/svn"
+		# the link does not exist
+		# make it
+		sudo -u $1 ln -s "$2" "${SVNLINK}"
+		exitonerror $? "could not make the link ${SVNLINK} -> $2";
+
+		# check it points to subversion respository
+		test -d "${SVNLINK}"
+		exitonerror $? "subversion repository not found at $2";
+		fi
 	fi
 }
 
@@ -255,37 +254,59 @@ setupsvn() {
 # subversion must already be installed
 # svn must already be accesible
 # the new user must already exist
-# mount the debhome device
+# check the existence of the link and debhome repository
 # setup the link for debhome
 # export the pubkey to /etc/apt/keyrings/debhomepubkey.asc
 # export debhome.sources to /etc/apt/sources.list.d
-# paramters: debhome newuser
+# paramters: newuser debhomedevice
+# repository at /mnt/debhome -> /mnt/DEBHOMEDEVICE/debhome
 #######################################################
 debhome() {
 	# check new user exists
 	getent passwd $1 > /dev/null 2>&1
 	exitonerror $? "new user $1 does not exist"
 
-	# make the link for debhome
-	# debhome is always at /mnt/debhome
-	rm -f "${DEBHOMELINK}"
+	# if the link exists and points to debhome do nothing
+	if test -L "${DEBHOMELINK}"; then
+		# link exists
+		# check it points to debhome
+		if test -d "${DEBHOMELINK}"; then
+			log "${DEBHOMELINK} -> $2 and debhome respository exists";
+		else
+			# debhome directory does not exist
+			# the link might be stale
+			rm -vf "${DEBHOMELINK}"
+			exitonerror $? "could not remove ${DEBHOMELINK}"
 
-	# mount debhome if it is not mounted
-	mountresource "$1" "${DEBHOMELABEL}" "debhome"
+			# make a link to the existing device
+			sudo -u $1 ln -s "/mnt/$2/debhome" "${DEBHOMELINK}"
+			exitonerror $? "could not make link ${DEBHOMELINK} -> /mnt/$2/debhome"
+
+			# now check if the debhome repository is accessible
+			test -d "${DEBHOMELINK}"
+			exitonerror $? "debhome respository not found at /mnt/$2/debhome";
+		fi
+	else
+		# the link does not exist
+		# make it
+		sudo -u $1 ln -s "/mnt/$2/debhome" "${DEBHOMELINK}"
+		exitonerror $? "could not make the link ${DEBHOMELINK} -> /mnt/$2/debhome";
+
+		# check it points to debhome respository
+		test -d "${DEBHOMELINK}"
+		exitonerror $? "debhome repository not found at /mnt/$2/debhome";
+		fi
+	fi
 
 	# write debhome.sources to /etc/apt/sources.list.d/debhome.sources
-
-	# make the link for debhome
-	sudo -u $1 ln -s "/mnt/${DEBHOMELABEL}/debhome" "${DEBHOMELINK}"
-
 	# get the public key for debhome
 	# mkdir /etc/apt/keyrings if it does not exist
 	test -d /etc/apt/keyrings || mkdir /etc/apt/keyrings
 	# export the public key
-	svn export --force ${SVNURL}/root/my-linux/sources/gpg/debhomepubkey.asc /etc/apt/keyrings/
+	test ! -f "/etc/apt/keyrings/debhomepubkey.asc" || svn export --force ${SVNURL}/root/my-linux/sources/gpg/debhomepubkey.asc /etc/apt/keyrings/
 	exitonerror $? "could not export debhomepubkey.asc from subverison"
 
-	if test "${ARCH}" = "aarch64"; then
+	if test "${ARCH}" = "aarch64" && test ! -f "/etc/apt/sources.list.d/debhome.sources"; then
 		# export debhome.source for arm64
 		svn export --force ${SVNURL}/root/my-linux/sources/arm64/debhome.sources /etc/apt/sources.list.d/
 		exitonerror $? "could not export debhome.sources from subversion"
@@ -296,7 +317,7 @@ debhome() {
 		# set permisions of directory
 		chmod 0755 /etc/apt/sources.list.d
 
-	elif test "${ARCH}" = "x86_64"; then
+	elif test "${ARCH}" = "x86_64" && test ! -f "/etc/apt/sources.list.d/debhome.sources"; then
 		# export debhome.source for amd64
 		svn export --force ${SVNURL}/root/my-linux/sources/amd64/debhome.sources /etc/apt/sources.list.d/
 		exitonerror $? "could not export debhome.sources from subversion"
@@ -356,46 +377,6 @@ setupservice() {
 
 	# enable the service for the next boot
 	systemctl enable init-rpi
-}
-##################################################
-# function to check for svn or debhome
-# this function will mount the correct disk drive
-# the function will exit  on error if not found
-# Note: svn and debhome may or may not be on the same disk label
-# parameters passed: current non root user, disk_label, root directory of svn | root directory of debhome
-##################################################
-mountresource () {
-	# exit if label not attached
-	DEVICE=`blkid -L "$2"`
-
-	exitonerror $? "$2 is not attached"
-
-	# make mount directories if they do not exist
-	test -d "/mnt/$2" || mkdir "/mnt/$2"
-	exitonerror $? "could not make /mnt/$2"
-	chown $1:$1 "/mnt/$2"
-
-	# if not mounted mount it
-	findmnt "/mnt/$2"
-	if test $? -ne 0; then
-		mount -L "$2" "/mnt/$2"
-		exitonerror $? "could not mount $2 at /mnt/$2"
-		chown $1:$1 "/mnt/$2"
-		log "mounted $2 on /mnt/$2"
-	else
-		# already mounted
-		log "/mnt/$2 is already mounted"
-	fi
-
-	# check if svn | debhome is accessible
-	if test ! -d "/mnt/$2/$3"; then
-		# svn or archive does not exist
-		umount "/mnt/$2"
-		exitonerror 1 "/mnt/$2/$3 not found, unmounting /mnt/$2"
-	else
-		log "found /mnt/$2/$3"
-	fi
-	return 0;
 }
 #############################################
 # setup colors for accounts and nano
@@ -562,26 +543,29 @@ changeuser() {
 }
 
 # defaults, links
-# /mnt/debhome    -> /mnt/DEBHOMELABEL/debhome
+# /mnt/debhome    -> /mnt/DEBHOMEDEVICE/debhome
 # /mnt/svn        -> /mnt/SVNLABEL/svn
 # the links cannot be changed, the mountpoints can be changed
-# DEBHOMELABEL, SVNLABEL
+# DEBHOMEDEVICE, SVNLABEL
 # are the labels of the disks containing debhome, svn and
 # are all mounted at /mnt/LABEL
 
 # only for raspberry pi
-DEBHOMELABEL="ad64"
-DEBHOMELINK="/mnt/debhome"
-SVNLABEL="ad64"
-SVNLINK="/mnt/svn"
-SVNURL="file:///mnt/svn"
-SVNDESTCHANGED="false"
+DEBHOMEDEVICE="ad64"
+SVNPATH="/mnt/ad64/svn"
 OLDUSER="pi"
-NEWUSER="robert"
 LOGFILE="/tmp/init-linux.log"
 # the current non root user, either robert or pi
 CURUSER="none"
 ARCH=`arch`
+
+################################
+# constants which never change
+################################
+DEBHOMELINK="/mnt/debhome"
+SVNLINK="/mnt/svn"
+SVNURL="file:///${SVNLINK}"
+NEWUSER="robert"
 
 ################################
 # main entry
@@ -590,16 +574,14 @@ log "init-linux is running for ${ARCH}" "new"
 
 # parameter S destinstion of svn is
 # only used in init-rpi, not in this script
-# svndestination is only used by init-rpi
 # it must be defined here as it is passed to init-rpi
 # option c is only used automatically by this script
 # if the initial user is pi
-while getopts RS:m:s:r:ch opt
+while getopts Rd:s:ch opt
 do
 	case ${opt} in
-		m) DEBHOMELABEL="${OPTARG}";;
-		s) SVNLABEL="${OPTARG}";;
-		S) SVNDESTINATION="${OPTARG}"; SVNDESTCHANGED="true";;
+		d) DEBHOMEDEVICE="${OPTARG}";;
+		s) SVNPATH="${OPTARG}";;
 		R) REBOOT="true";;
 		c) changeuser "${OLDUSER}" "${NEWUSER}";;
 		h) usage;;
@@ -654,16 +636,12 @@ makedirs "${CURUSER}"
 #######################################
 # setup svn and set link for desktop and rpi
 #######################################
-if test `hostname` != "live"; then
-	setupsvn "${CURUSER}"
-fi
+setupsvn "${CURUSER}" "${SVNPATH}"
 
 ################################
 # set up debhome and set link for desktop and rpi
 ###############################
-if test `hostname` != "live"; then
-	debhome "${CURUSER}"
-fi
+debhome "${CURUSER}" "${DEBHOMEDEVICE}"
 
 # setup up account colours
 # subversion repository must be accessible
