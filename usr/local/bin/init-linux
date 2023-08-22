@@ -24,7 +24,7 @@
 #    to change user pi to robert only if the initial user was pi
 
 usage() {
-	echo "-m disk label for debhome				default: ${DEBHOMEDEVICE}";
+	echo "-d disk label for debhome				default: ${DEBHOMEDEVICE}";
 	echo "-s full path to svn      				default: ${SVNPATH}";
    	echo "-R reboot                                         default: no reboot";
    	echo "-c changeuser, used automatically if user is pi  default: none";
@@ -41,11 +41,6 @@ exitonerror() {
 	if test $1 -ne 0; then
 		# display error string
 		echo "$2"
-		umount "/mnt/$DEBHOMEDEV"
-		if test $? -ne 0; then
-			echo "Could not umount $DEBHOMEDEV from /mnt/$DEBHOMEDEV"
-			exit 2;
-		fi
 		exit 1;
 	fi
 }
@@ -221,7 +216,7 @@ setupsvn() {
 		# link exists
 		# check it points to subversion
 		if test -d "${SVNLINK}"; then
-			log "${SVNLINK} -> $2 and subversion respository exists";
+			log "${SVNLINK} -> `ls -l ${SVNLINK} | cut -d " " -f11` and subversion respository exists";
 		else
 			# subversion directory does not exist
 			# the link might be stale
@@ -234,7 +229,8 @@ setupsvn() {
 
 			# check that it points to subversion respository
 			test -d "${SVNLINK}"
-			exitonerror $? "subversion respository not found at $2";
+			exitonerror $? "subversion respository not found at `ls -l ${SVNLINK} | cut -d " " -f11`";
+			log "${SVNLINK} -> `ls -l ${SVNLINK} | cut -d " " -f11` and subversion respository exists";
 		fi
 	else
 		# the link does not exist
@@ -245,7 +241,8 @@ setupsvn() {
 		# check it points to subversion respository
 		test -d "${SVNLINK}"
 		exitonerror $? "subversion repository not found at $2";
-		fi
+		log "${SVNLINK} -> $2 subversion respository exists";
+
 	fi
 }
 
@@ -295,7 +292,6 @@ debhome() {
 		# check it points to debhome respository
 		test -d "${DEBHOMELINK}"
 		exitonerror $? "debhome repository not found at /mnt/$2/debhome";
-		fi
 	fi
 
 	# write debhome.sources to /etc/apt/sources.list.d/debhome.sources
@@ -642,7 +638,7 @@ setupsvn "${CURUSER}" "${SVNPATH}"
 # set up debhome and set link for desktop and rpi
 ###############################
 debhome "${CURUSER}" "${DEBHOMEDEVICE}"
-
+exit 0;
 # setup up account colours
 # subversion repository must be accessible
 accountcolours "${CURUSER}"
