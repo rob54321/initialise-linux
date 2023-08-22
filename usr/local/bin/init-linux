@@ -206,7 +206,7 @@ dtoverlay=disable-bt' /boot/config.txt
 # to point to it.
 # parameters: setupreppository
 # 		$1 newuser  (non root)
-#		$2 svnpath | debhomepath 
+#		$2 svnpath | debhomepath
 #		$3 link  (/mnt/svn/ | /mnt/debhome)
 #########################################################
 setuprepository() {
@@ -247,89 +247,52 @@ setuprepository() {
 		# subversion | debhome repository not found
 		exitonerror 1 "repository not found at $2"
 	fi
-}
 
-########################################################
-# debhome
-# subversion must already be installed
-# svn must already be accesible
-# the new user must already exist
-# check the existence of the link and debhome repository
-# setup the link for debhome
-# export the pubkey to /etc/apt/keyrings/debhomepubkey.asc
-# export debhome.sources to /etc/apt/sources.list.d
-# paramters: newuser DEBHOMEPATH
-# repository at /mnt/debhome -> /mnt/DEBHOMEPATH/debhome
-#######################################################
-debhome() {
-	# check new user exists
-	getent passwd $1 > /dev/null 2>&1
-	exitonerror $? "new user $1 does not exist"
-
-	# if the link exists and points to debhome do nothing
-	if test -L "${DEBHOMELINK}"; then
-		# link exists
-		# check it points to debhome
-		if test -d "${DEBHOMELINK}"; then
-			log "${DEBHOMELINK} -> $2 and debhome respository exists";
-		else
-			# debhome directory does not exist
-			# the link might be stale
-			rm -vf "${DEBHOMELINK}"
-			exitonerror $? "could not remove ${DEBHOMELINK}"
-
-			# make a link to the existing device
-			sudo -u $1 ln -s "/mnt/$2/debhome" "${DEBHOMELINK}"
-			exitonerror $? "could not make link ${DEBHOMELINK} -> /mnt/$2/debhome"
-
-			# now check if the debhome repository is accessible
-			test -d "${DEBHOMELINK}"
-			exitonerror $? "debhome respository not found at /mnt/$2/debhome";
+	# if debhome is being set up
+	# export debhomepubkey.asc and debhome.sources
+	# if they do not exist
+	if test "$3" = "${DEBHOMELINK}"; then
+		# debhome is being set up
+		# get the public key
+		if test ! -f "/etc/apt/keyrings/debhomepubkey.asc"; then
+			# mkdir /etc/apt/keyrings if it does not exist
+			test -d /etc/apt/keyrings || mkdir /etc/apt/keyrings
+			svn export --force ${SVNURL}/root/my-linux/sources/gpg/debhomepubkey.asc /etc/apt/keyrings/
+			exitonerror $? "could not export debhomepubkey.asc from subverison"
 		fi
-	else
-		# the link does not exist
-		# make it
-		sudo -u $1 ln -s "/mnt/$2/debhome" "${DEBHOMELINK}"
-		exitonerror $? "could not make the link ${DEBHOMELINK} -> /mnt/$2/debhome";
+		# get debhome.sources for amd64 or rpi
+		if test "${ARCH}" = "aarch64"; then
+			if test ! -f "/etc/apt/sources.list.d/debhome.sources"; then
+				# export debhome.source for arm64
+				svn export --force ${SVNURL}/root/my-linux/sources/arm64/debhome.sources /etc/apt/sources.list.d/
+				exitonerror $? "could not export debhome.sources from subversion"
 
-		# check it points to debhome respository
-		test -d "${DEBHOMELINK}"
-		exitonerror $? "debhome repository not found at /mnt/$2/debhome";
+				# set permissions to 0644
+				chmod 0644 /etc/apt/sources.list.d/debhome.sources
+
+				# set permisions of directory
+				chmod 0755 /etc/apt/sources.list.d
+			fi
+
+		elif test "${ARCH}" = "x86_64"; then
+			if test ! -f "/etc/apt/sources.list.d/debhome.sources"; then
+				# export debhome.source for amd64
+				svn export --force ${SVNURL}/root/my-linux/sources/amd64/debhome.sources /etc/apt/sources.list.d/
+				exitonerror $? "could not export debhome.sources from subversion"
+
+				# set permissions to 0644
+				chmod 0644 /etc/apt/sources.list.d/debhome.sources
+
+				# set permisions of directory
+				chmod 0755 /etc/apt/sources.list.d
+			fi
+		else
+			# unknown architecture
+			exitonerror 1 "unknown architecture ${ARCH}"
+		fi
+		log "setup debhome"
+
 	fi
-
-	# write debhome.sources to /etc/apt/sources.list.d/debhome.sources
-	# get the public key for debhome
-	# mkdir /etc/apt/keyrings if it does not exist
-	test -d /etc/apt/keyrings || mkdir /etc/apt/keyrings
-	# export the public key
-	test ! -f "/etc/apt/keyrings/debhomepubkey.asc" || svn export --force ${SVNURL}/root/my-linux/sources/gpg/debhomepubkey.asc /etc/apt/keyrings/
-	exitonerror $? "could not export debhomepubkey.asc from subverison"
-
-	if test "${ARCH}" = "aarch64" && test ! -f "/etc/apt/sources.list.d/debhome.sources"; then
-		# export debhome.source for arm64
-		svn export --force ${SVNURL}/root/my-linux/sources/arm64/debhome.sources /etc/apt/sources.list.d/
-		exitonerror $? "could not export debhome.sources from subversion"
-
-		# set permissions to 0644
-		chmod 0644 /etc/apt/sources.list.d/debhome.sources
-
-		# set permisions of directory
-		chmod 0755 /etc/apt/sources.list.d
-
-	elif test "${ARCH}" = "x86_64" && test ! -f "/etc/apt/sources.list.d/debhome.sources"; then
-		# export debhome.source for amd64
-		svn export --force ${SVNURL}/root/my-linux/sources/amd64/debhome.sources /etc/apt/sources.list.d/
-		exitonerror $? "could not export debhome.sources from subversion"
-		# set permissions to 0644
-		chmod 0644 /etc/apt/sources.list.d/debhome.sources
-
-		# set permisions of directory
-		chmod 0755 /etc/apt/sources.list.d
-	else
-		# unknown architecture
-		exitonerror 1 "unknown architecture"
-	fi
-	log "setup debhome"
 }
 
 ###########################################
@@ -566,7 +529,6 @@ NEWUSER="robert"
 ################################
 # main entry
 ################################
-log "init-linux is running for ${ARCH}" "new"
 
 # parameter S destinstion of svn is
 # only used in init-rpi, not in this script
@@ -584,6 +546,8 @@ do
 		\?) usage;;
 	esac
 done
+
+log "init-linux is running for ${ARCH}" "new"
 
 #####################################
 # init-linux must to be copied to /usr/local/bin
@@ -635,7 +599,6 @@ makedirs "${CURUSER}"
 # setup svn and debhome and set links for desktop and rpi
 #######################################
 setuprepository "${CURUSER}" "${SVNPATH}" "${SVNLINK}"
-exit 0;
 
 setuprepository "${CURUSER}" "${DEBHOMEPATH}" "${DEBHOMELINK}"
 
