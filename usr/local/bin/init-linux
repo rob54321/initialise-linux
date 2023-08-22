@@ -211,38 +211,38 @@ setupsvn() {
 	getent passwd $1 > /dev/null 2>&1
 	exitonerror $? "new user $1 does not exist"
 
-	# if the link exists and points to subversion do nothing
-	if test -L "${SVNLINK}"; then
-		# link exists
-		# check it points to subversion
-		if test -d "${SVNLINK}"; then
-			log "${SVNLINK} -> `ls -l ${SVNLINK} | cut -d " " -f11` and subversion respository exists";
+	# check that subversion repository can be found
+	# at the path
+	if test -d "$2"; then
+		# path exists now check the link
+		if test -L "${SVNLINK}"; then
+			# the link exists
+			# check where it points to
+			LINKPATH=`ls -l ${SVNLINK} | cut -d " " -f11`
+			echo "link path = ${LINKPATH} new path = $2"
+
+			# now check if link points to svn path
+			if test "${LINKPATH}" != "$2"; then
+				# link must be changed
+				rm -rvf "${SVNLINK}"
+				exitonerror $? "could not remove link ${SVNLINK}"
+				# make the new link
+				sudo -u $1 ln -s "$2" "${SVNLINK}"
+				exitonerror $? "could not make the link ${SVNLINK}"
+			fi
+
 		else
-			# subversion directory does not exist
-			# the link might be stale
-			rm -rf "${SVNLINK}"
-			exitonerror $? "could not remove link ${SVNLINK}"
-
-			# now make a new link and check
+			# there is no link
+			# make the link
 			sudo -u $1 ln -s "$2" "${SVNLINK}"
-			exitonerror $? "could not make link ${SVNLINK}"
-
-			# check that it points to subversion respository
-			test -d "${SVNLINK}"
-			exitonerror $? "subversion respository not found at `ls -l ${SVNLINK} | cut -d " " -f11`";
-			log "${SVNLINK} -> `ls -l ${SVNLINK} | cut -d " " -f11` and subversion respository exists";
+			exitonerror $? "could not make the link ${SVNLINK}"
 		fi
+		# subversion exists link is correct
+		log "subversion repository exists ${SVNLINK} -> $2"
+
 	else
-		# the link does not exist
-		# make it
-		sudo -u $1 ln -s "$2" "${SVNLINK}"
-		exitonerror $? "could not make the link ${SVNLINK} -> $2";
-
-		# check it points to subversion respository
-		test -d "${SVNLINK}"
-		exitonerror $? "subversion repository not found at $2";
-		log "${SVNLINK} -> $2 subversion respository exists";
-
+		# subversion repository not found
+		exitonerror 1 "subversion repository not found at $2"
 	fi
 }
 
@@ -591,8 +591,10 @@ done
 # copy this script to /usr/local/bin
 # incase init-rpi.service needs to run it
 # only copy if not run from /usr/local/bin
-if test "$0" != "/usr/local/bin/init-linux"; then
+if test ! -f "/usr/local/bin/init-linux"; then
+	echo "$0 not found"
 	cp -vf $0 /usr/local/bin/
+	exitonerror $? "could not copy $0 to /usr/local/bin"
 fi
 ####################################
 # note: git, subversion, editfstab
@@ -633,12 +635,13 @@ makedirs "${CURUSER}"
 # setup svn and set link for desktop and rpi
 #######################################
 setupsvn "${CURUSER}" "${SVNPATH}"
+exit 0;
 
 ################################
 # set up debhome and set link for desktop and rpi
 ###############################
 debhome "${CURUSER}" "${DEBHOMEDEVICE}"
-exit 0;
+
 # setup up account colours
 # subversion repository must be accessible
 accountcolours "${CURUSER}"
