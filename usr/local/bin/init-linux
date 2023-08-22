@@ -24,7 +24,7 @@
 #    to change user pi to robert only if the initial user was pi
 
 usage() {
-	echo "-d disk label for debhome				default: ${DEBHOMEDEVICE}";
+	echo "-d disk label for debhome				default: ${DEBHOMEPATH}";
 	echo "-s full path to svn      				default: ${SVNPATH}";
    	echo "-R reboot                                         default: no reboot";
    	echo "-c changeuser, used automatically if user is pi  default: none";
@@ -202,47 +202,50 @@ dtoverlay=disable-bt' /boot/config.txt
 # the new user must already exist
 # the owner.group of the /mnt directory must
 # be set to new user
-# check that the link exists and points to subversion respository
-# the SVNPATH is the full path to subversion
-# parameters: setupsvn newuser ($1 non root) svnpath ($2)
+# check the repository exists and then check/set the link
+# to point to it.
+# parameters: setupreppository
+# 		$1 newuser  (non root)
+#		$2 svnpath | debhomepath 
+#		$3 link  (/mnt/svn/ | /mnt/debhome)
 #########################################################
-setupsvn() {
+setuprepository() {
 	# check new user exists
 	getent passwd $1 > /dev/null 2>&1
 	exitonerror $? "new user $1 does not exist"
 
-	# check that subversion repository can be found
+	# check that repository can be found
 	# at the path
 	if test -d "$2"; then
 		# path exists now check the link
-		if test -L "${SVNLINK}"; then
+		if test -L "$3"; then
 			# the link exists
 			# check where it points to
-			LINKPATH=`ls -l ${SVNLINK} | cut -d " " -f11`
-			echo "link path = ${LINKPATH} new path = $2"
+			LINKPATH=`ls -l $3 | cut -d " " -f11`
+			echo "link path = $3 new path = $2"
 
-			# now check if link points to svn path
+			# now check if link points to svn | debhome path
 			if test "${LINKPATH}" != "$2"; then
 				# link must be changed
-				rm -rvf "${SVNLINK}"
-				exitonerror $? "could not remove link ${SVNLINK}"
+				rm -rvf "$3"
+				exitonerror $? "could not remove link $3"
 				# make the new link
-				sudo -u $1 ln -s "$2" "${SVNLINK}"
-				exitonerror $? "could not make the link ${SVNLINK}"
+				sudo -u $1 ln -s "$2" "$3"
+				exitonerror $? "could not make the link $3"
 			fi
 
 		else
 			# there is no link
 			# make the link
-			sudo -u $1 ln -s "$2" "${SVNLINK}"
-			exitonerror $? "could not make the link ${SVNLINK}"
+			sudo -u $1 ln -s "$2" "$3"
+			exitonerror $? "could not make the link $3"
 		fi
-		# subversion exists link is correct
-		log "subversion repository exists ${SVNLINK} -> $2"
+		# subversion | debhome exists and link is correct
+		log "repository exists $3 -> $2"
 
 	else
-		# subversion repository not found
-		exitonerror 1 "subversion repository not found at $2"
+		# subversion | debhome repository not found
+		exitonerror 1 "repository not found at $2"
 	fi
 }
 
@@ -255,8 +258,8 @@ setupsvn() {
 # setup the link for debhome
 # export the pubkey to /etc/apt/keyrings/debhomepubkey.asc
 # export debhome.sources to /etc/apt/sources.list.d
-# paramters: newuser debhomedevice
-# repository at /mnt/debhome -> /mnt/DEBHOMEDEVICE/debhome
+# paramters: newuser DEBHOMEPATH
+# repository at /mnt/debhome -> /mnt/DEBHOMEPATH/debhome
 #######################################################
 debhome() {
 	# check new user exists
@@ -539,15 +542,12 @@ changeuser() {
 }
 
 # defaults, links
-# /mnt/debhome    -> /mnt/DEBHOMEDEVICE/debhome
-# /mnt/svn        -> /mnt/SVNLABEL/svn
+# /mnt/debhome    -> DEBHOMEPATH
+# /mnt/svn        -> SVNPATH
 # the links cannot be changed, the mountpoints can be changed
-# DEBHOMEDEVICE, SVNLABEL
-# are the labels of the disks containing debhome, svn and
-# are all mounted at /mnt/LABEL
 
 # only for raspberry pi
-DEBHOMEDEVICE="ad64"
+DEBHOMEPATH="/mnt/ad64/debhome"
 SVNPATH="/mnt/ad64/svn"
 OLDUSER="pi"
 LOGFILE="/tmp/init-linux.log"
@@ -576,7 +576,7 @@ log "init-linux is running for ${ARCH}" "new"
 while getopts Rd:s:ch opt
 do
 	case ${opt} in
-		d) DEBHOMEDEVICE="${OPTARG}";;
+		d) DEBHOMEPATH="${OPTARG}";;
 		s) SVNPATH="${OPTARG}";;
 		R) REBOOT="true";;
 		c) changeuser "${OLDUSER}" "${NEWUSER}";;
@@ -632,15 +632,12 @@ fi
 makedirs "${CURUSER}"
 
 #######################################
-# setup svn and set link for desktop and rpi
+# setup svn and debhome and set links for desktop and rpi
 #######################################
-setupsvn "${CURUSER}" "${SVNPATH}"
+setuprepository "${CURUSER}" "${SVNPATH}" "${SVNLINK}"
 exit 0;
 
-################################
-# set up debhome and set link for desktop and rpi
-###############################
-debhome "${CURUSER}" "${DEBHOMEDEVICE}"
+setuprepository "${CURUSER}" "${DEBHOMEPATH}" "${DEBHOMELINK}"
 
 # setup up account colours
 # subversion repository must be accessible
