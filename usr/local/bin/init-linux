@@ -1,12 +1,13 @@
 #!/bin/sh
-
-###########################################################
-# note: -m and -s options do not work for a live system
-# TBD.
-###########################################################
+#####################################################
+# note check subversion is installed on raspberry pi
+# the live system is not used to install linux on rpi
+# this script needs subversion
+#####################################################
 # this script should be run immediately after the rpi has
 # maximised the sdcard space, or on ubuntu after install or on live install
-# it installs subversion and sets up rpi/ubuntu to
+# subversion and git are installed into the live system and hence installed for ubuntu as well
+# this script requires subversion
 # 1. boot to console
 # 2. set console font and keyboard
 # 3. set boot paramters for rpi/ubuntu and fstab
@@ -66,8 +67,10 @@ log() {
 ###################################
 setuplinux() {
 	# install files sudoers
-	svn export --force ${SVNURL}/root/my-linux/sudoers.d/robert /etc/sudoers.d
-	exitonerror $? "could not export sudoers.d from subversion"
+	if test ! -f "/etc/sudoers.d/robert"; then
+		svn export --force ${SVNURL}/root/my-linux/sudoers.d/robert /etc/sudoers.d
+		exitonerror $? "could not export sudoers.d from subversion"
+	fi
 
 	# set ownership
 	chown root:root /etc/sudoers.d/robert
@@ -342,6 +345,7 @@ setupservice() {
 }
 #############################################
 # setup colors for accounts and nano
+# install bash_aliases, git config files and rclone.conf
 # parameters: accountcolours current user
 # svn must be set up
 #############################################
@@ -398,18 +402,27 @@ accountcolours() {
 	sudo -u $1 sed -i -e 's/#force_color_prompt/force_color_prompt/' /home/$1/.bashrc
 	sudo -u $1 sed -i -e 's/\[\\033\[01;34m\\\]/\[\\033\[01;36m\\\]/' /home/$1/.bashrc
 
-	# install git credentials
-	sudo -u $1 svn export --force ${SVNURL}/root/my-linux/git/.gitconfig /home/$1/
-	exitonerror $? "could not export .gitconfig"
+	# install git config
+	if test ! -f "/home/$1/.gitconfig"; then
+		sudo -u $1 svn export --force ${SVNURL}/root/my-linux/git/.gitconfig /home/$1/
+		exitonerror $? "could not export .gitconfig"
+	fi
 
-	sudo -u $1 svn export --force ${SVNURL}/root/my-linux/git/.git-credentials /home/$1/
-	exitonerror $? "could not export .git-credentials"
+	# install git credentials
+	if test ! -f "/home/$1/.git-credentials"; then
+		sudo -u $1 svn export --force ${SVNURL}/root/my-linux/git/.git-credentials /home/$1/
+		exitonerror $? "could not export .git-credentials"
+	fi
 
 	# install rclone.conf
-	test -d /home/$1/.config || mkdir /home/$1/.config
-	sudo -u $1 svn export --force ${SVNURL}/root/my-linux/rclone /home/$1/.config/rclone
+	if test ! -f "/home/$1/.config/rclone/rclone.conf"; then
+		test -d /home/$1/.config || mkdir /home/$1/.config
+		sudo -u $1 svn export --force ${SVNURL}/root/my-linux/rclone /home/$1/.config/rclone
+		exitonerror $? "could not export rclone  config"
+	fi
 
 	# export .bash_aliases from subversion
+	# it must be overwritten as it exists
 	sudo -u $1 svn export --force ${SVNURL}/root/my-linux/config-files/bash_aliases/.bash_aliases /home/$1
 	exitonerror $? "could not export .bash_aliases"
 
