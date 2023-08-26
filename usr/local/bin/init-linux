@@ -2,7 +2,15 @@
 #####################################################
 # note check subversion is installed on raspberry pi
 # the live system is not used to install linux on rpi
-# this script needs subversion
+# this script needs subversion and editfstab
+#
+#===================================================
+# init-linux, editfstab and stedit must have been
+# copied to /usr/local/bin/ on the rpi sdcard
+# after the image was written
+#===================================================
+
+#####################################################
 #####################################################
 # this script should be run immediately after the rpi has
 # maximised the sdcard space, or on ubuntu after install or on live install
@@ -25,10 +33,12 @@
 #    to change user pi to robert only if the initial user was pi
 
 usage() {
-	echo "-d disk label for debhome				default: ${DEBHOMEPATH}";
-	echo "-s full path to svn      				default: ${SVNPATH}";
-   	echo "-R reboot                                         default: no reboot";
-   	echo "-c changeuser, used automatically if user is pi  default: none";
+	echo "-d full path to debhome				default: ${DEBHOMEPATH}";
+	echo "-D debhome default device			default: ${DEBHOMEDEVICE}";
+	echo "-s full path to svn      			default: ${SVNPATH}";
+	echo "-S svn device					default: ${SVNDEVICE}";
+   	echo "-R reboot					default: no reboot";
+   	echo "-c changeuser, used automatically if user is pi	default: none";
 	echo "-h help"
 	exit 0
 }
@@ -211,6 +221,7 @@ dtoverlay=disable-bt' /boot/config.txt
 # 		$1 newuser  (non root)
 #		$2 svnpath | debhomepath
 #		$3 link  (/mnt/svn/ | /mnt/debhome)
+#		$4 debhome | svn device which may not be necessary
 #########################################################
 setuprepository() {
 	# check new user exists
@@ -225,12 +236,12 @@ setuprepository() {
 			# the link exists
 			# check where it points to
 			LINKPATH=`ls -l $3 | cut -d " " -f11`
-			echo "link path = $3 new path = $2"
+			echo "old link -> ${LINKPATH} new link -> $2"
 
 			# now check if link points to svn | debhome path
 			if test "${LINKPATH}" != "$2"; then
 				# link must be changed
-				rm -rvf "$3"
+				rm -vf "$3"
 				exitonerror $? "could not remove link $3"
 				# make the new link
 				sudo -u $1 ln -s "$2" "$3"
@@ -247,8 +258,26 @@ setuprepository() {
 		log "repository exists $3 -> $2"
 
 	else
-		# subversion | debhome repository not found
-		exitonerror 1 "repository not found at $2"
+		# full path does not exist to repository
+		# try and mount debhome | svn device
+		test -d "/mnt/$4" || sudo -u $1 mkdir "/mnt/$4"
+		exitonerror $? "could not make directory /mnt/$4"
+
+		# mount the device if not mounted
+		findmnt --source LABEL="$4" || mount -L "$4" "/mnt/$4"
+		exitonerror $? "could not mount $4 at /mnt/$4"
+
+		# remove and make the link for subversion | debhome
+		rm -vf "$3"
+		sudo -u $1 ln -s "$2" "$3"
+		exitonerror $? "could not make the link $3"
+
+		# check that the repository exists from the link
+		test -d "$3" || exitonerror 1 "repository not found at $2"
+
+		# subversion | debhome exists and link is correct
+		log "repository exists $3 -> $2"
+
 	fi
 
 	# if debhome is being set up
@@ -522,9 +551,11 @@ changeuser() {
 # /mnt/svn        -> SVNPATH
 # the links cannot be changed, the mountpoints can be changed
 
-# only for raspberry pi
-DEBHOMEPATH="/mnt/ad64/debhome"
-SVNPATH="/mnt/ad64/svn"
+# defaults
+DEBHOMEDEVICE="ad64"
+DEBHOMEPATH="/mnt/${DEBHOMEDEVICE}/debhome"
+SVNDEVICE="ad64"
+SVNPATH="/mnt/${SVNDEVICE}/svn"
 OLDUSER="pi"
 LOGFILE="/tmp/init-linux.log"
 # the current non root user, either robert or pi
@@ -543,16 +574,19 @@ NEWUSER="robert"
 # main entry
 ################################
 
+
 # parameter S destinstion of svn is
 # only used in init-rpi, not in this script
 # it must be defined here as it is passed to init-rpi
 # option c is only used automatically by this script
 # if the initial user is pi
-while getopts Rd:s:ch opt
+while getopts cd:D:s:S:Rh opt
 do
 	case ${opt} in
 		d) DEBHOMEPATH="${OPTARG}";;
+		D) DEBHOMEDEVICE="${OPTARG}";;
 		s) SVNPATH="${OPTARG}";;
+		S) SVNDEVICE="${OPTARG}";;
 		R) REBOOT="true";;
 		c) changeuser "${OLDUSER}" "${NEWUSER}";;
 		h) usage;;
@@ -560,23 +594,13 @@ do
 	esac
 done
 
-log "init-linux is running for ${ARCH}" "new"
+log "init-linux is running on ${ARCH}" "new"
 
-#####################################
-# init-linux must to be copied to /usr/local/bin
-#####################################
-# copy this script to /usr/local/bin
-# incase init-rpi.service needs to run it
-# only copy if not run from /usr/local/bin
-if test ! -f "/usr/local/bin/init-linux"; then
-	echo "$0 not found"
-	cp -vf $0 /usr/local/bin/
-	exitonerror $? "could not copy $0 to /usr/local/bin"
-fi
 ####################################
 # note: git, subversion, editfstab
 # init-linux are all install in filesystem.squashfs
 # by liveinstall.sh when makeing the image
+# but not installed on the raspberry pi
 ####################################
 
 
@@ -604,16 +628,44 @@ else
 fi
 
 ########################################
+# for the raspberry pi only
+########################################
+# subversion needs to be installed on
+# raspberry pi
+# for the raspberry pi only
+# stedit, editfstab and init-linux need to be in /usr/local/bin
+# they should be copied after the rasp os has been written
+if test "${ARCH}" = "aarch64"; then
+
+	test -f /usr/local/bin/stedit.pl || exitonerror 1 "/usr/local/bin/stedit.pl not found"
+	test -f /usr/local/bin/editfstab || exitonerror 1 "/usr/local/bin/editfstab not found"
+fi
+
+# check if subversion installed
+dpkg-query -s subversion 1>/dev/null 2>&1
+if test $? -ne 0; then
+	# install subversion
+	apt install subversion -y
+	exitonerror $? "could not install subversion"
+fi
+
+
+########################################
 # make directories and set ownership
 ########################################
 makedirs "${CURUSER}"
 
+########################################
+# raspberry pi needs debhome and svn to 
+# mounted
+########################################
+
 #######################################
 # setup svn and debhome and set links for desktop and rpi
 #######################################
-setuprepository "${CURUSER}" "${SVNPATH}" "${SVNLINK}"
-
-setuprepository "${CURUSER}" "${DEBHOMEPATH}" "${DEBHOMELINK}"
+setuprepository "${CURUSER}" "${SVNPATH}" "${SVNLINK}" "${SVNDEVICE}"
+exit 0;
+setuprepository "${CURUSER}" "${DEBHOMEPATH}" "${DEBHOMELINK}" "${DEBHOMEDEVICE}"
 
 # setup up account colours
 # subversion repository must be accessible
