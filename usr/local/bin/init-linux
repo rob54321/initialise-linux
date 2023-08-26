@@ -236,7 +236,6 @@ setuprepository() {
 			# the link exists
 			# check where it points to
 			LINKPATH=`ls -l $3 | cut -d " " -f11`
-			echo "old link -> ${LINKPATH} new link -> $2"
 
 			# now check if link points to svn | debhome path
 			if test "${LINKPATH}" != "$2"; then
@@ -255,6 +254,7 @@ setuprepository() {
 			exitonerror $? "could not make the link $3"
 		fi
 		# subversion | debhome exists and link is correct
+		echo "old link -> ${LINKPATH} new link -> $2"
 		log "repository exists $3 -> $2"
 
 	else
@@ -322,7 +322,6 @@ setuprepository() {
 			# unknown architecture
 			exitonerror 1 "unknown architecture ${ARCH}"
 		fi
-		log "setup debhome"
 
 	fi
 }
@@ -664,7 +663,6 @@ makedirs "${CURUSER}"
 # setup svn and debhome and set links for desktop and rpi
 #######################################
 setuprepository "${CURUSER}" "${SVNPATH}" "${SVNLINK}" "${SVNDEVICE}"
-exit 0;
 setuprepository "${CURUSER}" "${DEBHOMEPATH}" "${DEBHOMELINK}" "${DEBHOMEDEVICE}"
 
 # setup up account colours
