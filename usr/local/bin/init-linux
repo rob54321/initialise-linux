@@ -265,12 +265,34 @@ setuprepository() {
 		exitonerror $? "could not make directory /mnt/$4"
 
 		# mount the device if not mounted
-		findmnt --source LABEL="$4" || mount -L "$4" "/mnt/$4"
-		exitonerror $? "could not mount $4 at /mnt/$4"
+		# check where it is mounted
+		# should be on /mnt/$4
+		findmnt --source LABEL="$4"
+		if test $? -eq 0; then
+			# device is mounted
+			# get mountpoint
+			MNTPT=`findmnt --source LABEL="$4" -o TARGET | sed -n -e '2p'`
+			echo "$4 is mounted at ${MNTPT}"
+
+			# if mount point is not /mnt/$4
+			# then umount and mount again
+			if test "${MNTPT}" != "/mnt/$4"; then
+				# mounted but not at /mnt/$4
+				umount "${MNTPT}"
+				exitonerror $? "could not umount ${MNTPT}"
+				# mount it correctly
+				mount -v -L "$4" "/mnt/$4"
+				exitonerror $? "could not mount $4 at /mnt/$4"
+			fi
+		else
+			# $4 is not mounted
+			mount -v -L "$4" "/mnt/$4"
+			exitonerror $? "could not mount $4 at /mnt/$4"
+		fi
 
 		# remove and make the link for subversion | debhome
 		rm -vf "$3"
-		sudo -u $1 ln -s "$2" "$3"
+		sudo -u $1 ln -v -s "$2" "$3"
 		exitonerror $? "could not make the link $3"
 
 		# check that the repository exists from the link
