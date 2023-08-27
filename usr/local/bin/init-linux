@@ -38,6 +38,7 @@ usage() {
 	echo "-s full path to svn      			default: ${SVNPATH}";
 	echo "-S svn device					default: ${SVNDEVICE}";
    	echo "-R reboot					default: no reboot";
+   	echo "-V version and exit";
    	echo "-c changeuser, used automatically if user is pi	default: none";
 	echo "-h help"
 	exit 0
@@ -579,7 +580,7 @@ NEWUSER="robert"
 # it must be defined here as it is passed to init-rpi
 # option c is only used automatically by this script
 # if the initial user is pi
-while getopts cd:D:s:S:Rh opt
+while getopts cd:D:s:S:RVh opt
 do
 	case ${opt} in
 		d) DEBHOMEPATH="${OPTARG}";;
@@ -588,6 +589,7 @@ do
 		S) SVNDEVICE="${OPTARG}";;
 		R) REBOOT="true";;
 		c) changeuser "${OLDUSER}" "${NEWUSER}";;
+		V) dpkg-query -W "initialise-linux"; exit 0;;
 		h) usage;;
 		\?) usage;;
 	esac
