@@ -106,7 +106,7 @@ setuplinux() {
 	test -f /etc/default/console-setup.bak || cp -v /etc/default/console-setup /etc/default/console-setup.bak
 
 	sed -i -e 's/FONTFACE=\".*\"/FONTFACE="Terminus"/' \
-	       -e 's/FONTSIZE=\".*\"/FONTSIZE="16x32"/' /etc/default/console-setup
+	       -e 's/FONTSIZE=\".*\"/FONTSIZE="14x28"/' /etc/default/console-setup
 
 	# setup keyboard
 	# make a backup
