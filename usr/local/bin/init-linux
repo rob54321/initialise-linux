@@ -229,6 +229,17 @@ setuprepository() {
 	getent passwd $1 > /dev/null 2>&1
 	exitonerror $? "new user $1 does not exist"
 
+	# makelive now makes directories /mnt/debhome
+	# and /mnt/svn to access svn and debhome.
+	# they must be replaced by links if the
+	# directories exist
+	if test -d $3; then
+		# the link is a directory
+		# remove it
+		rmdir -vf $3
+		# check the result
+		exitonerror $? "could not delete directory $3"
+	fi
 	# check that repository can be found
 	# at the path
 	if test -d "$2"; then
