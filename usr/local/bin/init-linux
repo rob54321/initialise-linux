@@ -231,12 +231,14 @@ setuprepository() {
 
 	# makelive now makes directories /mnt/debhome
 	# and /mnt/svn to access svn and debhome.
-	# they must be replaced by links if the
-	# directories exist
+	# makelive delets these directories
+	# if they exist for some reason
+	# they must be deleted because
+	# they will be replaced by links
 	if test -d $3; then
 		# the link is a directory
 		# remove it
-		rmdir -vf $3
+		rmdir -v $3
 		# check the result
 		exitonerror $? "could not delete directory $3"
 	fi
