@@ -467,6 +467,12 @@ accountcolours() {
 	if test ! -f "/home/$1/.git-credentials"; then
 		sudo -u $1 svn export --force ${SVNURL}/root/my-linux/git/.git-credentials /home/$1/
 		exitonerror $? "could not export .git-credentials"
+		# git-credentials contains special characters in the pat so that github
+		# could not detect the pat. If the pat is detected it is revoked.
+		# the special characters must be removed.
+		# special character is ;
+		perl -W -e 'open(GC, "<", "/home/robert/.git-credentials") or die "could not open git-credentials: $!\n"; my $line = <GC>; close GC; chomp($line); $line =~ s/;//g; open(GC, ">", "/home/robert/.git-credentials") or die "Could not open git-credentials for writing:$!\n"; print GC "$line\n"; close GC;';
+
 	fi
 
 	# install rclone.conf
