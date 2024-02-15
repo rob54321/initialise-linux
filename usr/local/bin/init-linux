@@ -463,6 +463,18 @@ accountcolours() {
 		exitonerror $? "could not export .gitconfig"
 	fi
 
+	# install config for gh
+	# the file is gh.tgz so that the git password can be uploaded to github
+	# it must be unarchived
+	if test ! -f "/home/$1/.config/gh/config.yml"; then
+		sudo -u $1 svn export --force ${SVNURL}/root/my-linux/gh.tgz /home/$1/.config
+		exitonerror $? "could not export gh.tgz"
+		#unarchive gh.tgz
+		cd /home/$1/.config
+		tar -xvzf gh.tgz
+		rm -vf gh.tgz
+	fi
+
 	# install git credentials
 	if test ! -f "/home/$1/.git-credentials"; then
 		sudo -u $1 svn export --force ${SVNURL}/root/my-linux/git/.git-credentials /home/$1/
