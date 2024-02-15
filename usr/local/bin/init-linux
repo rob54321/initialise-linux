@@ -467,7 +467,7 @@ accountcolours() {
 	# the file is gh.tgz so that the git password can be uploaded to github
 	# it must be unarchived
 	if test ! -f "/home/$1/.config/gh/config.yml"; then
-		sudo -u $1 svn export --force ${SVNURL}/root/my-linux/gh.tgz /home/$1/.config
+		sudo -u $1 svn export --force ${SVNURL}/root/my-linux/gh/gh.tgz /home/$1/.config
 		exitonerror $? "could not export gh.tgz"
 		#unarchive gh.tgz
 		cd /home/$1/.config
