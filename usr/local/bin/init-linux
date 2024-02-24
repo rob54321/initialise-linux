@@ -191,7 +191,7 @@ setuplinux() {
 			test $? -eq 0 && systemctl disable editfstab
 
 			# export custom.cfg from subversion
-			svn export --force file:///mnt/svn/root/my-linux/grub/custom.cfg /boot/grub/
+			svn export --force file:///mnt/svn/root/my-linux/livescripts/grub/custom.cfg /boot/grub/
 
 			# edit grub default to enable os prober
 			sed -i -e 's/^GRUB_TIMEOUT_STYLE/#GRUB_TIMEOUT_STYLE/' /etc/default/grub
