@@ -190,8 +190,16 @@ setuplinux() {
 			# enable service
 			systemctl enable setzone.service
 
+			# create the new user robert so all files can be installed
+			# and it is not necessary to run init-linux after first live boot
+
+
 
 		else
+			###############################################
+			# for desktop only
+			###############################################
+
 			# set the time and zone for desktop
 			timedatectl set-timezone Africa/Johannesburg
 
