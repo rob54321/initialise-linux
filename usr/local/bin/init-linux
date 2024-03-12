@@ -113,13 +113,13 @@ setuplinux() {
 	sed -i -e 's/XKBLAYOUT=\".*\"/XKBLAYOUT="za"/' /etc/default/keyboard
 	setupcon --save
 
-	# set the time and zone
-	timedatectl set-timezone Africa/Johannesburg
-
 	###################################################################
 	# for raspberry pi only
 	###################################################################
 	if test "${ARCH}" = "aarch64"; then
+		# set the time and zone for desktop and rpi
+		timedatectl set-timezone Africa/Johannesburg
+
 		# remove splash screen and make boot verbose and make the console cursor a block
 		sed -i -e 's/quiet splash plymouth.ignore-serial-consoles/vt.cur_default=8/' /boot/cmdline.txt
 
@@ -159,9 +159,6 @@ setuplinux() {
 		# in the live system.
 		# note editfstab service will not exist if linux was installed
 		# from the iso image. First check if it exists
-		# set clock to local time
-		timedatectl --adjust-system-clock set-local-rtc 1
-		hwclock -w
 
 		# for live system only
 		if test `hostname` = "live"; then
@@ -183,7 +180,25 @@ setuplinux() {
 				chown robert:robert /home/robert/.mbldata.rc
 			fi
 
+			# the timezone must be set and clock  must be set to local time
+			# this can only be done after the firt boot of the live system
+			# done with the service setzone.service.
+			# which will then disable itself.
+			# copy the service to /etc/systemd/system/
+			cp -v /usr/local/bin/setzone.service /etc/systemd/system/
+			rm -v /usr/local/bin/setzone.service.
+			# enable service
+			systemctl enable setzone.service
+
+
 		else
+			# set the time and zone for desktop
+			timedatectl set-timezone Africa/Johannesburg
+
+			# set clock to local time for desktop only when init-linux is run
+			timedatectl --adjust-system-clock set-local-rtc 1
+			hwclock -w
+
 			# disable editfstab.service for desktop
 			systemctl is-enabled editfstab > /dev/null 2>&1
 			test $? -eq 0 && systemctl disable editfstab

@@ -1,6 +1,9 @@
 #!/bin/bash
+# script to set the time zone and clock to local time 
+# after the first boot of the live system.
+
 timedatectl set-timezone Africa/Johannesburg
-timedatectl set-local-rtc 1
+timedatectl --adust-system-clock set-local-rtc 1
 sleep 2
 hwclock -w
 hwclock -w
@@ -9,3 +12,6 @@ hwclock -w
 hwclock -w
 
 echo "settimezone ran at `date`" >> /home/robert/.settimezone.rc
+
+# disable the service
+systemctl disable setzone.service

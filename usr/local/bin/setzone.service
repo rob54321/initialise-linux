@@ -1,5 +1,5 @@
 [Unit]
-	Description=Set the timezone and locale after boot
+	Description=setzone.service will set the timezone and locale after boot
 
 	[Service]
 	Type=simple
