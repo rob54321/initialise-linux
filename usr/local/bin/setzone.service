@@ -1,0 +1,9 @@
+[Unit]
+	Description=Set the timezone and locale after boot
+
+	[Service]
+	Type=simple
+	ExecStart=/usr/local/bin/settimezone
+
+	[Install]
+	WantedBy=multi-user.target

@@ -1,0 +1,7 @@
+#!/bin/bash
+# script to create user in chroot environment
+
+adduser --add-extra-groups --gecos "robert 08970 09870 09870 nothing" --disabled-password $1
+
+usermod -G 4,24,27,30,46 $1
+
