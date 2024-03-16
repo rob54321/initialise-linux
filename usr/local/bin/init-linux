@@ -1,4 +1,5 @@
 #!/bin/sh
+
 #########################################################
 # this script will be run by liveinstall.sh
 # in the chroot environment. It must only be run
