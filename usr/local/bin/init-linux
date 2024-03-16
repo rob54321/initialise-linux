@@ -1,4 +1,12 @@
 #!/bin/sh
+#########################################################
+# this script will be run by liveinstall.sh
+# in the chroot environment. It must only be run
+# once since it makes the user robert
+# This  script will write a file to /chroot/dochroot
+# when it is run the first time. This is used to prevent it from 
+# running a second time.
+#########################################################
 #####################################################
 # note check subversion is installed on raspberry pi
 # the live system is not used to install linux on rpi
