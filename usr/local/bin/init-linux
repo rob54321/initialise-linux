@@ -4,7 +4,7 @@
 # this script will be run by liveinstall.sh
 # in the chroot environment. It must only be run
 # once since it makes the user robert
-# This  script will write a file to /chroot/dochroot
+# This  script will write a file to /chroot/dochroot/init-linux
 # when it is run the first time. This is used to prevent it from 
 # running a second time.
 #########################################################
@@ -638,6 +638,14 @@ NEWUSER="robert"
 # main entry
 ################################
 
+# if we are running on the live system
+# only run if /chroot/dochroot/init-linux does not exist
+# this script must only needs to be run once
+if test "live" = `hostname`; then
+	# running on the live system
+	# check if init-linux has already run
+	if test -f "/dochroot/init-linux" && exit 0;
+fi
 
 # parameter S destinstion of svn is
 # only used in init-rpi, not in this script
