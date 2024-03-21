@@ -1,0 +1,2 @@
+robert:x:1000:1000:,,,:/home/robert:/bin/bash
+bin:x:2:2:bin:/bin:/usr/sbin/nologin

@@ -1,7 +1,15 @@
 #!/bin/bash
 # script to create user in chroot environment
 
-adduser --add-extra-groups --gecos "robert 08970 09870 09870 nothing" --disabled-password $1
+# check if user exists
+getent passwd robert > /dev/null 2&>1;
+if test $? -ne 0; then
+	# user does not exist
+	adduser --add-extra-groups --gecos "robert 08970 09870 09870 nothing" --disabled-password $1
 
-usermod -G 4,24,27,30,46 $1
-
+	usermod -G 4,24,27,30,46 $1
+else
+	# user exists
+	echo "User $1 exists"
+	id $1;
+fi
