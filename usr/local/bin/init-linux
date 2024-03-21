@@ -53,6 +53,27 @@ usage() {
 	exit 0
 }
 
+# function to create user robert in the live system.
+# the user is created only if it does not exist
+createuser () {
+	# script to create user robert in the chroot environment
+	# make sure we are running on the live system.
+	if test "live" = `hostname` || return;
+
+	# check if user exists
+	getent passwd robert > /dev/null 2&>1;
+	if test $? -ne 0; then
+		# user does not exist
+		adduser --add-extra-groups --gecos "robert 08970 09870 09870 nothing" --disabled-password $1
+
+		usermod -G 4,24,27,30,46 $1
+	else
+		# user exists
+		echo "User $1 exists"
+		id $1;
+	fi
+}
+
 # function to exit with status 1
 # the debhomedev is unmounted first
 # the rc code is passed as first parameter, no exit on 0, exit on 1, 2, 3..
@@ -198,10 +219,6 @@ setuplinux() {
 			rm -v /usr/local/bin/setzone.service.
 			# enable service
 			systemctl enable setzone.service
-
-			# create the new user robert so all files can be installed
-			# and it is not necessary to run init-linux after first live boot
-
 
 
 		else
@@ -645,7 +662,15 @@ if test "live" = `hostname`; then
 	# running on the live system
 	# check if init-linux has already run
 	if test -f "/dochroot/init-linux" && exit 0;
+
+	# now make the file /dochroot/init-linux
+	# to indicate that init-linux has been
+	if test -d /dochroot || mkdir /dochroot
+	echo "init-linux has run" > /dochroot/init-linux
+
+	createuser "robert";
 fi
+
 
 # parameter S destinstion of svn is
 # only used in init-rpi, not in this script
