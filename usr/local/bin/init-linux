@@ -58,18 +58,21 @@ usage() {
 createuser () {
 	# script to create user robert in the chroot environment
 	# make sure we are running on the live system.
-	if test "${LIVEINSTALL}" = "true" || return;
+	test "${LIVEINSTALL}" = "true" || return;
 
 	# check if user exists
-	getent passwd robert > /dev/null 2&>1;
-	if test $? -ne 0; then
+	getent passwd robert
+	RC=$?
+echo "getent returns ${RC}"
+	if test ${RC} -ne 0; then
+echo "createuser: user $1 does not exist"
 		# user does not exist
 		adduser --add-extra-groups --gecos "robert 08970 09870 09870 nothing" --disabled-password $1
 
 		usermod -G 4,24,27,30,46 $1
 	else
 		# user exists
-		echo "User $1 exists"
+		echo "createuser: User $1 exists"
 		id $1;
 	fi
 }
@@ -216,7 +219,7 @@ setuplinux() {
 			# which will then disable itself.
 			# copy the service to /etc/systemd/system/
 			cp -v /usr/local/bin/setzone.service /etc/systemd/system/
-			rm -v /usr/local/bin/setzone.service.
+			# rm -v /usr/local/bin/setzone.service.
 			# enable service
 			systemctl enable setzone.service
 
@@ -404,6 +407,7 @@ setuprepository() {
 # parameters: makedirs ${NEWUSER}
 ###########################################
 makedirs() {
+echo "makedirs: \$1 = $1"
 	chown $1:$1 /mnt
 
 	# make all /mnt directories
@@ -491,6 +495,7 @@ accountcolours() {
 
 	# copy .dircolors to /home/robert and set ownership
 	cp /root/.dircolors "/home/$1/"
+echo "accountcolours: \$1 = $1"
 	chown $1:$1 /home/$1/.dircolors
 
 	# edit .bashrc for pi so directories will be in colour
@@ -505,10 +510,15 @@ accountcolours() {
 	sudo -u $1 svn export --force ${SVNURL}/root/my-linux/git/.gitconfig /home/$1/
 	exitonerror $? "could not export .gitconfig"
 
+	# make the directory /home/$1/.config if it does not exit.
+	# sometimes it does not exist.
+	# make sure the ownership is correct
+	test -d "/home/$1/.config" || sudo -u $1 mkdir /home/$1/.config
+
 	# install config for gh
 	# the file is gh.tgz so that the git password can be uploaded to github
 	# it must be unarchived
-	sudo -u $1 svn export --force ${SVNURL}/root/my-linux/gh/gh.tgz /home/$1/.config
+	sudo -u $1 svn export --force ${SVNURL}/root/my-linux/gh/gh.tgz /home/$1/.config/gh.tgz
 	exitonerror $? "could not export gh.tgz"
 	#unarchive gh.tgz
 	cd /home/$1/.config
@@ -527,7 +537,7 @@ accountcolours() {
 
 
 	# install rclone.conf
-	test -d /home/$1/.config/rclone || mkdir -p /home/$1/.config/rclone
+	test -d /home/$1/.config/rclone || sudo -u $1 mkdir -p /home/$1/.config/rclone
 	sudo -u $1 svn export --force ${SVNURL}/root/my-linux/rclone /home/$1/.config/rclone
 	exitonerror $? "could not export rclone  config"
 
@@ -572,6 +582,7 @@ disableinitrpi() {
 # parameter passed is user robert
 ###########################################
 setowner() {
+echo "setowner: \$1 = $1"
 	chown -R --no-dereference $1:$1 /mnt
 	# change ownership of directories
 
@@ -611,6 +622,7 @@ changeuser() {
 		fi
 		# set permissions of new user home
 		# and of the mount directories and links
+echo "changeuser: \$2 = $2"
 		chown $2:$2 -R /home/$2
 		setowner "$2"
 
@@ -677,7 +689,7 @@ do
 		s) SVNPATH="${OPTARG}";;
 		S) SVNDEVICE="${OPTARG}";;
 		R) REBOOT="true";;
-		L) LIVEINSTALL = "true";;
+		L) LIVEINSTALL="true";;
 		c) changeuser "${OLDUSER}" "${NEWUSER}";;
 		V) dpkg-query -W "initialise-linux"; exit 0;;
 		h) usage;;
@@ -693,14 +705,17 @@ log "init-linux is running on ${ARCH}" "new"
 if test "${LIVEINSTALL}" = "true"; then
 	# running on the live system
 	# check if init-linux has already run
-	if test -f "/dochroot/init-linux" && exit 0;
+	test -f "/dochroot/init-linux" && exit 0;
 
 	# now make the file /dochroot/init-linux
 	# to indicate that init-linux has been
-	if test -d /dochroot || mkdir /dochroot
+	test -d /dochroot || mkdir /dochroot
 	echo "init-linux has run" > /dochroot/init-linux
 
 	createuser "robert";
+	# set current user
+	CURUSER="robert";
+
 fi
 
 ####################################
@@ -713,24 +728,29 @@ fi
 
 #########################################
 # determine if user robert or pi exists.
+# in the chroot environment, neither may
+# exist
 #########################################
-getent passwd robert > /dev/null 2>&1
-if test $? -eq 0; then
-	# non root user = robert
-	CURUSER="robert"
-else
-	# check for pi
-	getent passwd pi > /dev/null 2>&1
+if test "${LIVEINSTALL}" = "false"; then
+	# we are running on the desktop or raspberry pi
+	getent passwd robert > /dev/null 2>&1
 	if test $? -eq 0; then
-		# non root user = pi
-		CURUSER="pi"
-
-		# user can be changed only after reboot
-		# setup service for reboot
-		setupservice
+		# non root user = robert
+		CURUSER="robert"
 	else
-		# non root user is unknown
-		exitonerror 1 "user robert or pi does not exist"
+		# check for pi
+		getent passwd pi > /dev/null 2>&1
+		if test $? -eq 0; then
+			# non root user = pi
+			CURUSER="pi"
+
+			# user can be changed only after reboot
+			# setup service for reboot
+			setupservice
+		else
+			# non root user is unknown
+			exitonerror 1 "user robert or pi does not exist"
+		fi
 	fi
 fi
 
@@ -760,6 +780,7 @@ fi
 ########################################
 # make directories and set ownership
 ########################################
+echo "main: CURUSER = ${CURUSER}"
 makedirs "${CURUSER}"
 
 ########################################
