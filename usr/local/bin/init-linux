@@ -58,7 +58,7 @@ usage() {
 createuser () {
 	# script to create user robert in the chroot environment
 	# make sure we are running on the live system.
-	if test "live" = `hostname` || return;
+	if test "${LIVEINSTALL}" = "true" || return;
 
 	# check if user exists
 	getent passwd robert > /dev/null 2&>1;
@@ -191,7 +191,7 @@ setuplinux() {
 		# from the iso image. First check if it exists
 
 		# for live system only
-		if test `hostname` = "live"; then
+		if test "${LIVEINSTALL}" = "true"; then
 			# for the live system
 			# this is the Ubuntu live system
 			usermod -u 1000 robert
@@ -643,6 +643,13 @@ LOGFILE="/tmp/init-linux.log"
 CURUSER="none"
 ARCH=`arch`
 
+# if this script is run by
+# liveinstall then createuser
+# must be run otherwise not
+# LIVEINSTALL is used to indicate
+# it was called by liveinstall
+LIVEINSTALL="false"
+
 ################################
 # constants which never change
 ################################
@@ -655,10 +662,35 @@ NEWUSER="robert"
 # main entry
 ################################
 
+
+
+# parameter S destinstion of svn is
+# only used in init-rpi, not in this script
+# it must be defined here as it is passed to init-rpi
+# option c is only used automatically by this script
+# if the initial user is pi
+while getopts cd:D:s:S:RVhL opt
+do
+	case ${opt} in
+		d) DEBHOMEPATH="${OPTARG}";;
+		D) DEBHOMEDEVICE="${OPTARG}";;
+		s) SVNPATH="${OPTARG}";;
+		S) SVNDEVICE="${OPTARG}";;
+		R) REBOOT="true";;
+		L) LIVEINSTALL = "true";;
+		c) changeuser "${OLDUSER}" "${NEWUSER}";;
+		V) dpkg-query -W "initialise-linux"; exit 0;;
+		h) usage;;
+		\?) usage;;
+	esac
+done
+
+log "init-linux is running on ${ARCH}" "new"
+
 # if we are running on the live system
 # only run if /chroot/dochroot/init-linux does not exist
 # this script must only needs to be run once
-if test "live" = `hostname`; then
+if test "${LIVEINSTALL}" = "true"; then
 	# running on the live system
 	# check if init-linux has already run
 	if test -f "/dochroot/init-linux" && exit 0;
@@ -670,29 +702,6 @@ if test "live" = `hostname`; then
 
 	createuser "robert";
 fi
-
-
-# parameter S destinstion of svn is
-# only used in init-rpi, not in this script
-# it must be defined here as it is passed to init-rpi
-# option c is only used automatically by this script
-# if the initial user is pi
-while getopts cd:D:s:S:RVh opt
-do
-	case ${opt} in
-		d) DEBHOMEPATH="${OPTARG}";;
-		D) DEBHOMEDEVICE="${OPTARG}";;
-		s) SVNPATH="${OPTARG}";;
-		S) SVNDEVICE="${OPTARG}";;
-		R) REBOOT="true";;
-		c) changeuser "${OLDUSER}" "${NEWUSER}";;
-		V) dpkg-query -W "initialise-linux"; exit 0;;
-		h) usage;;
-		\?) usage;;
-	esac
-done
-
-log "init-linux is running on ${ARCH}" "new"
 
 ####################################
 # note: git, subversion, editfstab
