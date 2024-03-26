@@ -796,7 +796,7 @@ makedirs "${CURUSER}"
 #bindall in makelive.pl makes them directories 
 # for binding. unbindall restores links.
 #######################################
-if "${LIVEINSTALL}" = "false"; then
+if test "${LIVEINSTALL}" = "false"; then
 	setuprepository "${CURUSER}" "${SVNPATH}" "${SVNLINK}" "${SVNDEVICE}"
 	setuprepository "${CURUSER}" "${DEBHOMEPATH}" "${DEBHOMELINK}" "${DEBHOMEDEVICE}"
 fi
