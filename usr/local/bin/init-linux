@@ -790,9 +790,17 @@ makedirs "${CURUSER}"
 
 #######################################
 # setup svn and debhome and set links for desktop and rpi
+# setuprepository must not be invoked in the chroot environment
+# /mnt/svn and /mnt/debhome are directories and not links
+# when liveinstall and init-linux are run.
+#bindall in makelive.pl makes them directories 
+# for binding. unbindall restores links.
 #######################################
-setuprepository "${CURUSER}" "${SVNPATH}" "${SVNLINK}" "${SVNDEVICE}"
-setuprepository "${CURUSER}" "${DEBHOMEPATH}" "${DEBHOMELINK}" "${DEBHOMEDEVICE}"
+if "${LIVEINSTALL}" = "false"; then
+	setuprepository "${CURUSER}" "${SVNPATH}" "${SVNLINK}" "${SVNDEVICE}"
+	setuprepository "${CURUSER}" "${DEBHOMEPATH}" "${DEBHOMELINK}" "${DEBHOMEDEVICE}"
+fi
+
 
 # setup up account colours
 # subversion repository must be accessible
