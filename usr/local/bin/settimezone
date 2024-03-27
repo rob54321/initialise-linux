@@ -5,8 +5,15 @@
 timedatectl set-timezone Africa/Johannesburg
 timedatectl --adjust-system-clock set-local-rtc 1
 hwclock -w
+sleep 2
+hwclock -w
 
 echo "settimezone ran at `date`" >> /home/robert/.settimezone.rc
 
 # disable the service
 systemctl disable setzone.service
+
+# also tidy up /etc/apt/sources.list
+# sometimes a line for cdrom is inserted.
+# delete it 
+sed -i -e '/^deb cdrom/d' /etc/apt/sources.list
