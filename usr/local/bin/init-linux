@@ -86,6 +86,9 @@ exitonerror() {
 	if test $1 -ne 0; then
 		# display error string
 		echo "$2"
+
+		# log error
+		log "$2"
 		exit 1;
 	fi
 }
@@ -705,12 +708,22 @@ log "init-linux is running on ${ARCH}" "new"
 if test "${LIVEINSTALL}" = "true"; then
 	# running on the live system
 	# check if init-linux has already run
-	test -f "/dochroot/init-linux" && exit 0;
+	if test -f "/dochroot/init-linux"; then
+		# init-linux has already run
+		# log and exit
+		log "init-linux has already run returning"
+
+		# exit with success
+		exit 0;
+	fi
 
 	# now make the file /dochroot/init-linux
 	# to indicate that init-linux has been
 	test -d /dochroot || mkdir /dochroot
 	echo "init-linux has run" > /dochroot/init-linux
+
+	# log
+	log "init-linux is running on chroot"
 
 	createuser "robert";
 	# set current user
