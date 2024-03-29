@@ -257,7 +257,13 @@ setuplinux() {
 
 			# edit grub default to remove splash and create a block cursor for console
 			sed -i -e 's/GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=\"vt.cur_default=8\"/' /etc/default/grub
-			update-grub
+
+			# update-grub must not be run in the live system or in the chroot environment
+			# if init-linux is run on the live desktop then update-grub
+			# must be prevented from running
+			# this section of code only runs on a desktop , not the livesystem
+
+			test `hostname` = "live" || update-grub
 		fi
 	fi
 }
