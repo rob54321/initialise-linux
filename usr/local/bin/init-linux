@@ -183,16 +183,15 @@ setuplinux() {
 		sed -i -e '/hdmi_enable_4kp60=1/d' /boot/config.txt
 		sed -i -e '$a\hdmi_enable_4kp60=1' /boot/config.txt
 	#########################################################################
-	# for amd64 only
+	# for amd64 only livesystem and desktop
 	#########################################################################
 	elif test "${ARCH}" = "x86_64"; then
 		echo "setting up linux ${ARCH}"
 
-		# disable editfstab.service since it will be enabled
-		# after installation of linux on amd64. It is enabled
-		# in the live system.
-		# note editfstab service will not exist if linux was installed
-		# from the iso image. First check if it exists
+		# add repository for obs studio
+		#apt-add-repository --ppa obsproject/obs-studio
+		# /etc/apt/sources.list must have the followin line appended
+		sed -i -e '$a\deb http://security.ubuntu.com/ubuntu lunar-security main restricted universe multiverse' /etc/apt/sources.list
 
 		# for live system only
 		if test "${LIVEINSTALL}" = "true"; then
@@ -230,6 +229,11 @@ setuplinux() {
 			# for desktop only
 			###############################################
 
+			# disable editfstab.service since it will be enabled
+			# after installation of linux on amd64. It is enabled
+			# in the live system.
+			# note editfstab service will not exist if linux was installed
+			# from the iso image. First check if it exists
 			# set the time and zone for desktop
 			timedatectl set-timezone Africa/Johannesburg
 
