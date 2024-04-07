@@ -604,6 +604,10 @@ done
 
 log "init-linux is running on ${ARCH}" "new"
 
+# check if we are running in the chroot environment
+# makelive made the directory /chroot/chrootenvironment
+test -d "/chrootenvironment" && LIVEINSTALL="true";
+
 # if we are running on the live system
 # only run if /chroot/dochroot/init-linux does not exist
 # this script must only needs to be run once
