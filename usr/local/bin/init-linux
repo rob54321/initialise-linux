@@ -41,15 +41,6 @@
 #    this script is run by systemd after boot with a parameter
 #    to change user pi to robert only if the initial user was pi
 
-usage() {
-	echo "-d full path to debhome				default: ${DEBHOMEPATH}";
-	echo "-D debhome default device			default: ${DEBHOMEDEVICE}";
-	echo "-s full path to svn      			default: ${SVNPATH}";
-	echo "-S svn device					default: ${SVNDEVICE}";
-   	echo "-V version and exit";
-	echo "-h help"
-	exit 0
-}
 
 # function to create user robert in the live system.
 # the user is created only if it does not exist
@@ -544,6 +535,41 @@ echo "accountcolours: \$1 = $1"
 	log "setup account colours"
 }
 
+######################################################################
+# installprerquisites
+# this function sets up a raspberry pi so that 
+# the local repository can be used.
+######################################################################
+installprerequisites() {
+
+	# check if subversion installed
+	dpkg-query -s subversion 1>/dev/null 2>&1
+	if test $? -ne 0; then
+		# install subversion
+		apt install subversion -y
+		exitonerror $? "could not install subversion"
+	fi
+
+	# check if git is installed
+	dpkg-query -s git 1>/dev/null 2>&1
+	if test $? -ne 0; then
+		# install git
+		apt install git -y
+		exitonerror $? "could not install git"
+	fi
+
+}
+
+usage() {
+	echo "-d full path to debhome				default: ${DEBHOMEPATH}";
+	echo "-D debhome default device			default: ${DEBHOMEDEVICE}";
+	echo "-s full path to svn      			default: ${SVNPATH}";
+	echo "-S svn device					default: ${SVNDEVICE}";
+   	echo "-V version and exit";
+   	echo "-L run in chrootenvironment";
+	echo "-h help";
+	exit 0
+}
 
 # defaults, links
 # /mnt/debhome    -> DEBHOMEPATH
@@ -631,8 +657,11 @@ if test "${LIVEINSTALL}" = "true"; then
 	# log
 	log "init-linux is running on chroot"
 
-	createuser "robert";
-
+	# only create user robert if it does not exist
+	getent passwd robert;
+	if test $? -ne 0; then
+		createuser "robert";
+	fi
 fi
 
 ####################################
@@ -640,42 +669,9 @@ fi
 # init-linux are all install in filesystem.squashfs
 # by liveinstall.sh when makeing the image
 # but not installed on the raspberry pi
+# install all pre requisites for the raspberry pi
 ####################################
-
-
-########################################
-# for the raspberry pi only
-########################################
-# subversion needs to be installed on
-# raspberry pi
-# for the raspberry pi only
-# stedit, editfstab and init-linux need to be in /usr/local/bin
-# they should be copied after the rasp os has been written
-if test "${ARCH}" = "aarch64"; then
-
-	test -f /usr/local/bin/stedit.pl || exitonerror 1 "/usr/local/bin/stedit.pl not found"
-	test -f /usr/local/bin/editfstab || exitonerror 1 "/usr/local/bin/editfstab not found"
-fi
-
-# check if subversion installed
-dpkg-query -s subversion 1>/dev/null 2>&1
-if test $? -ne 0; then
-	# install subversion
-	apt install subversion -y
-	exitonerror $? "could not install subversion"
-fi
-
-
-########################################
-# make directories and set ownership
-########################################
-echo "main: CURUSER = ${CURUSER}"
-makedirs "${CURUSER}"
-
-########################################
-# raspberry pi needs debhome and svn to 
-# mounted
-########################################
+installprerequisites;
 
 #######################################
 # setup svn and debhome and set links for desktop and rpi
@@ -689,6 +685,33 @@ if test "${LIVEINSTALL}" = "false"; then
 	setuprepository "${CURUSER}" "${SVNPATH}" "${SVNLINK}" "${SVNDEVICE}"
 	setuprepository "${CURUSER}" "${DEBHOMEPATH}" "${DEBHOMELINK}" "${DEBHOMEDEVICE}"
 fi
+
+# update the repositories
+apt update
+
+# stedit, editfstab need to be installed. They are not installed on
+# the raspberry pi by default
+# editfstab depends on stedit.
+# installing editfstab will install stedit
+# check if editfstab is installed
+dpkg-query -s editfstab 1>/dev/null 2>&1
+if test $? -ne 0; then
+	# install editfstab
+	apt install editfstab -y
+	exitonerror $? "could not install editfstab"
+fi
+
+########################################
+# make directories and set ownership
+########################################
+echo "main: CURUSER = ${CURUSER}"
+makedirs "${CURUSER}"
+
+########################################
+# raspberry pi needs debhome and svn to
+# mounted
+########################################
+
 
 
 # setup up account colours
