@@ -285,6 +285,9 @@ setuprepository() {
 	# and /mnt/svn to access svn and debhome.
 	# makelive delets these directories
 
+	# set ownership of /mnt to robert:robert
+	chown $1:$1 /mnt
+
 	# check that repository can be found
 	# at the path
 	if test -d "$2"; then
