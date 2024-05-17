@@ -145,11 +145,31 @@ setuplinux() {
 		# set the time and zone for desktop and rpi
 		timedatectl set-timezone Africa/Johannesburg
 
+		# raspberry pi 4
+		#               /boot/cmdline.txt
+		#               /boot/config.txt
+		# raspberry pi 5
+		#               /boot/firmware/cmdline.txt
+		#               /boot/firmware/config.txt
+		# set the file name depeding on the version of raspberry pi
+		# 
+		# search in /boot/firmware first for rpi 5
+		if test -f "/boot/firmware/cmdline.txt"; then
+			CMDLINE="/boot/firmware/cmdline.txt"
+		else
+			CMDLINE="/boot/cmdline.txt"
+		fi
+		if test -f "/boot/firmware/config.txt"; then
+			CONFIG="/boot/firmware/config.txt"
+		else
+			CONFIG="/boot/config.txt"
+		fi
+
 		# remove splash screen and make boot verbose and make the console cursor a block
-		sed -i -e 's/quiet splash plymouth.ignore-serial-consoles/vt.cur_default=8/' /boot/cmdline.txt
+		sed -i -e 's/quiet splash plymouth.ignore-serial-consoles/vt.cur_default=8/' ${CMDLINE}
 
 		# disable overscan to remove border in x windows
-		sed -i -e 's/^#disable_overscan/disable_overscan/' /boot/config.txt
+		sed -i -e 's/^#disable_overscan/disable_overscan/' ${CONFIG}
 
 		# set the raspberry pi to not do auto login
 		ln -fs /lib/systemd/system/getty@.service /etc/systemd/system/getty.target.wants/getty@tty1.service
@@ -164,15 +184,15 @@ setuplinux() {
 
 		# disable wi-fi and bluetooth
 		# prevent multiple copies
-		# sed -i -e '/# disable wifi/,/disable-bt/d' /boot/config.txt
+		# sed -i -e '/# disable wifi/,/disable-bt/d' ${CONFIG}
 		# sed -i -e '/^# Additional overlays/a\# disable wifi\
 #dtoverlay=disable-wifi\
 #disable bluetooth\
-#dtoverlay=disable-bt' /boot/config.txt
+#dtoverlay=disable-bt' ${CONFIG}
 
 		# setup hdmi 4k
-		sed -i -e '/hdmi_enable_4kp60=1/d' /boot/config.txt
-		sed -i -e '$a\hdmi_enable_4kp60=1' /boot/config.txt
+		sed -i -e '/hdmi_enable_4kp60=1/d' ${CONFIG}
+		sed -i -e '$a\hdmi_enable_4kp60=1' ${CONFIG}
 	#########################################################################
 	# for amd64 only livesystem and desktop
 	#########################################################################
