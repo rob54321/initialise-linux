@@ -141,7 +141,7 @@ setuplinux() {
 	###################################################################
 	# for raspberry pi only
 	###################################################################
-	if test "${ARCH}" = "aarch64"; then
+	if test "${ARCH}" = "aarch64" || test "${ARCH}" = "armv6l"; then
 		# set the time and zone for desktop and rpi
 		timedatectl set-timezone Africa/Johannesburg
 
@@ -394,7 +394,7 @@ setuprepository() {
 		exitonerror $? "could not export debhomepubkey.asc from subverison"
 
 		# get debhome.sources for amd64 or rpi
-		if test "${ARCH}" = "aarch64"; then
+		if test "${ARCH}" = "aarch64" || test "${ARCH}" = "armv6l"; then
 			if test ! -f "/etc/apt/sources.list.d/debhome.sources"; then
 				# export debhome.source for arm64
 				svn export --force ${SVNURL}/root/my-linux/sources/arm64/debhome.sources /etc/apt/sources.list.d/
@@ -468,7 +468,7 @@ accountcolours() {
 
 		# make the prompt
 		sed -i -e 's/PS1=.*033\[00m\\\].*/PS1='\''\${debian_chroot:+(\$debian_chroot)}\\[\\033[01;31m\\]\\u@\\h\\[\\033[00m\\]:\\[\\033[01;36m\\]\\w \#\\[\\033[00m\\] '\'''/ /root/.bashrc
-	elif test "${ARCH}" = "aarch64"; then
+	elif test "${ARCH}" = "aarch64" || test "${ARCH}" = "armv6l"; then
 
 		# make the prompt
 		sed -i -e 's/^# PS1=.*/PS1='\''\${debian_chroot:+(\$debian_chroot)}\\[\\033[01;31m\\]\\u@\\h\\[\\033[00m\\]:\\[\\033[01;36m\\]\\w \#\\[\\033[00m\\] '\'''/ /root/.bashrc
@@ -748,4 +748,6 @@ accountcolours "${CURUSER}"
 ####################################
 setuplinux
 
+# sync new fstab with system
+systemctl daemon-reload
 log "success"
