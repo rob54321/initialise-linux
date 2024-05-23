@@ -171,6 +171,13 @@ setuplinux() {
 		# disable overscan to remove border in x windows
 		sed -i -e 's/^#disable_overscan/disable_overscan/' ${CONFIG}
 
+		# add wifi disable and bt disable as comments
+		# in case they are needed later
+		sed -i -e '/^\[cm4\]/ i\# disable wifi\n# dtoverlay=disable-wifi\n\n# disable bluetooth\n# dtoverlay=disable-bt\n' ${CONFIG}
+
+		# add overclock commands as comments
+		sed -i -e '/^\[all\]/ a\# overclocking\n# arm_freq=2800\n# gpu_freq=1000\n# over_voltage_delta=50000\n# maintain clock max\n# force_turbo=1\n' ${CONFIG}
+
 		# set the raspberry pi to not do auto login
 		ln -fs /lib/systemd/system/getty@.service /etc/systemd/system/getty.target.wants/getty@tty1.service
 		if test -e /etc/systemd/system/getty@tty1.service.d/autologin.conf; then
@@ -181,14 +188,6 @@ setuplinux() {
 		hostnamectl set-hostname rpi
 		# change it in /etc/hosts
 		sed -i -e 's/raspberrypi/rpi/' /etc/hosts
-
-		# disable wi-fi and bluetooth
-		# prevent multiple copies
-		# sed -i -e '/# disable wifi/,/disable-bt/d' ${CONFIG}
-		# sed -i -e '/^# Additional overlays/a\# disable wifi\
-#dtoverlay=disable-wifi\
-#disable bluetooth\
-#dtoverlay=disable-bt' ${CONFIG}
 
 		# setup hdmi 4k
 		sed -i -e '/hdmi_enable_4kp60=1/d' ${CONFIG}
