@@ -173,9 +173,21 @@ setuplinux() {
 
 		# add wifi disable and bt disable as comments
 		# in case they are needed later
+		# delete all lines that disable wifi
+		sed -i -e '/disable.*wifi/d' \
+		       -e '/disable.*blue/d' \
+		       -e '/disable-bt/d' ${CONFIG}
+
 		sed -i -e '/^\[cm4\]/ i\# disable wifi\n# dtoverlay=disable-wifi\n\n# disable bluetooth\n# dtoverlay=disable-bt\n' ${CONFIG}
 
 		# add overclock commands as comments
+		sed -i -e '/arm_freq/d' \
+		       -e '/gpu_freq/d' \
+		       -e '/over_voltage_delta/d' \
+		       -e '/overclocking/d' \
+		       -e '/maintain clock max/d' \
+		       -e '/force_turbo/d' ${CONFIG}
+
 		sed -i -e '/^\[all\]/ a\# overclocking\n# arm_freq=2800\n# gpu_freq=1000\n# over_voltage_delta=50000\n# maintain clock max\n# force_turbo=1\n' ${CONFIG}
 
 		# set the raspberry pi to not do auto login
