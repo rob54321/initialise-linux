@@ -36,7 +36,7 @@ sub delline {
 	# line counter
 	my $i = 0;
 
-	# delete a line containing something and delete the next line if it is empty
+	# delete a line containing something and delete all the empty lines following
 	for ($i=0; $i<scalar(@list); $i++) {
 		# copy each line not containing string
 		if ($list[$i] !~ /$searchcriteria/) {
@@ -49,7 +49,7 @@ sub delline {
 			# important $i < scalar(@list) at all times
 			if ($i < scalar(@list) - 1) {
 				# check if line is empty
-				if ($list[$i+1] =~ /^$/) {
+				while ($i < scalar(@list) - 1 and $list[$i+1] =~ /^$/) {
 					# increase i by 1 to skip
 					# this line
 					$i++;
