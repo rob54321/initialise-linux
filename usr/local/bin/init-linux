@@ -128,9 +128,9 @@ setuplinux() {
 
 	test -f /etc/default/console-setup.bak || cp -v /etc/default/console-setup /etc/default/console-setup.bak
 
-	sed -i -e 's/FONTFACE=\".*\"/FONTFACE="Terminus"/' \
-	       -e 's/FONTSIZE=\".*\"/FONTSIZE="14x28"/' /etc/default/console-setup
-
+#	sed -i -e 's/FONTFACE=\".*\"/FONTFACE="Terminus"/' \
+#	       -e 's/FONTSIZE=\".*\"/FONTSIZE="14x28"/' /etc/default/console-setup
+	stedit.pl -f /etc/default/console-setup -s /FONTFACE=.*/FONTFACE="Terminus"/ -s /FONTSIZE=.*/FONTSIZE="14x28"/ -o;
 	# setup keyboard
 	# make a backup
 	test -f /etc/default/keyboard.bak || cp -v /etc/default/keyboard /etc/default/keyboard.bak
