@@ -118,9 +118,15 @@ setuplinux() {
 	# console fonts, keyboard, splash screen,
 	# disable overscan
 	#############################################
+
+	##############################################
+	# linux 24.04 needs a graphical environment for
+	# the live system.
+	##############################################
 	# set the rpi to boot to console and no autologin
-	DEFAULT=`systemctl get-default`
-	test "${DEFAULT}" = "multi-user.target" || systemctl set-default multi-user.target
+	# DEFAULT=`systemctl get-default`
+	#test "${DEFAULT}" = "multi-user.target" || systemctl set-default multi-user.target
+	systemctl set-default graphical.target
 
 	# setup default console with Terminus
 	cd /etc/default
