@@ -219,7 +219,7 @@ setuplinux() {
 		# add repository for obs studio
 		#apt-add-repository --ppa obsproject/obs-studio
 		# /etc/apt/sources.list must have the followin line appended
-		sed -i -e '$a\deb https://ppa.launchpadcontent.net/obsproject/obs-studio/ubuntu lunar main' /etc/apt/sources.list
+		# sed -i -e '$a\deb https://ppa.launchpadcontent.net/obsproject/obs-studio/ubuntu lunar main' /etc/apt/sources.list
 
 		# for live system only
 		if test "${LIVEINSTALL}" = "true"; then
