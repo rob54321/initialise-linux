@@ -3,10 +3,8 @@
 # after the first boot of the live system.
 
 timedatectl set-timezone Africa/Johannesburg
-timedatectl --adjust-system-clock set-local-rtc 1
-hwclock -w
-sleep 2
-hwclock -w
+timedatectl --adjust-system-clock set-local-rtc 0
+timedatectl set-ntp 1
 
 echo "settimezone ran at `date`" >> /home/robert/.settimezone.rc
 
