@@ -266,8 +266,8 @@ setuplinux() {
 			timedatectl set-timezone Africa/Johannesburg
 
 			# set clock to local time for desktop only when init-linux is run
-			timedatectl --adjust-system-clock set-local-rtc 1
-			hwclock -w
+			timedatectl --adjust-system-clock set-local-rtc 0
+			# hwclock -w
 
 			# disable editfstab.service for desktop
 			systemctl is-enabled editfstab > /dev/null 2>&1
