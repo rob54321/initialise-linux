@@ -126,7 +126,7 @@ setuplinux() {
 	# set the rpi to boot to console and no autologin
 	# DEFAULT=`systemctl get-default`
 	#test "${DEFAULT}" = "multi-user.target" || systemctl set-default multi-user.target
-	systemctl set-default graphical.target
+	#systemctl set-default graphical.target
 
 	# setup default console with Terminus
 	cd /etc/default
@@ -201,6 +201,9 @@ setuplinux() {
 		if test -e /etc/systemd/system/getty@tty1.service.d/autologin.conf; then
 			rm /etc/systemd/system/getty@tty1.service.d/autologin.conf
 		fi
+
+		# set the raspberry pi to console login
+		systemctl set-default multi-user.target
 
 		# set hostname
 		hostnamectl set-hostname rpi
