@@ -97,6 +97,7 @@ log() {
 # setup sudoers.d/robert
 # and fstab
 # setup console boot, hostname timezone,
+# export grub to /etc/default/grub in chroot
 # console fonts, keyboard, splash screen,
 # disable overscan
 # no parameters passed
@@ -253,6 +254,8 @@ setuplinux() {
 			# rm -v /usr/local/bin/setzone.service.
 			# enable service
 			systemctl enable setzone.service
+			
+			# export default grub
 
 
 		else
@@ -279,19 +282,8 @@ setuplinux() {
 			# export custom.cfg from subversion
 			svn export --force file:///mnt/svn/root/my-linux/livescripts/grub/custom.cfg /boot/grub/
 
-			# edit grub default to enable os prober
-			sed -i -e 's/^GRUB_TIMEOUT_STYLE/#GRUB_TIMEOUT_STYLE/' /etc/default/grub
-			sed -i -e 's/^GRUB_TIMEOUT.*/GRUB_TIMEOUT=10/' /etc/default/grub
-			sed -i -e '/GRUB_DISABLE_OS_PROBER/d' /etc/default/grub
-			sed -i -e '$a\GRUB_DISABLE_OS_PROBER="false"' /etc/default/grub
-			sed -i -e 's/^GRUB_DEFAULT=.*/GRUB_DEFAULT=\"saved\"/' /etc/default/grub
-
-			# set grub to boot last boot on menu
-			sed -i -e '/^GRUB_SAVEDEFAULT=/d' /etc/default/grub
-			sed -i -e '$a\GRUB_SAVEDEFAULT="true"' /etc/default/grub
-
-			# edit grub default to remove splash and create a block cursor for console
-			sed -i -e 's/GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=\"vt.cur_default=8\"/' /etc/default/grub
+			# export default grub to /etc/default/grub
+			svn export --force file:///mnt/svn/root/my-linux/livescripts/grub/default/grub /etc/default/
 
 			# update-grub must not be run in the live system or in the chroot environment
 			# if init-linux is run on the live desktop then update-grub
@@ -767,6 +759,30 @@ accountcolours "${CURUSER}"
 # autologin, multi-user
 ####################################
 setuplinux
+
+####################################
+# copy dconf and ubuntu-mate
+# for xwindows into /home/robert/.config
+###################################
+
+# extract dconf and mate for config
+# -> .config
+if test -f /mnt/debhome/xconfig/config.tar.xz; then
+	tar --xz -xvf /mnt/debhome/xconfig/config.tar.xz -C /home/robert
+fi
+
+# files are stored in /mnt/debhome/xconfig - themes.tar.xz, icons.tar.xz, backgrounds.tar config.tar.xz
+# the link /mnt/debhome -> to root directory
+# to install themes
+if test -f /mnt/debhome/xconfig/themes.tar.xz; then
+	# Only Yaru- themes here
+	tar --xz -xvf /mnt/debhome/xconfig/themes.tar.xz -C /usr/share/
+fi
+
+#extract backgrounds to /usr/share/backgrounds
+if test -f /mnt/debhome/xconfig/backgrounds.tar; then
+	tar -xvf /mnt/debhome/xconfig/backgrounds.tar -C /usr/share
+fi
 
 # sync new fstab with system
 systemctl daemon-reload
