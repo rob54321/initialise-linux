@@ -256,7 +256,8 @@ setuplinux() {
 			systemctl enable setzone.service
 			
 			# export default grub
-
+			# export default grub to /etc/default/grub
+			svn export --force file:///mnt/svn/root/my-linux/livescripts/grub/default/grub /etc/default/
 
 		else
 			###############################################
@@ -281,6 +282,7 @@ setuplinux() {
 
 			# export custom.cfg from subversion
 			svn export --force file:///mnt/svn/root/my-linux/livescripts/grub/custom.cfg /boot/grub/
+
 
 			# export default grub to /etc/default/grub
 			svn export --force file:///mnt/svn/root/my-linux/livescripts/grub/default/grub /etc/default/
