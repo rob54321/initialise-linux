@@ -259,6 +259,25 @@ setuplinux() {
 			# export default grub to /etc/default/grub
 			svn export --force file:///mnt/svn/root/my-linux/livescripts/grub/default/grub /etc/default/
 
+			# extract dconf and mate for config
+			# -> .config
+			if test -f /mnt/debhome/xconfig/config.tar.xz; then
+				tar --xz -xvf /mnt/debhome/xconfig/config.tar.xz -C /home/robert
+			fi
+
+			# files are stored in /mnt/debhome/xconfig - themes.tar.xz, icons.tar.xz, backgrounds.tar config.tar.xz
+			# the link /mnt/debhome -> to root directory
+			# to install themes
+			if test -f /mnt/debhome/xconfig/themes.tar.xz; then
+				# Only Yaru- themes here
+				tar --xz -xvf /mnt/debhome/xconfig/themes.tar.xz -C /usr/share/
+			fi
+
+			#extract backgrounds to /usr/share/backgrounds
+			if test -f /mnt/debhome/xconfig/backgrounds.tar; then
+				tar -xvf /mnt/debhome/xconfig/backgrounds.tar -C /usr/share
+			fi
+
 		else
 			###############################################
 			# for desktop only
@@ -766,25 +785,6 @@ setuplinux
 # copy dconf and ubuntu-mate
 # for xwindows into /home/robert/.config
 ###################################
-
-# extract dconf and mate for config
-# -> .config
-if test -f /mnt/debhome/xconfig/config.tar.xz; then
-	tar --xz -xvf /mnt/debhome/xconfig/config.tar.xz -C /home/robert
-fi
-
-# files are stored in /mnt/debhome/xconfig - themes.tar.xz, icons.tar.xz, backgrounds.tar config.tar.xz
-# the link /mnt/debhome -> to root directory
-# to install themes
-if test -f /mnt/debhome/xconfig/themes.tar.xz; then
-	# Only Yaru- themes here
-	tar --xz -xvf /mnt/debhome/xconfig/themes.tar.xz -C /usr/share/
-fi
-
-#extract backgrounds to /usr/share/backgrounds
-if test -f /mnt/debhome/xconfig/backgrounds.tar; then
-	tar -xvf /mnt/debhome/xconfig/backgrounds.tar -C /usr/share
-fi
 
 # sync new fstab with system
 systemctl daemon-reload
