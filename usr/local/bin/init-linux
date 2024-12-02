@@ -42,6 +42,37 @@
 #    to change user pi to robert only if the initial user was pi
 
 
+###############################################################
+# install config files for git rclone psensor gh xwindows in /home/robert
+# and /home/robert/.config
+###############################################################
+installconfigiles() {
+	# install git credentials, gitconfig, bash_aliases, psensor,
+	# and for .config : dconf, geany, gh, rclone ubuntu-mate config files.
+	# all these files are in git repository configdata.git
+	# clone to a temp directory then copy files.
+	cd /home/$1/
+	test -d "/home/$1/tmpconfigdata" && rm -rf "/home/$1/tmpconfigdata"
+	sudo -u $1 git clone -v https://github.com/rob54321/configdata.git tmpconfigdata
+	
+	# remove .git directory in tmpconfigdata
+	rm -rf tmpconfigdata/.git
+
+	# make the directory /home/$1/.config if it does not exit.
+	# sometimes it does not exist.
+	# make sure the ownership is correct
+	test -d "/home/$1/.config" || sudo -u $1 mkdir /home/$1/.config
+	
+	# untar git-credentials and gitconfig
+	cd /home/$1/tmpconfigdata
+	sudo -u $1 tar --xz -xvf gitconfig.xz
+	rm gitconfig.xz
+	cp -afv .* "/home/$1/"
+	# rm directory tmpconfigdata
+	cd "/home/$1"
+	rm -rf tmpconfigdata
+}
+
 # function to create user robert in the live system.
 # the user is created only if it does not exist
 createuser () {
@@ -258,25 +289,6 @@ setuplinux() {
 			# export default grub
 			# export default grub to /etc/default/grub
 			svn export --force file:///mnt/svn/root/my-linux/livescripts/grub/default/grub /etc/default/
-
-			# extract dconf and mate for config
-			# -> .config
-			if test -f /mnt/debhome/xconfig/config.tar.xz; then
-				tar --xz -xvf /mnt/debhome/xconfig/config.tar.xz -C /home/robert
-			fi
-
-			# files are stored in /mnt/debhome/xconfig - themes.tar.xz, icons.tar.xz, backgrounds.tar config.tar.xz
-			# the link /mnt/debhome -> to root directory
-			# to install themes
-			if test -f /mnt/debhome/xconfig/themes.tar.xz; then
-				# Only Yaru- themes here
-				tar --xz -xvf /mnt/debhome/xconfig/themes.tar.xz -C /usr/share/
-			fi
-
-			#extract backgrounds to /usr/share/backgrounds
-			if test -f /mnt/debhome/xconfig/backgrounds.tar; then
-				tar -xvf /mnt/debhome/xconfig/backgrounds.tar -C /usr/share
-			fi
 
 		else
 			###############################################
@@ -525,7 +537,7 @@ accountcolours() {
 
 	# copy .dircolors to /home/robert and set ownership
 	cp /root/.dircolors "/home/$1/"
-echo "accountcolours: \$1 = $1"
+	echo "accountcolours: \$1 = $1"
 	chown $1:$1 /home/$1/.dircolors
 
 	# edit .bashrc for pi so directories will be in colour
@@ -535,46 +547,6 @@ echo "accountcolours: \$1 = $1"
 	# change colour of prompt
 	sudo -u $1 sed -i -e 's/#force_color_prompt/force_color_prompt/' /home/$1/.bashrc
 	sudo -u $1 sed -i -e 's/\[\\033\[01;34m\\\]/\[\\033\[01;36m\\\]/' /home/$1/.bashrc
-
-	# install git config
-	sudo -u $1 svn export --force ${SVNURL}/root/my-linux/git/.gitconfig /home/$1/
-	exitonerror $? "could not export .gitconfig"
-
-	# make the directory /home/$1/.config if it does not exit.
-	# sometimes it does not exist.
-	# make sure the ownership is correct
-	test -d "/home/$1/.config" || sudo -u $1 mkdir /home/$1/.config
-
-	# install config for gh
-	# the file is gh.tgz so that the git password can be uploaded to github
-	# it must be unarchived
-	sudo -u $1 svn export --force ${SVNURL}/root/my-linux/gh/gh.tgz /home/$1/.config/gh.tgz
-	exitonerror $? "could not export gh.tgz"
-	#unarchive gh.tgz
-	cd /home/$1/.config
-	tar -xvzf gh.tgz
-	rm -vf gh.tgz
-
-	# install git credentials
-	sudo -u $1 svn export --force ${SVNURL}/root/my-linux/git/.git-credentials /home/$1/
-	exitonerror $? "could not export .git-credentials"
-	# git-credentials contains special characters in the pat so that github
-	# could not detect the pat. If the pat is detected it is revoked.
-	# the special characters must be removed.
-	# special character is ;
-	# perl code below is for a ONE LINE git-credentials ONLY
-	perl -W -e 'open(GC, "<", "/home/robert/.git-credentials") or die "could not open git-credentials: $!\n"; my $line = <GC>; close GC; chomp($line); $line =~ s/;//g; open(GC, ">", "/home/robert/.git-credentials") or die "Could not open git-credentials for writing:$!\n"; print GC "$line\n"; close GC;';
-
-
-	# install rclone.conf
-	test -d /home/$1/.config/rclone || sudo -u $1 mkdir -p /home/$1/.config/rclone
-	sudo -u $1 svn export --force ${SVNURL}/root/my-linux/rclone /home/$1/.config/rclone
-	exitonerror $? "could not export rclone  config"
-
-	# export .bash_aliases from subversion
-	# it must be overwritten as it exists
-	sudo -u $1 svn export --force ${SVNURL}/root/my-linux/config-files/bash_aliases/.bash_aliases /home/$1
-	exitonerror $? "could not export .bash_aliases"
 
 	# edit subversion config so .git and .gitignore are ignored
 	sed -i -e 's/^# global-ignores =/global-ignores = .git .gitignore/' /etc/subversion/config
