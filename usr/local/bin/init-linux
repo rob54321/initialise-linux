@@ -42,37 +42,6 @@
 #    to change user pi to robert only if the initial user was pi
 
 
-###############################################################
-# install config files for git rclone psensor gh xwindows in /home/robert
-# and /home/robert/.config
-###############################################################
-installconfigiles() {
-	# install git credentials, gitconfig, bash_aliases, psensor,
-	# and for .config : dconf, geany, gh, rclone ubuntu-mate config files.
-	# all these files are in git repository configdata.git
-	# clone to a temp directory then copy files.
-	cd /home/$1/
-	test -d "/home/$1/tmpconfigdata" && rm -rf "/home/$1/tmpconfigdata"
-	sudo -u $1 git clone -v https://github.com/rob54321/configdata.git tmpconfigdata
-	
-	# remove .git directory in tmpconfigdata
-	rm -rf tmpconfigdata/.git
-
-	# make the directory /home/$1/.config if it does not exit.
-	# sometimes it does not exist.
-	# make sure the ownership is correct
-	test -d "/home/$1/.config" || sudo -u $1 mkdir /home/$1/.config
-	
-	# untar git-credentials and gitconfig
-	cd /home/$1/tmpconfigdata
-	sudo -u $1 tar --xz -xvf gitconfig.xz
-	rm gitconfig.xz
-	cp -afv .* "/home/$1/"
-	# rm directory tmpconfigdata
-	cd "/home/$1"
-	rm -rf tmpconfigdata
-}
-
 # function to create user robert in the live system.
 # the user is created only if it does not exist
 createuser () {
@@ -134,13 +103,6 @@ log() {
 # no parameters passed
 ###################################
 setuplinux() {
-	# install files sudoers
-	svn export --force ${SVNURL}/root/my-linux/sudoers.d/robert /etc/sudoers.d
-	exitonerror $? "could not export sudoers.d from subversion"
-
-	# set ownership
-	chown root:root /etc/sudoers.d/robert
-	chmod 0440 /etc/sudoers.d/robert
 
 	# edit fstab
 	/usr/local/bin/editfstab -e
@@ -286,10 +248,6 @@ setuplinux() {
 			# enable service
 			systemctl enable setzone.service
 			
-			# export default grub
-			# export default grub to /etc/default/grub
-			svn export --force file:///mnt/svn/root/my-linux/livescripts/grub/default/grub /etc/default/
-
 		else
 			###############################################
 			# for desktop only
@@ -310,13 +268,6 @@ setuplinux() {
 			# disable editfstab.service for desktop
 			systemctl is-enabled editfstab > /dev/null 2>&1
 			test $? -eq 0 && systemctl disable editfstab
-
-			# export custom.cfg from subversion
-			svn export --force file:///mnt/svn/root/my-linux/livescripts/grub/custom.cfg /boot/grub/
-
-
-			# export default grub to /etc/default/grub
-			svn export --force file:///mnt/svn/root/my-linux/livescripts/grub/default/grub /etc/default/
 
 			# update-grub must not be run in the live system or in the chroot environment
 			# if init-linux is run on the live desktop then update-grub
@@ -424,48 +375,6 @@ setuprepository() {
 
 		# subversion | debhome exists and link is correct
 		log "repository exists $3 -> $2"
-
-	fi
-
-	# if debhome is being set up
-	# export debhomepubkey.asc and debhome.sources
-	# if they do not exist
-	if test "$3" = "${DEBHOMELINK}"; then
-		# debhome is being set up
-		# get the public key
-		# mkdir /etc/apt/keyrings if it does not exist
-		test -d /etc/apt/keyrings || mkdir /etc/apt/keyrings
-		svn export --force ${SVNURL}/root/my-linux/sources/gpg/debhomepubkey.asc /etc/apt/keyrings/
-		exitonerror $? "could not export debhomepubkey.asc from subverison"
-
-		# get debhome.sources for amd64 or rpi
-		if test "${ARCH}" = "aarch64" || test "${ARCH}" = "armv6l"; then
-			if test ! -f "/etc/apt/sources.list.d/debhome.sources"; then
-				# export debhome.source for arm64
-				svn export --force ${SVNURL}/root/my-linux/sources/arm64/debhome.sources /etc/apt/sources.list.d/
-				exitonerror $? "could not export debhome.sources from subversion"
-
-				# set permissions to 0644
-				chmod 0644 /etc/apt/sources.list.d/debhome.sources
-
-				# set permisions of directory
-				chmod 0755 /etc/apt/sources.list.d
-			fi
-
-		elif test "${ARCH}" = "x86_64"; then
-			# export debhome.source for amd64
-			svn export --force ${SVNURL}/root/my-linux/sources/amd64/debhome.sources /etc/apt/sources.list.d/
-			exitonerror $? "could not export debhome.sources from subversion"
-
-			# set permissions to 0644
-			chmod 0644 /etc/apt/sources.list.d/debhome.sources
-
-			# set permisions of directory
-			chmod 0755 /etc/apt/sources.list.d
-		else
-			# unknown architecture
-			exitonerror 1 "unknown architecture ${ARCH}"
-		fi
 
 	fi
 }
@@ -761,3 +670,11 @@ setuplinux
 # sync new fstab with system
 systemctl daemon-reload
 log "success"
+
+# install all config data for user and system
+# check if it is installed
+dpkg-query -W configdata
+if test $? -ne 0; then
+	# install configdata
+	apt install configdata -y
+fi
