@@ -378,6 +378,12 @@ setuprepository() {
 		log "repository exists $3 -> $2"
 
 	fi
+	# copy debhome.sources to /etc/apt/sources.list.d
+	# and debhomepubkey.asc to /etc/apt/keyrings/
+	cp -v /mnt/debhome/debhomepubkey.asc  /etc/apt/keyrings/
+	cp -v /mnt/debhome/debhome.sources /etc/apt/sources.list.d/
+
+
 }
 
 ###########################################
