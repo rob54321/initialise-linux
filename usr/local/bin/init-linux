@@ -378,11 +378,15 @@ setuprepository() {
 		log "repository exists $3 -> $2"
 
 	fi
+	# repository exists
 	# copy debhome.sources to /etc/apt/sources.list.d
 	# and debhomepubkey.asc to /etc/apt/keyrings/
-	cp -v /mnt/debhome/debhomepubkey.asc  /etc/apt/keyrings/
-	cp -v /mnt/debhome/debhome.sources /etc/apt/sources.list.d/
-
+	# copy with no clobber as this function gets called twice
+	cp -v -n "/mnt/debhome/debhomepubkey.asc" "/etc/apt/keyrings/"
+	exitonerror $? "Could not copy debhomepubkey.asc to /etc/apt/keyrings"
+	
+	cp -v -n "/mnt/debhome/debhome.sources" "/etc/apt/sources.list.d/"
+	exitonerror $? "Could not copy debhome.sources /etc/apt/sources.list.d"
 
 }
 
