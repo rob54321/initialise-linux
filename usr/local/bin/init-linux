@@ -382,10 +382,10 @@ setuprepository() {
 	# copy debhome.sources to /etc/apt/sources.list.d
 	# and debhomepubkey.asc to /etc/apt/keyrings/
 	# copy with no clobber as this function gets called twice
-	cp -v -n "/mnt/debhome/debhomepubkey.asc" "/etc/apt/keyrings/"
+	cp -v --update=none "/mnt/debhome/debhomepubkey.asc" "/etc/apt/keyrings/"
 	exitonerror $? "Could not copy debhomepubkey.asc to /etc/apt/keyrings"
-	
-	cp -v -n "/mnt/debhome/debhome.sources" "/etc/apt/sources.list.d/"
+
+	cp -v --update=none "/mnt/debhome/debhome.sources" "/etc/apt/sources.list.d/"
 	exitonerror $? "Could not copy debhome.sources /etc/apt/sources.list.d"
 
 }
@@ -630,8 +630,10 @@ installprerequisites;
 # for binding. unbindall restores links.
 #######################################
 if test "${LIVEINSTALL}" = "false"; then
-	setuprepository "${CURUSER}" "${SVNPATH}" "${SVNLINK}" "${SVNDEVICE}"
+	# debhome must be done before svn since the link is required
+	# to copy debhomepubkey.asc and debhome.sources from /mnt/debhome
 	setuprepository "${CURUSER}" "${DEBHOMEPATH}" "${DEBHOMELINK}" "${DEBHOMEDEVICE}"
+	setuprepository "${CURUSER}" "${SVNPATH}" "${SVNLINK}" "${SVNDEVICE}"
 fi
 
 # update the repositories
