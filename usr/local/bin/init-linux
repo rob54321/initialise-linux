@@ -131,12 +131,14 @@ setuplinux() {
 
 #	sed -i -e 's/FONTFACE=\".*\"/FONTFACE="Terminus"/' \
 #	       -e 's/FONTSIZE=\".*\"/FONTSIZE="14x28"/' /etc/default/console-setup
-	stedit.pl -f /etc/default/console-setup -s /FONTFACE=.*/FONTFACE="Terminus"/ -s /FONTSIZE=.*/FONTSIZE="14x28"/ -o;
+	stedit.pl -f /etc/default/console-setup -s /FONTFACE=.*/FONTFACE="Terminus"/ -s /FONTSIZE=.*/FONTSIZE="14x28"/ -o -w;
 	# setup keyboard
 	# make a backup
 	test -f /etc/default/keyboard.bak || cp -v /etc/default/keyboard /etc/default/keyboard.bak
 
 	sed -i -e 's/XKBLAYOUT=\".*\"/XKBLAYOUT="za"/' /etc/default/keyboard
+	# implement the new fontsize
+	setupcon -f
 	setupcon --save
 
 	###################################################################
