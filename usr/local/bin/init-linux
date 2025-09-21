@@ -119,8 +119,8 @@ setuplinux() {
 	# the live system.
 	##############################################
 	# set the rpi to boot to console and no autologin
-	# DEFAULT=`systemctl get-default`
-	#test "${DEFAULT}" = "multi-user.target" || systemctl set-default multi-user.target
+	DEFAULT=`systemctl get-default`
+	test "${DEFAULT}" = "multi-user.target" || systemctl set-default multi-user.target
 	#systemctl set-default graphical.target
 
 	# setup default console with Terminus
