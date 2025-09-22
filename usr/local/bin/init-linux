@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 #########################################################
 # this script will be run by liveinstall.sh
@@ -491,12 +491,12 @@ accountcolours() {
 # the local repository can be used.
 ######################################################################
 installprerequisites() {
-	
+
 	# for each item in the list
 	# install it, if it is not installed
 	LIST=(subversion git stedit editfstab)
 	for ITEM in "${LIST[@]}"; do
-		
+
 		# check if item is installed
 		dpkg-query -s ${ITEM} 1>/dev/null 2>&1
 		if test $? -ne 0; then
