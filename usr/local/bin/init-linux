@@ -491,23 +491,20 @@ accountcolours() {
 # the local repository can be used.
 ######################################################################
 installprerequisites() {
-
-	# check if subversion installed
-	dpkg-query -s subversion 1>/dev/null 2>&1
-	if test $? -ne 0; then
-		# install subversion
-		apt install subversion -y
-		exitonerror $? "could not install subversion"
-	fi
-
-	# check if git is installed
-	dpkg-query -s git 1>/dev/null 2>&1
-	if test $? -ne 0; then
-		# install git
-		apt install git -y
-		exitonerror $? "could not install git"
-	fi
-
+	
+	# for each item in the list
+	# install it, if it is not installed
+	LIST=(subversion git stedit editfstab)
+	for ITEM in "${LIST[@]}"; do
+		
+		# check if item is installed
+		dpkg-query -s ${ITEM} 1>/dev/null 2>&1
+		if test $? -ne 0; then
+			# install ITEM
+			apt install ${ITEM} -y
+			exitonerror $? "could not install ${ITEM}"
+		fi
+	done
 }
 
 usage() {
@@ -614,14 +611,6 @@ if test "${LIVEINSTALL}" = "true"; then
 	fi
 fi
 
-####################################
-# note: git, subversion, editfstab
-# init-linux are all install in filesystem.squashfs
-# by liveinstall.sh when makeing the image
-# but not installed on the raspberry pi
-# install all pre requisites for the raspberry pi
-####################################
-installprerequisites;
 
 #######################################
 # setup svn and debhome and set links for desktop and rpi
@@ -641,17 +630,16 @@ fi
 # update the repositories
 apt update
 
-# stedit, editfstab need to be installed. They are not installed on
-# the raspberry pi by default
-# editfstab depends on stedit.
-# installing editfstab will install stedit
-# check if editfstab is installed
-dpkg-query -s editfstab 1>/dev/null 2>&1
-if test $? -ne 0; then
-	# install editfstab
-	apt install editfstab -y
-	exitonerror $? "could not install editfstab"
-fi
+####################################
+# note: git, subversion, editfstab
+# init-linux are all install in filesystem.squashfs
+# by liveinstall.sh when makeing the image
+# but not installed on the raspberry pi
+# install all pre requisites for the raspberry pi
+# some items will come from debhome.
+# so the repository must be setup
+####################################
+installprerequisites;
 
 ########################################
 # make directories and set ownership
