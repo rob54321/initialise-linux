@@ -494,7 +494,7 @@ installprerequisites() {
 
 	# for each item in the list
 	# install it, if it is not installed
-	LIST=(subversion git stedit editfstab)
+	LIST=(subversion git stedit editfstab configdata rclone gh builddebiantree)
 	for ITEM in "${LIST[@]}"; do
 
 		# check if item is installed
@@ -673,11 +673,3 @@ setuplinux
 # sync new fstab with system
 systemctl daemon-reload
 log "success"
-
-# install all config data for user and system
-# check if it is installed
-dpkg-query -W configdata
-if test $? -ne 0; then
-	# install configdata
-	apt install configdata -y
-fi
