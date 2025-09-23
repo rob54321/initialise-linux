@@ -1,0 +1,5 @@
+#!/bin/bash
+# postrm for initialise-linux
+# console-setup is restored from the backup console-setup.bak
+# if the backup exists, restore it
+test -f "/etc/default/console-setup.bak" && cp -fv /etc/default/console-setup.bak /etc/default/console-setup
