@@ -494,7 +494,7 @@ installprerequisites() {
 
 	# for each item in the list
 	# install it, if it is not installed
-	LIST=(subversion git stedit editfstab configdata rclone gh builddebiantree)
+	LIST=(subversion git stedit editfstab configdata rclone gh builddebiantree mtools dosfstools gparted)
 	for ITEM in "${LIST[@]}"; do
 
 		# check if item is installed
