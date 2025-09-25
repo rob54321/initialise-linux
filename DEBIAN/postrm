@@ -21,7 +21,7 @@ for item in "${LIST[@]}"; do
 	else
 		# item is not a link
 		# will not remove
-		echo "initialise-linux:postrm ${item} is not link so not removing"
+		echo "initialise-linux:postrm ${item} is not a link so not removing"
 	fi
 done;
 
@@ -32,3 +32,4 @@ done;
 # editfstab makes all the directories.
 # add a -r switch to editfstab
 # to remove all the directories.
+editfstab -r
