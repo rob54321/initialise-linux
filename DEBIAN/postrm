@@ -32,8 +32,8 @@ done;
 # editfstab makes all the directories.
 # add a -r switch to editfstab
 # to remove all the directories.
-editfstab -r
+/usr/local/bin/editfstab -r
 
 # restore /etc/fstab.
 # remove all made directories from /etc/fstab.
-editfstab -R
+/usr/local/bin/editfstab -R
