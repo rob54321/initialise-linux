@@ -1,8 +1,8 @@
 Package: initialise-linux
-Version: 3.6.7
+Version: 3.6.8
 Architecture: all
 Maintainer: Robert Key robkey@mighty.co.za
 Section: myown
-Depends: editfstab
+Pre-Depends: editfstab
 Priority: optional
 Description: init-linux initialises linux on desktop and raspberry pi after install. It sets up accounts, multi-user.target, aliases etc.
