@@ -32,8 +32,15 @@ done;
 # editfstab makes all the directories.
 # add a -r switch to editfstab
 # to remove all the directories.
-/usr/local/bin/editfstab -r
+if test -x /usr/local/bin/editfstab; then
+	/usr/local/bin/editfstab -r
+else
+	echo "initialise-linux:postrm:: missing editfstab: could not remove all made directories"
+fi
 
 # restore /etc/fstab.
 # remove all made directories from /etc/fstab.
-/usr/local/bin/editfstab -R
+if test -x /usr/local/bin/edit; then
+	/usr/local/bin/editfstab -R
+else
+	echo "initialise-linux:postrm :: missing editfstab: could not restore /etc/fstab"
