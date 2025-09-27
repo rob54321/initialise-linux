@@ -476,8 +476,7 @@ installprerequisites() {
 	# for each item in the list
 	# install it, if it is not installed
 	# setting editfstab and stedit to manualy installed
-	apt install editfstab stedit -y
-	LIST=(subversion git configdata rclone gh builddebiantree mtools dosfstools gparted)
+	LIST=(editfstab stedit subversion git configdata rclone gh builddebiantree mtools dosfstools gparted)
 	for ITEM in "${LIST[@]}"; do
 
 		# check if item is installed
@@ -488,6 +487,9 @@ installprerequisites() {
 			exitonerror $? "could not install ${ITEM}"
 		fi
 	done
+	# set editfstab and stedit to manually installed so  they are not removed
+	# when initialise-linux is purged
+	apt-mark manual editfstab stedit
 }
 
 usage() {
