@@ -44,3 +44,5 @@ if test -x /usr/local/bin/edit; then
 	/usr/local/bin/editfstab -R
 else
 	echo "initialise-linux:postrm :: missing editfstab: could not restore /etc/fstab"
+fi
+
