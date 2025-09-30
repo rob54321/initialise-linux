@@ -6,7 +6,10 @@
 # remove debhomepubkey.asc and debhome.sources and robert from sudoers.d
 test -f /etc/apt/keyrings/debhomepubkey.asc && rm -fv /etc/apt/keyrings/debhomepubkey.asc
 test -f /etc/apt/sources.list.d/debhome.sources && rm -fv /etc/apt/sources.list.d/debhome.sources
-test -f /etc/sudoers.d/robert && rm -fv /etc/sudoers.d/robert
+# sudoers.d/robert is installed by configdata
+# so it must be removed by configdata.
+
+#test -f /etc/sudoers.d/robert && rm -fv /etc/sudoers.d/robert
 
 # remove the links for debhome and svn
 # debhome and svn must only be links
@@ -24,25 +27,3 @@ for item in "${LIST[@]}"; do
 		echo "initialise-linux:postrm ${item} is not a link so not removing"
 	fi
 done;
-
-# init-linux also made directories under /mnt.
-# they should be removed.
-# TBD: get a list of directories made and
-# remove them if they are empty
-# editfstab makes all the directories.
-# add a -r switch to editfstab
-# to remove all the directories.
-if test -x /usr/local/bin/editfstab; then
-	/usr/local/bin/editfstab -r
-else
-	echo "initialise-linux:postrm:: missing editfstab: could not remove all made directories"
-fi
-
-# restore /etc/fstab.
-# remove all made directories from /etc/fstab.
-if test -x /usr/local/bin/editfstab; then
-	/usr/local/bin/editfstab -R
-else
-	echo "initialise-linux:postrm :: missing editfstab: could not restore /etc/fstab"
-fi
-
