@@ -3,6 +3,9 @@
 # initialise-linux:postrm
 #################################################
 
+# only do this for remove, not upgrade
+test "$1" = "remove" || exit 0;
+
 # remove debhomepubkey.asc and debhome.sources and robert from sudoers.d
 test -f /etc/apt/keyrings/debhomepubkey.asc && rm -fv /etc/apt/keyrings/debhomepubkey.asc
 test -f /etc/apt/sources.list.d/debhome.sources && rm -fv /etc/apt/sources.list.d/debhome.sources
