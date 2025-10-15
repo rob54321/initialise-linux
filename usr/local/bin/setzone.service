@@ -6,4 +6,4 @@
 	ExecStart=/usr/local/bin/settimezone
 
 	[Install]
-	WantedBy=graphical.target
+	WantedBy=multi-user.target
