@@ -119,8 +119,7 @@ setuplinux() {
 	# the live system.
 	##############################################
 	# set the rpi to boot to console and no autologin
-	systemctl set-default multi-user.target
-	#systemctl set-default graphical.target
+	systemctl set-default "${TARGET}"
 
 	# setup keyboard
 	# make a backup
@@ -186,7 +185,7 @@ setuplinux() {
 		fi
 
 		# set the raspberry pi to console login
-		systemctl set-default multi-user.target
+		systemctl set-default "${TARGET}"
 
 		# set hostname
 		hostnamectl set-hostname rpi
@@ -492,6 +491,7 @@ installprerequisites() {
 }
 
 usage() {
+	echo "-g set target to graphical target               default: ${TARGET}";
 	echo "-d full path to debhome				default: ${DEBHOMEPATH}";
 	echo "-D debhome default device			default: ${DEBHOMEDEVICE}";
 	echo "-s full path to svn      			default: ${SVNPATH}";
@@ -508,6 +508,9 @@ usage() {
 # the links cannot be changed, the mountpoints can be changed
 
 # defaults
+# TARGET is multi-user.target or graphical.target
+# the default is multi-user.target
+TARGET="multi-user.target"
 DEBHOMEDEVICE="ad64"
 DEBHOMEPATH="/mnt/${DEBHOMEDEVICE}/debhome"
 SVNDEVICE="ad64"
@@ -545,10 +548,11 @@ fi
 # parameter S destinstion of svn is
 # only used in init-rpi, not in this script
 # it must be defined here as it is passed to init-rpi
-while getopts d:D:s:S:VhL opt
+while getopts gd:D:s:S:VhL opt
 do
 	case ${opt} in
 		d) DEBHOMEPATH="${OPTARG}";;
+		g) TARGET="graphical.target";;
 		D) DEBHOMEDEVICE="${OPTARG}";;
 		s) SVNPATH="${OPTARG}";;
 		S) SVNDEVICE="${OPTARG}";;
