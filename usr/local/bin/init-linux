@@ -308,6 +308,12 @@ setuprepository() {
 		else
 			# there is no link
 			# make the link
+			# if debhome or svn is a directory remove the directory
+			# so a link can be made.
+			if test -d "${3}"; then
+				rmdir -fv "${3}"
+				exitonerror $? "Could not remove directory ${3}"
+			fi
 			sudo -u $1 ln -s "$2" "$3"
 			exitonerror $? "could not make the link $3"
 		fi
