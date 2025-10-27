@@ -286,6 +286,16 @@ setuprepository() {
 	# set ownership of /mnt to robert:robert
 	chown $1:$1 /mnt
 
+	# check that there is not a directory with the name of the link.
+	# remove it or fail
+	# if debhome or svn is a directory remove the directory
+	# so a link can be made.
+	if test -d "${3}"; then
+		echo "${3} is a directory, removing .."
+		rmdir -fv "${3}"
+		exitonerror $? "Could not remove directory ${3}"
+	fi
+
 	# check that repository can be found
 	# at the path
 	if test -d "$2"; then
@@ -308,12 +318,6 @@ setuprepository() {
 		else
 			# there is no link
 			# make the link
-			# if debhome or svn is a directory remove the directory
-			# so a link can be made.
-			if test -d "${3}"; then
-				rmdir -fv "${3}"
-				exitonerror $? "Could not remove directory ${3}"
-			fi
 			sudo -u $1 ln -s "$2" "$3"
 			exitonerror $? "could not make the link $3"
 		fi
