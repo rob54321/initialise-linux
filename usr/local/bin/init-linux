@@ -292,7 +292,7 @@ setuprepository() {
 	# so a link can be made.
 	if test -d "${3}"; then
 		echo "${3} is a directory, removing .."
-		rmdir -fv "${3}"
+		rmdir -v "${3}"
 		exitonerror $? "Could not remove directory ${3}"
 	fi
 
