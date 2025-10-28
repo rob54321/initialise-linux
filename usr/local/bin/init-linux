@@ -290,9 +290,10 @@ setuprepository() {
 	# remove it or fail
 	# if debhome or svn is a directory remove the directory
 	# so a link can be made.
-	# the test must be not a link, and it must exist since -d always produces true
-	# since the link points to directory in anycase.
-	if [[ -e "${3}" && ! -L "${3}" ]]; then
+	# test -d link gives true if link points to a directory.
+	# hence test for directory must be
+	# if file exists and is not a link and is a directory
+	if test -e "${3}" && test ! -L "${3}" && test -d "${3}"; then
 		echo "${3} is a directory, removing .."
 		rmdir -v "${3}"
 		exitonerror $? "Could not remove directory ${3}"
