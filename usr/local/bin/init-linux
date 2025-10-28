@@ -114,13 +114,6 @@ setuplinux() {
 	# disable overscan
 	#############################################
 
-	##############################################
-	# linux 24.04 needs a graphical environment for
-	# the live system.
-	##############################################
-	# set the rpi to boot to console and no autologin
-	systemctl set-default "${TARGET}"
-
 	# setup keyboard
 	# make a backup
 	test -f /etc/default/keyboard.bak || cp -v /etc/default/keyboard /etc/default/keyboard.bak
@@ -626,6 +619,14 @@ if test "${LIVEINSTALL}" = "false"; then
 	# to copy debhomepubkey.asc and debhome.sources from /mnt/debhome
 	setuprepository "${CURUSER}" "${DEBHOMEPATH}" "${DEBHOMELINK}" "${DEBHOMEDEVICE}"
 	setuprepository "${CURUSER}" "${SVNPATH}" "${SVNLINK}" "${SVNDEVICE}"
+
+	##############################################
+	# linux 24.04 needs a graphical environment for
+	# the live system. liveinstall.sh sets the environment
+	# in a livesystem.
+	##############################################
+	# set the rpi to boot to console and no autologin
+	systemctl set-default "${TARGET}"
 fi
 
 # update the repositories
