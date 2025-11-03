@@ -498,6 +498,7 @@ installprerequisites() {
 
 usage() {
 	echo "-g set target to graphical target               default: ${TARGET}";
+	echo "-n set target to multi-user.target	        default: ${TARGET}";
 	echo "-d full path to debhome				default: ${DEBHOMEPATH}";
 	echo "-D debhome default device			default: ${DEBHOMEDEVICE}";
 	echo "-s full path to svn      			default: ${SVNPATH}";
@@ -554,11 +555,12 @@ fi
 # parameter S destinstion of svn is
 # only used in init-rpi, not in this script
 # it must be defined here as it is passed to init-rpi
-while getopts gd:D:s:S:VhL opt
+while getopts gnd:D:s:S:VhL opt
 do
 	case ${opt} in
 		d) DEBHOMEPATH="${OPTARG}";;
 		g) TARGET="graphical.target";;
+		n) TARGET="multi-user.target";;
 		D) DEBHOMEDEVICE="${OPTARG}";;
 		s) SVNPATH="${OPTARG}";;
 		S) SVNDEVICE="${OPTARG}";;
