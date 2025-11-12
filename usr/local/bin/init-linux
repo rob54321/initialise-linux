@@ -504,7 +504,7 @@ installprerequisites() {
 
 	# install configdata or configdatarpi and thunderbirddata or thunderbirddatarpi
 	# depending on architecture
-	if test "${ARCH}" = "aarch"; then
+	if test "${ARCH}" = "aarch64"; then
 		# configdatarpi depends on stedit
 		LIST=(configdatarpi thunderbirddatarpi)
 		for ITEM in "${LIST[@]}"; do
