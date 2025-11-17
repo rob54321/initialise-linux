@@ -506,7 +506,7 @@ installprerequisites() {
 	# depending on architecture
 	if test "${ARCH}" = "aarch64"; then
 		# configdatarpi depends on stedit
-		LIST=(configdatarpi thunderbirddatarpi)
+		LIST=(configdatarpi)
 		for ITEM in "${LIST[@]}"; do
 			# check if item is installed
 			dpkg-query -s ${ITEM} 1>/dev/null 2>&1
@@ -518,7 +518,7 @@ installprerequisites() {
 		done
 	elif test "${ARCH}" = "x86_64"; then
 		# configdata depends on stedit
-		LIST=(configdata thunderbirddata)
+		LIST=(configdata)
 		for ITEM in "${LIST[@]}"; do
 			# check if item is installed
 			dpkg-query -s ${ITEM} 1>/dev/null 2>&1
