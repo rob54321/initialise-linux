@@ -133,7 +133,7 @@ setuplinux() {
 		#               /boot/firmware/cmdline.txt
 		#               /boot/firmware/config.txt
 		# set the file name depeding on the version of raspberry pi
-		# 
+		#
 		# search in /boot/firmware first for rpi 5
 		if test -f "/boot/firmware/cmdline.txt"; then
 			CMDLINE="/boot/firmware/cmdline.txt"
@@ -146,6 +146,7 @@ setuplinux() {
 			CONFIG="/boot/config.txt"
 		fi
 
+		# this should be done by configdata or configdatarpi
 		# remove splash screen and make boot verbose and make the console cursor a block
 		sed -i -e 's/quiet splash plymouth.ignore-serial-consoles/vt.cur_default=8/' ${CMDLINE}
 
@@ -161,15 +162,6 @@ setuplinux() {
 
 		sed -i -e '/^\[cm4\]/ i\# disable wifi\n# dtoverlay=disable-wifi\n\n# disable bluetooth\n# dtoverlay=disable-bt\n' ${CONFIG}
 
-		# add overclock commands as comments
-		sed -i -e '/arm_freq/d' \
-		       -e '/gpu_freq/d' \
-		       -e '/over_voltage_delta/d' \
-		       -e '/overclocking/d' \
-		       -e '/maintain clock max/d' \
-		       -e '/force_turbo/d' ${CONFIG}
-
-		sed -i -e '/^\[all\]/ a\# overclocking\n# arm_freq=2800\n# gpu_freq=1000\n# over_voltage_delta=50000\n# maintain clock max\n# force_turbo=1\n' ${CONFIG}
 
 		# set the raspberry pi to not do auto login
 		ln -fs /lib/systemd/system/getty@.service /etc/systemd/system/getty.target.wants/getty@tty1.service
