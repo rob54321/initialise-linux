@@ -140,28 +140,9 @@ setuplinux() {
 		else
 			CMDLINE="/boot/cmdline.txt"
 		fi
-		if test -f "/boot/firmware/config.txt"; then
-			CONFIG="/boot/firmware/config.txt"
-		else
-			CONFIG="/boot/config.txt"
-		fi
-
 		# this should be done by configdata or configdatarpi
 		# remove splash screen and make boot verbose and make the console cursor a block
 		sed -i -e 's/quiet splash plymouth.ignore-serial-consoles/vt.cur_default=8/' ${CMDLINE}
-
-		# disable overscan to remove border in x windows
-		sed -i -e 's/^#disable_overscan/disable_overscan/' ${CONFIG}
-
-		# add wifi disable and bt disable as comments
-		# in case they are needed later
-		# delete all lines that disable wifi
-		sed -i -e '/disable.*wifi/d' \
-		       -e '/disable.*blue/d' \
-		       -e '/disable-bt/d' ${CONFIG}
-
-		sed -i -e '/^\[cm4\]/ i\# disable wifi\n# dtoverlay=disable-wifi\n\n# disable bluetooth\n# dtoverlay=disable-bt\n' ${CONFIG}
-
 
 		# set the raspberry pi to not do auto login
 		ln -fs /lib/systemd/system/getty@.service /etc/systemd/system/getty.target.wants/getty@tty1.service
@@ -177,9 +158,6 @@ setuplinux() {
 		# change it in /etc/hosts
 		sed -i -e 's/raspberrypi/rpi/' /etc/hosts
 
-		# setup hdmi 4k
-		sed -i -e '/hdmi_enable_4kp60=1/d' ${CONFIG}
-		sed -i -e '$a\hdmi_enable_4kp60=1' ${CONFIG}
 	#########################################################################
 	# for amd64 only livesystem and desktop
 	#########################################################################
