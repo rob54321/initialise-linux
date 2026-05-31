@@ -359,7 +359,7 @@ setuprepository() {
 	gpg --import /mnt/debhome/debhomepubkey.asc
 	test "$?" -eq 0 || exitonerror 1 "Could not import public key /mnt/debhome/debhomepubkey.asc"
 
-	gpg --import "/mnt/debhome/debhomesec.asc"
+	gpg --import "/mnt/debhome/debhomeseckey.asc"
 	test "$?" -eq 0 || exitonerror 1 "Could not import secret key /mnt/debhome/debhomeseckey.asc"
 }
 
