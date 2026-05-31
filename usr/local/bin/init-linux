@@ -352,6 +352,15 @@ setuprepository() {
 	else
 		exitonerror 1 "Unknown architecture ${ARCH}"
 	fi
+
+	# import the secret and public key from /mnt/debhome/
+	# secret key is debhomeseckey.asc
+	# public key is debhomepubkey.asc
+	gpg --import /mnt/debhome/debhomepubkey.asc
+	test "$?" -eq 0 || exitonerror 1 "Could not import public key /mnt/debhome/debhomepubkey.asc"
+
+	gpg --import "/mnt/debhome/debhomesec.asc"
+	test "$?" -eq 0 || exitonerror 1 "Could not import secret key /mnt/debhome/debhomeseckey.asc"
 }
 
 ###########################################
