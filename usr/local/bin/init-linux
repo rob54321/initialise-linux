@@ -339,16 +339,16 @@ setuprepository() {
 	# copy debhome.sources to /etc/apt/sources.list.d
 	# and debhomepubkey.asc to /etc/apt/keyrings/
 	# copy with no clobber as this function gets called twice
-	cp -v --update=none "/mnt/debhome/debhomepubkey.asc" "/etc/apt/keyrings/"
-	exitonerror $? "Could not copy debhomepubkey.asc to /etc/apt/keyrings"
+	cp -vf "/mnt/debhome/debhomepubkey.gpg" "/etc/apt/keyrings/"
+	exitonerror $? "Could not copy debhomepubkey.gpg to /etc/apt/keyrings"
 
 	# for rpi copy debhome-rpi.sources
 	if test "${ARCH}" = "aarch64"; then
-		cp -v --update=none "/mnt/debhome/debhome-rpi.sources" "/etc/apt/sources.list.d/"
-		exitonerror $? "Could not copy debhome-rpi.sources /etc/apt/sources.list.d"
+		cp -vf "/mnt/debhome/debhome-rpi.list" "/etc/apt/sources.list.d/"
+		exitonerror $? "Could not copy debhome-rpi.list /etc/apt/sources.list.d"
 	elif test "${ARCH}" = "x86_64"; then
-		cp -v --update=none "/mnt/debhome/debhome-amd64.sources" "/etc/apt/sources.list.d/"
-		exitonerror $? "Could not copy debhome-amd64.sources /etc/apt/sources.list.d"
+		cp -v --update=none "/mnt/debhome/debhome-amd64.list" "/etc/apt/sources.list.d/"
+		exitonerror $? "Could not copy debhome-amd64.list /etc/apt/sources.list.d"
 	else
 		exitonerror 1 "Unknown architecture ${ARCH}"
 	fi
@@ -356,11 +356,11 @@ setuprepository() {
 	# import the secret and public key from /mnt/debhome/
 	# secret key is debhomeseckey.asc
 	# public key is debhomepubkey.asc
-	gpg --import /mnt/debhome/debhomepubkey.asc
-	test "$?" -eq 0 || exitonerror 1 "Could not import public key /mnt/debhome/debhomepubkey.asc"
+	gpg --import /mnt/debhome/debhomepubkey.gpg
+	test "$?" -eq 0 || exitonerror 1 "Could not import public key /mnt/debhome/debhomepubkey.gpg"
 
-	gpg --import "/mnt/debhome/debhomeseckey.asc"
-	test "$?" -eq 0 || exitonerror 1 "Could not import secret key /mnt/debhome/debhomeseckey.asc"
+	gpg --import "/mnt/debhome/debhomeseckey.gpg"
+	test "$?" -eq 0 || exitonerror 1 "Could not import secret key /mnt/debhome/debhomeseckey.gpg"
 }
 
 ###########################################
