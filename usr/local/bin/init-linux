@@ -336,18 +336,13 @@ setuprepository() {
 
 	fi
 	# repository exists
-	# copy debhome.sources to /etc/apt/sources.list.d
-	# and debhomepubkey.asc to /etc/apt/keyrings/
-	# copy with no clobber as this function gets called twice
-	cp -vf "/mnt/debhome/debhomepubkey.gpg" "/etc/apt/keyrings/"
-	exitonerror $? "Could not copy debhomepubkey.gpg to /etc/apt/keyrings"
 
 	# for rpi copy debhome-rpi.sources
 	if test "${ARCH}" = "aarch64"; then
 		cp -vf "/tmp/debhome-rpi.list" "/etc/apt/sources.list.d/"
 		exitonerror $? "Could not copy debhome-rpi.list /etc/apt/sources.list.d"
 	elif test "${ARCH}" = "x86_64"; then
-		cp -v --update=none "/tmp/debhome-amd64.list" "/etc/apt/sources.list.d/"
+		cp -vf "/tmp/debhome-amd64.list" "/etc/apt/sources.list.d/"
 		exitonerror $? "Could not copy debhome-amd64.list /etc/apt/sources.list.d"
 	else
 		exitonerror 1 "Unknown architecture ${ARCH}"
