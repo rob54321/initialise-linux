@@ -344,23 +344,20 @@ setuprepository() {
 
 	# for rpi copy debhome-rpi.sources
 	if test "${ARCH}" = "aarch64"; then
-		cp -vf "/mnt/debhome/debhome-rpi.list" "/etc/apt/sources.list.d/"
+		cp -vf "/tmp/debhome-rpi.list" "/etc/apt/sources.list.d/"
 		exitonerror $? "Could not copy debhome-rpi.list /etc/apt/sources.list.d"
 	elif test "${ARCH}" = "x86_64"; then
-		cp -v --update=none "/mnt/debhome/debhome-amd64.list" "/etc/apt/sources.list.d/"
+		cp -v --update=none "/tmp/debhome-amd64.list" "/etc/apt/sources.list.d/"
 		exitonerror $? "Could not copy debhome-amd64.list /etc/apt/sources.list.d"
 	else
 		exitonerror 1 "Unknown architecture ${ARCH}"
 	fi
 
-	# import the secret and public key from /mnt/debhome/
+	# import the secret key from /mnt/debhome/
 	# secret key is debhomeseckey.asc
-	# public key is debhomepubkey.asc
-	gpg --import /mnt/debhome/debhomepubkey.gpg
-	test "$?" -eq 0 || exitonerror 1 "Could not import public key /mnt/debhome/debhomepubkey.gpg"
 
-	gpg --import "/mnt/debhome/debhomeseckey.gpg"
-	test "$?" -eq 0 || exitonerror 1 "Could not import secret key /mnt/debhome/debhomeseckey.gpg"
+	gpg --import "/tmp/debhomeseckey.gpg"
+	test "$?" -eq 0 || exitonerror 1 "Could not import secret key /tmp/debhomeseckey.gpg"
 }
 
 ###########################################
