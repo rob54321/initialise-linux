@@ -13,10 +13,10 @@ test -f /etc/apt/keyrings/debhomepubkey.asc && rm -fv /etc/apt/keyrings/debhomep
 
 # for rpi
 if test "${ARCH}" = "aarch64"; then
-	test -f /etc/apt/sources.list.d/debhome-rpi.sources && rm -fv /etc/apt/sources.list.d/debhome-rpi.sources
+	test -f /etc/apt/sources.list.d/debhome-rpi.list && rm -fv /etc/apt/sources.list.d/debhome-rpi.list
 elif test "${ARCH}" = "x86_64"; then
 	# for amd64
-	test -f /etc/apt/sources.list.d/debhome-amd64.sources && rm -fv /etc/apt/sources.list.d/debhome-amd64.sources
+	test -f /etc/apt/sources.list.d/debhome-amd64.list && rm -fv /etc/apt/sources.list.d/debhome-amd64.list
 fi
 
 # sudoers.d/robert is installed by configdata
