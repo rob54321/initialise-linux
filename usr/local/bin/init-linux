@@ -337,22 +337,7 @@ setuprepository() {
 	fi
 	# repository exists
 
-	# for rpi copy debhome-rpi.sources
-	if test "${ARCH}" = "aarch64"; then
-		cp -vf "/tmp/debhome-rpi.list" "/etc/apt/sources.list.d/"
-		exitonerror $? "Could not copy debhome-rpi.list /etc/apt/sources.list.d"
-	elif test "${ARCH}" = "x86_64"; then
-		cp -vf "/tmp/debhome-amd64.list" "/etc/apt/sources.list.d/"
-		exitonerror $? "Could not copy debhome-amd64.list /etc/apt/sources.list.d"
-	else
-		exitonerror 1 "Unknown architecture ${ARCH}"
-	fi
 
-	# import the secret key from /mnt/debhome/
-	# secret key is debhomeseckey.asc
-
-	gpg --import "/tmp/debhomeseckey.gpg"
-	test "$?" -eq 0 || exitonerror 1 "Could not import secret key /tmp/debhomeseckey.gpg"
 }
 
 ###########################################
@@ -621,6 +606,28 @@ if test "${LIVEINSTALL}" = "false"; then
 	setuprepository "${CURUSER}" "${DEBHOMEPATH}" "${DEBHOMELINK}" "${DEBHOMEDEVICE}"
 	setuprepository "${CURUSER}" "${SVNPATH}" "${SVNLINK}" "${SVNDEVICE}"
 
+	# for rpi copy debhome-rpi.sources
+	if test "${ARCH}" = "aarch64"; then
+		cp -vf "/tmp/debhome-rpi.list" "/etc/apt/sources.list.d/"
+		exitonerror $? "Could not copy debhome-rpi.list /etc/apt/sources.list.d"
+	elif test "${ARCH}" = "x86_64"; then
+		cp -vf "/tmp/debhome-amd64.list" "/etc/apt/sources.list.d/"
+		exitonerror $? "Could not copy debhome-amd64.list /etc/apt/sources.list.d"
+	else
+		exitonerror 1 "Unknown architecture ${ARCH}"
+	fi
+
+	# import the secret key from /mnt/debhome/
+	# secret key is debhomeseckey.asc
+
+	gpg --import "/tmp/debhomeseckey.gpg"
+	test "$?" -eq 0 || exitonerror 1 "Could not import secret key /tmp/debhomeseckey.gpg"
+
+	# remove files from /tmp
+	rm -vf "/tmp/debhome-rpi.list"
+	rm -vf "/tmp/debhome-amd64.list"
+	rm -vf "/mnt/debhomeseckey.gpg"
+	
 	##############################################
 	# linux 24.04 needs a graphical environment for
 	# the live system. liveinstall.sh sets the environment
