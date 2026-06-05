@@ -626,7 +626,7 @@ if test "${LIVEINSTALL}" = "false"; then
 	# remove files from /tmp
 	rm -vf "/tmp/debhome-rpi.list"
 	rm -vf "/tmp/debhome-amd64.list"
-	rm -vf "/mnt/debhomeseckey.gpg"
+	rm -vf "/tmp/debhomeseckey.gpg"
 	
 	##############################################
 	# linux 24.04 needs a graphical environment for
