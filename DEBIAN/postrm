@@ -22,7 +22,10 @@ fi
 # write the key id to /tmp/seckey by deleting all lines
 # that do not start with ' '
 # then use key id from /tmp/seckey to delete it.
-gpg --list-secret-keys | sed -e '/^[ ]/!d' > /tmp/seckey && gpg --delete-secret-keys `cat /tmp/seckey`
+gpg --list-secret-keys | sed -e '/^[ ]/!d' | xargs -t gpg --delete-secret-keys
+
+# delete the public key
+gpg --list-keys | sed -e '/^[ ]/!d' | xargs -t gpg --delete-keys
 
 # sudoers.d/robert is installed by configdata
 # so it must be removed by configdata.
