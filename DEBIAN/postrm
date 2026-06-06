@@ -19,6 +19,11 @@ elif test "${ARCH}" = "x86_64"; then
 	test -f /etc/apt/sources.list.d/debhome-amd64.list && rm -fv /etc/apt/sources.list.d/debhome-amd64.list
 fi
 
+# write the key id to /tmp/seckey by deleting all lines
+# that do not start with ' '
+# then use key id from /tmp/seckey to delete it.
+gpg --list-secret-keys | sed -e '/^[ ]/!d' > /tmp/seckey && gpg --delete-secret-keys `cat /tmp/seckey`
+
 # sudoers.d/robert is installed by configdata
 # so it must be removed by configdata.
 
