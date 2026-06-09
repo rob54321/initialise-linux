@@ -19,13 +19,27 @@ elif test "${ARCH}" = "x86_64"; then
 	test -f /etc/apt/sources.list.d/debhome-amd64.list && rm -fv /etc/apt/sources.list.d/debhome-amd64.list
 fi
 
-# write the key id to /tmp/seckey by deleting all lines
+# get the key id from /etc/apt/keyrings/debhomepubkey.gpg
+# as there may be more than one key listed with gpg --list-keys
+# use gpg --show-keys /etc/apt/keyrings/debhomepubkey.gpg
+# and delete all lines 
 # that do not start with ' '
 # then use key id from /tmp/seckey to delete it.
-gpg --list-secret-keys | sed -e '/^[ ]/!d' > /tmp/seckey && gpg --delete-secret-keys `cat /tmp/seckey`
+# if /etc/apt/keyrings/debhomepubkey.gpg does not exist print and error
+if test -f "/etc/apt/keyrings/debhomepubkey.gpg"; then
+	# get key id and delete the secret key
+	gpg --show-key "/etc/apt/keyrings/debhomepubkey.gpg" | sed -e '/^[ ]/!d' > "/tmp/keyid.txt" && gpg --delete-secret-keys `cat /tmp/keyid.txt`
 
-# delete the public key
-gpg --list-keys | sed -e '/^[ ]/!d' > /tmp/pubkey && gpg --delete-keys `cat /tmp/pubkey`
+	# delete the public key
+	gpg --delete-keys `cat /tmp/keyid.txt`
+else
+	# /etc/apt/keyrings/debhomepubkey.gpg not found
+	# cannot determine the key id
+	echo "Cannot determine the key id as /etc/apt/keyrings/debhomepubkey.gpg not found"
+	
+	# wait for a prompt or time out of 10 seconds
+	read -t 10 value
+fi
 
 # sudoers.d/robert is installed by configdata
 # so it must be removed by configdata.
