@@ -4,61 +4,91 @@
 #################################################
 
 # only do this for remove, not upgrade
-test "$1" = "remove" || exit 0;
+if test "$1" = "remove"; then
 
-ARCH=`arch`
+	ARCH=`arch`
 
-# remove debhomepubkey.asc and debhome.sources and robert from sudoers.d
-test -f /etc/apt/keyrings/debhomepubkey.asc && rm -fv /etc/apt/keyrings/debhomepubkey.asc
+	# remove debhomepubkey.asc and debhome.sources and robert from sudoers.d
+	test -f /etc/apt/keyrings/debhomepubkey.asc && rm -fv /etc/apt/keyrings/debhomepubkey.asc
 
-# for rpi
-if test "${ARCH}" = "aarch64"; then
-	test -f /etc/apt/sources.list.d/debhome-rpi.list && rm -fv /etc/apt/sources.list.d/debhome-rpi.list
-elif test "${ARCH}" = "x86_64"; then
-	# for amd64
-	test -f /etc/apt/sources.list.d/debhome-amd64.list && rm -fv /etc/apt/sources.list.d/debhome-amd64.list
-fi
-
-# get the key id from /etc/apt/keyrings/debhomepubkey.gpg
-# as there may be more than one key listed with gpg --list-keys
-# use gpg --show-keys /etc/apt/keyrings/debhomepubkey.gpg
-# and delete all lines 
-# that do not start with ' '
-# then use key id from /tmp/seckey to delete it.
-# if /etc/apt/keyrings/debhomepubkey.gpg does not exist print and error
-if test -f "/etc/apt/keyrings/debhomepubkey.gpg"; then
-	# get key id and delete the secret key
-	gpg --show-key "/etc/apt/keyrings/debhomepubkey.gpg" | sed -e '/^[ ]/!d' > "/tmp/keyid.txt" && gpg --delete-secret-keys `cat /tmp/keyid.txt`
-
-	# delete the public key
-	gpg --delete-keys `cat /tmp/keyid.txt`
-else
-	# /etc/apt/keyrings/debhomepubkey.gpg not found
-	# cannot determine the key id
-	echo "Cannot determine the key id as /etc/apt/keyrings/debhomepubkey.gpg not found"
-	
-	# wait for a prompt or time out of 10 seconds
-	read -t 10 value
-fi
-
-# sudoers.d/robert is installed by configdata
-# so it must be removed by configdata.
-
-#test -f /etc/sudoers.d/robert && rm -fv /etc/sudoers.d/robert
-
-# remove the links for debhome and svn
-# debhome and svn must only be links
-# and not point to any directory.
-# debhome and svn must not be mounted
-# is it a link
-LIST=(/mnt/debhome /mnt/svn);
-for item in "${LIST[@]}"; do
-	if test -L "${item}"; then
-		# remove link, not recursively
-		rm -v "${item}";
-	else
-		# item is not a link
-		# will not remove
-		echo "initialise-linux:postrm ${item} is not a link so not removing"
+	# for rpi
+	if test "${ARCH}" = "aarch64"; then
+		test -f /etc/apt/sources.list.d/debhome-rpi.list && rm -fv /etc/apt/sources.list.d/debhome-rpi.list
+	elif test "${ARCH}" = "x86_64"; then
+		# for amd64
+		test -f /etc/apt/sources.list.d/debhome-amd64.list && rm -fv /etc/apt/sources.list.d/debhome-amd64.list
 	fi
-done;
+
+	# get the key id from /etc/apt/keyrings/debhomepubkey.gpg
+	# as there may be more than one key listed with gpg --list-keys
+	# use gpg --show-keys /etc/apt/keyrings/debhomepubkey.gpg
+	# and delete all lines 
+	# that do not start with ' '
+	# then use key id from /tmp/seckey to delete it.
+	# if /etc/apt/keyrings/debhomepubkey.gpg does not exist print and error
+	if test -f "/etc/apt/keyrings/debhomepubkey.gpg"; then
+		# get key id and delete the secret key
+		CURRENTKEYID=`gpg --show-key "/etc/apt/keyrings/debhomepubkey.gpg" | sed -e '/^[ ]/!d'`
+		gpg --delete-secret-keys "${CURRENTKEYID}"
+
+		# delete the public key
+		gpg --delete-keys "${CURRENTKEYID}"
+	else
+		# /etc/apt/keyrings/debhomepubkey.gpg not found
+		# cannot determine the key id
+		echo "Cannot determine the key id as /etc/apt/keyrings/debhomepubkey.gpg not found"
+		
+		# wait for a prompt or time out of 10 seconds
+		read -t 10 value
+	fi
+
+	# sudoers.d/robert is installed by configdata
+	# so it must be removed by configdata.
+
+	#test -f /etc/sudoers.d/robert && rm -fv /etc/sudoers.d/robert
+
+	# remove the links for debhome and svn
+	# debhome and svn must only be links
+	# and not point to any directory.
+	# debhome and svn must not be mounted
+	# is it a link
+	LIST=(/mnt/debhome /mnt/svn);
+	for item in "${LIST[@]}"; do
+		if test -L "${item}"; then
+			# remove link, not recursively
+			rm -v "${item}";
+		else
+			# item is not a link
+			# will not remove
+			echo "initialise-linux:postrm ${item} is not a link so not removing"
+		fi
+	done;
+elif test "$1" = "upgrade"; then
+	# check if the new key is identical to the current key
+	# if the new key is different
+	#    remove the old secret key
+	#    postinst must import the new secret key
+	#    the debhomepubkey.gpt will have been replaced
+	#    with the new one. So key ids can be compared
+	# else if the keys are the same, do nothing
+	
+	if test -f "/etc/apt/keyrings/debhomepubkey.gpg"; then
+		# get the new key id
+		NEWKEYID=`gpg --show-key "/etc/apt/keyrings/debhomepubkey.gpg" | sed -e '/^[ ]/!d'`
+
+		# does the new key exist in the key list
+		RC=gpg --list-keys | grep -i "$NEWKEYID"
+		
+		if test "${RC} -ne 0"; then
+			# new key does not exist in the current list
+		# delete the public key and the secret key from the init-lnux.rc file
+--------		
+	else
+		# /etc/apt/keyrings/debhomepubkey.gpg not found
+		# cannot determine the key id
+		echo "Cannot determine the key id as /etc/apt/keyrings/debhomepubkey.gpg not found"
+		
+		# wait for a prompt or time out of 10 seconds
+		read -t 10 value
+	fi
+

@@ -617,9 +617,15 @@ if test "${LIVEINSTALL}" = "false"; then
 		exitonerror 1 "Unknown architecture ${ARCH}"
 	fi
 
+	# only import the key if the current key is different to the new key
 	# import the secret key from /mnt/debhome/
 	# secret key is debhomeseckey.asc
-
+	# get the current key
+	gpg --list-secret-keys | sed -e '/^[ ]/!d' > "/tmp/currentkeyid.txt"
+	CURRENTKEYID=`cat /tmp/currentkeyid.txt`
+	
+	# get the new key id
+	gpg --show-key "/etc/apt/keyrings/
 	gpg --import "/tmp/debhomeseckey.gpg"
 	test "$?" -eq 0 || exitonerror 1 "Could not import secret key /tmp/debhomeseckey.gpg"
 

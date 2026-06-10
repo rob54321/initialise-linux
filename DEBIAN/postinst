@@ -1,0 +1,10 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+
+
+# this script checks if /tmp/currentkeyid exists.
+# if it does exist
+#       get new key id from debhomepubkey.gpg
+#       if currentkeyid does not equal new keyid
+#       then delete current key and import new key

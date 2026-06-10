@@ -1,0 +1,20 @@
+#!/usr/bin/bash
+# prerm for initialise-linux
+# this script saves the current key id
+# for upgrade only.
+# the keyid is used by postinst during upgrade
+# to delete the current key if the new
+# key is different to the current key.
+if test "$1" != upgrade; then exit 0;
+
+# we are doing an upgrade
+# save the current keyid to /tmp/currentkeyid
+if test -f "/etc/apt/keyrings/debhomepubkey.gpg"; then
+	# key file exists
+	# get the key save to /tmp/currentkeyid
+	echo `gpg --show-key "/etc/apt/keyrings/debhomepubkey.gpg" | sed -e '/^[ ]/!d'` > "/tmp/currentkeyid"
+else
+	# file does not exist, cannot get currentkeyid
+	echo "/etc/apt/keyrings/debhomepubkey.gpg does not exist, cannot get current key id"
+	read -t 10 value
+fi
