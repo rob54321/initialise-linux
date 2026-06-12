@@ -46,7 +46,7 @@ if test -f "/tmp/currentkeyid"; then
 		# cannot determine the key id
 		echo " "
 		echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-		echo "Cannot determine the new key id as /etc/apt/keyrings/debhomepubkey.gpg not found"
+		echo "postinst: Cannot determine the new key id as /etc/apt/keyrings/debhomepubkey.gpg not found"
 		echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 		
 		# wait for a prompt or time out of 10 seconds

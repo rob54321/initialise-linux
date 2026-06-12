@@ -44,7 +44,7 @@ if test "$1" = "remove"; then
 	else
 		# /etc/apt/keyrings/debhomepubkey.gpg not found
 		# cannot determine the key id
-		echo "Cannot determine the key id as /etc/apt/keyrings/debhomepubkey.gpg not found"
+		echo "postrm: Cannot determine the key id as /etc/apt/keyrings/debhomepubkey.gpg not found"
 		
 		# wait for a prompt or time out of 10 seconds
 		read -t 10 value

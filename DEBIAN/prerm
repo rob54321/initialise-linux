@@ -17,6 +17,6 @@ if test -f "/etc/apt/keyrings/debhomepubkey.gpg"; then
 	echo `gpg --show-key "/etc/apt/keyrings/debhomepubkey.gpg" | sed -e '/^[ ]/!d'` > "/tmp/currentkeyid"
 else
 	# file does not exist, cannot get currentkeyid
-	echo "/etc/apt/keyrings/debhomepubkey.gpg does not exist, cannot get current key id"
+	echo "prerm: /etc/apt/keyrings/debhomepubkey.gpg does not exist, cannot get current key id"
 	read -t 10 value
 fi
