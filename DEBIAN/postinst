@@ -37,7 +37,7 @@ if test -f "/tmp/currentkeyid"; then
 			
 			# import the new secret key
 			# not necessary to import the public key
-			gpg --import-key "${NEWKEYID}"
+			gpg --import "/tmp/debhomeseckey.gpg"
 		fi
 			
 	
@@ -60,12 +60,12 @@ else
 	NEWKEYID=`gpg --show-key "/etc/apt/keyrings/debhomepubkey.gpg" | sed -e '/^[ ]/!d'`
 	
 	# does the new key exist in the key list
-	gpg --list-keys | grep -q -i "$NEWKEYID"
+	gpg --list-keys | grep -i "$NEWKEYID"
 	
 	if test ${?} -ne 0; then
 		# new key does not exist in the current list
 		# import the new secret key
 		# not necessary to import the public key
-		gpg --import-key "${NEWKEYID}"
+		gpg --import "/tmp/debhomeseckey.gpg"
 	fi
 fi
