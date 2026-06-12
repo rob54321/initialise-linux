@@ -5,7 +5,9 @@
 # the keyid is used by postinst during upgrade
 # to delete the current key if the new
 # key is different to the current key.
-if test "$1" != upgrade; then exit 0;
+if test "$1" != "upgrade"; then
+	exit 0;
+fi
 
 # we are doing an upgrade
 # save the current keyid to /tmp/currentkeyid
