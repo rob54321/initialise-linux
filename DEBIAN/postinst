@@ -28,7 +28,7 @@ if test -f "/tmp/currentkeyid"; then
 		# does the new key exist in the key list
 		gpg --list-keys | grep -i "$NEWKEYID"
 
-		if test ${RC} -ne 0; then
+		if test ${?} -ne 0; then
 			# new key does not exist in the current list
 			# delete the public key and the secret key from /tmp/currentkeyid
 			CURRENTKEYID=`cat /tmp/currentkeyid`
