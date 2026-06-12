@@ -27,16 +27,14 @@ if test "$1" = "remove"; then
 		test -f /etc/apt/sources.list.d/debhome-amd64.list && rm -fv /etc/apt/sources.list.d/debhome-amd64.list
 	fi
 
-	# get the key id from /etc/apt/keyrings/debhomepubkey.gpg
-	# as there may be more than one key listed with gpg --list-keys
-	# use gpg --show-keys /etc/apt/keyrings/debhomepubkey.gpg
-	# and delete all lines 
-	# that do not start with ' '
-	# then use key id from /tmp/seckey to delete it.
-	# if /etc/apt/keyrings/debhomepubkey.gpg does not exist print and error
-	if test -f "/etc/apt/keyrings/debhomepubkey.gpg"; then
+	# get the key id from /tmp/currentkeyid
+	# /tmp/currentkeyid is created by prerm before debhomepubkey.gpg is deleted
+	# then delete currentkeyid
+	# if /tmp/currentkeyid does not exist print and error
+	if test -f "/tmp/currentkeyid"; then
 		# get key id and delete the secret key
-		CURRENTKEYID=`gpg --show-key "/etc/apt/keyrings/debhomepubkey.gpg" | sed -e '/^[ ]/!d'`
+		CURRENTKEYID=`cat "/tmp/currentkeyid"`
+		
 		gpg --delete-secret-keys "${CURRENTKEYID}"
 
 		# delete the public key
@@ -44,7 +42,7 @@ if test "$1" = "remove"; then
 	else
 		# /etc/apt/keyrings/debhomepubkey.gpg not found
 		# cannot determine the key id
-		echo "postrm: Cannot determine the key id as /etc/apt/keyrings/debhomepubkey.gpg not found"
+		echo "postrm: Cannot determine the key id as /tmp/currentkeyid not found"
 		
 		# wait for a prompt or time out of 10 seconds
 		read -t 10 value
