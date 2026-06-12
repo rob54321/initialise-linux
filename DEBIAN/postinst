@@ -1,10 +1,64 @@
-#!/usr/bin/perl
-use strict;
-use warnings;
+#!/usr/bin/bash
 
-
+##################################################
 # this script checks if /tmp/currentkeyid exists.
 # if it does exist
 #       get new key id from debhomepubkey.gpg
 #       if currentkeyid does not equal new keyid
 #       then delete current key and import new key
+# if /tmp/currentkeyid does not exist
+#		import the import the new key
+##################################################
+
+if test -f "/tmp/currentkeyid"; then
+	# we are upgrading
+	# check if the new key is in the current list
+	# if the new key is not in the current key list
+	#    get the current key id from /tmp/currentkeyid
+	#    and delete the current secret and public keys.
+	#    get the new key id from /etc/apt/keyrings/debhomepubkey.gpg
+	#    and import it.
+	# else if /etc/apt/keyrings/debhomepubkey.gpg does not exist
+	#          print and error message for 10 seconds
+	
+	if test -f "/etc/apt/keyrings/debhomepubkey.gpg"; then
+		# get the new key id
+		NEWKEYID=`gpg --show-key "/etc/apt/keyrings/debhomepubkey.gpg" | sed -e '/^[ ]/!d'`
+
+		# does the new key exist in the key list
+		RC=gpg --list-keys | grep -i "$NEWKEYID"
+		
+		if test "${RC}" -ne 0; then
+			# new key does not exist in the current list
+			# delete the public key and the secret key from /tmp/currentkeyid
+			CURRENTKEYID=`cat /tmp/currentkeyid`
+			gpg --delete-secret-key "${CURRENTKEYID}"
+			gpg --delete-key "${CURRENTKEYID}"
+			
+			# import the new secret key
+			# not necessary to import the public key
+			gpg --import-key "${NEWKEYID}"
+		fi
+			
+	
+	else
+		# /etc/apt/keyrings/debhomepubkey.gpg not found
+		# cannot determine the key id
+		echo " "
+		echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+		echo "Cannot determine the new key id as /etc/apt/keyrings/debhomepubkey.gpg not found"
+		echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+		
+		# wait for a prompt or time out of 10 seconds
+		read -t 10 value
+	fi
+else
+	# there is no /tmp/currentkey.id
+	# so we are not upgrading
+	# this is an install
+	# get the new key id and import secret and public keys
+	NEWKEYID=`gpg --show-key "/etc/apt/keyrings/debhomepubkey.gpg" | sed -e '/^[ ]/!d'`
+	
+	# import the new secret key
+	gpg --import-key "${NEWKEYID}"
+fi

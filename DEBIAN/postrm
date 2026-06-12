@@ -3,6 +3,14 @@
 # initialise-linux:postrm
 #################################################
 
+#################################################
+# for remove:
+#	remove debhomepubkey.gpg
+#	delete all keys public and secret
+# 	delete the links /mnt/svn and /mnt/debhome
+#
+# for upgrade:
+#	
 # only do this for remove, not upgrade
 if test "$1" = "remove"; then
 
@@ -63,32 +71,4 @@ if test "$1" = "remove"; then
 			echo "initialise-linux:postrm ${item} is not a link so not removing"
 		fi
 	done;
-elif test "$1" = "upgrade"; then
-	# check if the new key is identical to the current key
-	# if the new key is different
-	#    remove the old secret key
-	#    postinst must import the new secret key
-	#    the debhomepubkey.gpt will have been replaced
-	#    with the new one. So key ids can be compared
-	# else if the keys are the same, do nothing
-	
-	if test -f "/etc/apt/keyrings/debhomepubkey.gpg"; then
-		# get the new key id
-		NEWKEYID=`gpg --show-key "/etc/apt/keyrings/debhomepubkey.gpg" | sed -e '/^[ ]/!d'`
-
-		# does the new key exist in the key list
-		RC=gpg --list-keys | grep -i "$NEWKEYID"
-		
-		if test "${RC} -ne 0"; then
-			# new key does not exist in the current list
-		# delete the public key and the secret key from the init-lnux.rc file
---------		
-	else
-		# /etc/apt/keyrings/debhomepubkey.gpg not found
-		# cannot determine the key id
-		echo "Cannot determine the key id as /etc/apt/keyrings/debhomepubkey.gpg not found"
-		
-		# wait for a prompt or time out of 10 seconds
-		read -t 10 value
-	fi
-
+fi
