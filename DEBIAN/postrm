@@ -16,8 +16,17 @@ if test "$1" = "remove"; then
 
 	ARCH=`arch`
 
-	# remove debhomepubkey.asc and debhome.sources and robert from sudoers.d
-	test -f /etc/apt/keyrings/debhomepubkey.asc && rm -fv /etc/apt/keyrings/debhomepubkey.asc
+	# get the current key for deleting
+	CURRENTKEYID=`gpg --show-key /etc/apt/keyrings/debhomepubkey.gpg | sed -e '/^[ ]/!d'`
+	
+	
+	gpg --delete-secret-keys "${CURRENTKEYID}"
+
+	# delete the public key
+	gpg --delete-keys "${CURRENTKEYID}"
+
+	# remove debhomepubkey.gpg and debhome.sources and robert from sudoers.d
+	test -f /etc/apt/keyrings/debhomepubkey.gpg && rm -fv /etc/apt/keyrings/debhomepubkey.gpg
 
 	# for rpi
 	if test "${ARCH}" = "aarch64"; then
@@ -27,32 +36,13 @@ if test "$1" = "remove"; then
 		test -f /etc/apt/sources.list.d/debhome-amd64.list && rm -fv /etc/apt/sources.list.d/debhome-amd64.list
 	fi
 
-	# get the key id from /tmp/currentkeyid
-	# /tmp/currentkeyid is created by prerm before debhomepubkey.gpg is deleted
-	# then delete currentkeyid
-	# if /tmp/currentkeyid does not exist print and error
-	if test -f "/tmp/currentkeyid"; then
-		# get key id and delete the secret key
-		CURRENTKEYID=`cat "/tmp/currentkeyid"`
-		
-		gpg --delete-secret-keys "${CURRENTKEYID}"
-
-		# delete the public key
-		gpg --delete-keys "${CURRENTKEYID}"
-	else
-		# /etc/apt/keyrings/debhomepubkey.gpg not found
-		# cannot determine the key id
-		echo "postrm: Cannot determine the key id as /tmp/currentkeyid not found"
-		
-		# wait for a prompt or time out of 10 seconds
-		read -t 10 value
-	fi
 
 	# sudoers.d/robert is installed by configdata
 	# so it must be removed by configdata.
 
 	#test -f /etc/sudoers.d/robert && rm -fv /etc/sudoers.d/robert
 
+	# the links must be the last to be removed
 	# remove the links for debhome and svn
 	# debhome and svn must only be links
 	# and not point to any directory.

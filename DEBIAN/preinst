@@ -1,0 +1,13 @@
+#!/usr/bin/bash
+# preinst script for install, first install
+
+if test "$1" = "install"; then
+
+	# this is the very fist install
+	# set the status in file /tmp/initialise-linux-status to install
+	echo "install" > "/tmp/initialise-linux-status"
+elif test "$1" = "upgrade"; then
+	# this is an upgrade
+	# set status to upgrade
+	echo "upgrade" > "/tmp/initialise-linux-status"
+fi
