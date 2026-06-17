@@ -61,3 +61,4 @@ elif test "$1" = "upgrade"; then
 		read -t 10 value
 	fi
 fi
+exit 0

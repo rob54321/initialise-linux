@@ -35,3 +35,4 @@ if test "$1" = "remove"; then
 		fi
 	done;
 fi
+exit 0

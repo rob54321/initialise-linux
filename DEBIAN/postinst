@@ -112,3 +112,6 @@ else
 	echo "+++++++++++++++++++++++++++++++++++++++++++++"
 	read -t 10 value
 fi
+
+# exit with code 0, as read -t 10 value may exit with non zero value
+exit 0

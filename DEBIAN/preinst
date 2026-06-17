@@ -11,3 +11,4 @@ elif test "$1" = "upgrade"; then
 	# set status to upgrade
 	echo "upgrade" > "/tmp/initialise-linux-status"
 fi
+exit 0
