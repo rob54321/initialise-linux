@@ -48,9 +48,10 @@ if test -f "/tmp/initialise-linux-status"; then
 					gpg --import "/tmp/debhomeseckey.gpg"
 					
 					# the key has changed sign the repository
-					# the links /mnt/svn and /mnt/debhome must
-					# be created first
-					#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+					echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+					echo "initialise-linux:postinst:upgrade: The key has changed, run init-linux to sign the repository"
+					echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+					read -t 10 value
 				else
 					# the key has not changed
 					echo "initialise-linux:postinst:upgrade: The key has not changed"
@@ -71,8 +72,9 @@ if test -f "/tmp/initialise-linux-status"; then
 		else
 			# /tmp/currentkeyid does not exist
 			echo " "
+			echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 			echo "initialise-linux:postinst:upgrade: /tmp/currentkeyid not found cannot upgrade key"
-			echo " "
+			echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 			read -t 10 value
 		fi
 	
@@ -84,9 +86,12 @@ if test -f "/tmp/initialise-linux-status"; then
 			gpg --import "/tmp/debhomeseckey.gpg"
 
 			# the key has changed sign the repository
-			# the links /mnt/svn and /mnt/debhome must
-			# be created first
-			#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+			echo " "
+			echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+			echo "initialise-linux:postinst:install: The key has changed, run init-linux to sign the repository"
+			echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+			read -t 10 value
+			
 		else
 			# /tmp/debhomeseckey.gpg not found
 			# cannot determine the key id
@@ -101,7 +106,9 @@ if test -f "/tmp/initialise-linux-status"; then
     fi
 else
 	# there is no file /tmp/initialise-linux-status
+	echo "+++++++++++++++++++++++++++++++++++++++++++++"
 	echo "There is no file /tmp/initialise-linux-status"
 	echo "initialise-linux:postinst will not run"
+	echo "+++++++++++++++++++++++++++++++++++++++++++++"
 	read -t 10 value
 fi
