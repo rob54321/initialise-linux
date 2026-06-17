@@ -1,0 +1,49 @@
+#!/bin/bash
+#################################################
+# initialise-linux:postrm
+#################################################
+
+#################################################
+# for remove:
+#   get current key id
+#	remove debhomepubkey.gpg
+#	delete all keys public and secret
+#
+# for upgrade:
+#	
+# only do this for remove, not upgrade
+if test "$1" = "remove"; then
+
+	ARCH=`arch`
+
+	# remove debhomepubkey.gpg and debhome.sources and robert from sudoers.d
+	if test -f /etc/apt/keyrings/debhomepubkey.gpg; then
+	
+		# get the current key for deleting
+		# this must be in prerm before debhomepubkey.gpg is removed
+		CURRENTKEYID=`gpg --show-key /etc/apt/keyrings/debhomepubkey.gpg | sed -e '/^[ ]/!d'`
+		# delete the keys from the keyring
+		gpg --delete-secret-keys "${CURRENTKEYID}"
+
+		# delete the public key only if the secret key has been deleted
+		test "$?" && gpg --delete-keys "${CURRENTKEYID}"
+		
+		# the file debhomepubkey.gpg will be automatically removed when the 
+		# package is removed.
+	else
+		# the file /etc/apt/keyrings/debhomepubkey.gpg does not exist
+		# print and error message and continue
+		echo "The file /etc/apt/keyrings/debhomepubkey.gpg was not found"
+		echo "The secret and public key could not be deleted"
+		read -t 10 value
+	fi
+
+	# for rpi
+	if test "${ARCH}" = "aarch64"; then
+		test -f /etc/apt/sources.list.d/debhome-rpi.list && rm -fv /etc/apt/sources.list.d/debhome-rpi.list
+	elif test "${ARCH}" = "x86_64"; then
+		# for amd64
+		test -f /etc/apt/sources.list.d/debhome-amd64.list && rm -fv /etc/apt/sources.list.d/debhome-amd64.list
+	fi
+
+fi

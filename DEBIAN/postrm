@@ -5,37 +5,12 @@
 
 #################################################
 # for remove:
-#	remove debhomepubkey.gpg
-#	delete all keys public and secret
 # 	delete the links /mnt/svn and /mnt/debhome
 #
 # for upgrade:
 #	
 # only do this for remove, not upgrade
 if test "$1" = "remove"; then
-
-	ARCH=`arch`
-
-	# get the current key for deleting
-	CURRENTKEYID=`gpg --show-key /etc/apt/keyrings/debhomepubkey.gpg | sed -e '/^[ ]/!d'`
-	
-	
-	gpg --delete-secret-keys "${CURRENTKEYID}"
-
-	# delete the public key
-	gpg --delete-keys "${CURRENTKEYID}"
-
-	# remove debhomepubkey.gpg and debhome.sources and robert from sudoers.d
-	test -f /etc/apt/keyrings/debhomepubkey.gpg && rm -fv /etc/apt/keyrings/debhomepubkey.gpg
-
-	# for rpi
-	if test "${ARCH}" = "aarch64"; then
-		test -f /etc/apt/sources.list.d/debhome-rpi.list && rm -fv /etc/apt/sources.list.d/debhome-rpi.list
-	elif test "${ARCH}" = "x86_64"; then
-		# for amd64
-		test -f /etc/apt/sources.list.d/debhome-amd64.list && rm -fv /etc/apt/sources.list.d/debhome-amd64.list
-	fi
-
 
 	# sudoers.d/robert is installed by configdata
 	# so it must be removed by configdata.
