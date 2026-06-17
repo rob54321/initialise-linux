@@ -3,37 +3,92 @@
 ##################################################
 # get status install or upgrade from /tmp/initialise-linux-status
 # which was created by preinst
-# 
+# for upgrade (the key may or may not have changed)
+#     get the current key id (old key)
+#     get the new key id
+#     if the new key id is not in the keyring
+#        delete the current key id
+#        import the new key
+#     else
+#        the new key = old key do nothing
+# for install (the first install)
+#     get the current key id
+#     import the secret key
+# sign the repository
+# after the links have been set up /mnt/debhome and /mnt/svn
 ###################################################
 
-if test -f "/etc/apt/keyrings/debhomepubkey.gpg"; then
-	# get the new key id
-	NEWKEYID=`gpg --show-key "/etc/apt/keyrings/debhomepubkey.gpg" | sed -e '/^[ ]/!d'`
-
-	# does the new key exist in the key list
-	gpg --list-keys | grep -i "$NEWKEYID"
-
-	if test ${?} -ne 0; then
-		# new key does not exist in the current list
-		# delete the public key and the secret key from /mnt/debhome/currentkeyid
-		CURRENTKEYID=`cat /mnt/debhome/currentkeyid`
-		gpg --delete-secret-key "${CURRENTKEYID}"
-		gpg --delete-key "${CURRENTKEYID}"
-		
-		# import the new secret key
-		# not necessary to import the public key
-		gpg --import "/tmp/debhomeseckey.gpg"
-	fi
-		
-
-else
-	# /etc/apt/keyrings/debhomepubkey.gpg not found
-	# cannot determine the key id
-	echo " "
-	echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-	echo "postinst: Cannot determine the new key id as /etc/apt/keyrings/debhomepubkey.gpg not found"
-	echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+# determine if we are upgrading/reinstalling or first install
+if test -f "/tmp/initialise-linux-status"; then
+	# get the status, either upgrade or install
+	STATUS=`cat "/tmp/initialise-linux-status"`
 	
-	# wait for a prompt or time out of 10 seconds
+	if test "${STATUS}" = "upgrade"; then
+		# get currentkeyid written by prerm upgrade
+		CURRENTKEYID=`cat /tmp/currentkeyid`
+		
+		# get the new key id from debhomepubkey.gpg
+		if test -f "/etc/apt/keyrings/debhomepubkey.gpg"; then
+			# get the new key id
+			NEWKEYID=`gpg --show-key "/etc/apt/keyrings/debhomepubkey.gpg" | sed -e '/^[ ]/!d'`
+
+			# does the new key exist in the key list
+			gpg --list-keys "$NEWKEYID"
+
+			if test ${?} -ne 0; then
+				# new key does not exist in the current list
+				# delete the public key and the secret key from /mnt/debhome/currentkeyid
+				gpg --delete-secret-key "${CURRENTKEYID}"
+				gpg --delete-key "${CURRENTKEYID}"
+				
+				# import the new secret key
+				# not necessary to import the public key
+				gpg --import "/tmp/debhomeseckey.gpg"
+				
+				# the key has changed sign the repository
+				# the links /mnt/svn and /mnt/debhome must
+				# be created first
+				#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+			fi
+				
+
+		else
+			# /etc/apt/keyrings/debhomepubkey.gpg not found
+			# cannot determine the key id
+			echo " "
+			echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+			echo "postinst: Cannot determine the new key id as /etc/apt/keyrings/debhomepubkey.gpg not found"
+			echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+			
+			# wait for a prompt or time out of 10 seconds
+			read -t 10 value
+		fi
+    elif test -f "${STATUS}" = "install"; then
+		# this is the first install
+		# import the secret key
+		if test -f "/tmp/debhomeseckey.gpg"; then
+			# secret key exists, import it
+			gpg --import "/tmp/debhomeseckey.gpg"
+
+			# the key has changed sign the repository
+			# the links /mnt/svn and /mnt/debhome must
+			# be created first
+			#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+		else
+			# /tmp/debhomeseckey.gpg not found
+			# cannot determine the key id
+			echo " "
+			echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+			echo "initialise-linux:postinst:install: Cannot determine the key id as /tmp/debhomeseckey.gpg not found"
+			echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+			
+			# wait for a prompt or time out of 10 seconds
+			read -t 10 value
+		fi
+ 
+else
+	# there is no file /tmp/initialise-linux-status
+	echo "There is no file /tmp/initialise-linux-status"
+	echo "initialise-linux:postinst will not run"
 	read -t 10 value
 fi

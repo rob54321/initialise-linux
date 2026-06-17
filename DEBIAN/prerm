@@ -10,7 +10,9 @@
 #	delete all keys public and secret
 #
 # for upgrade:
-#	
+#	store the currentkeyid in a file /tmp/currentkeyid
+#   this keyid will be used for deleting the old key if necessary.
+#   
 # only do this for remove, not upgrade
 if test "$1" = "remove"; then
 
@@ -33,8 +35,8 @@ if test "$1" = "remove"; then
 	else
 		# the file /etc/apt/keyrings/debhomepubkey.gpg does not exist
 		# print and error message and continue
-		echo "The file /etc/apt/keyrings/debhomepubkey.gpg was not found"
-		echo "The secret and public key could not be deleted"
+		echo "initialise-linux:prerm: The file /etc/apt/keyrings/debhomepubkey.gpg was not found"
+		echo "initialise-linux:prerm: The secret and public key could not be deleted"
 		read -t 10 value
 	fi
 
@@ -46,4 +48,16 @@ if test "$1" = "remove"; then
 		test -f /etc/apt/sources.list.d/debhome-amd64.list && rm -fv /etc/apt/sources.list.d/debhome-amd64.list
 	fi
 
+elif test "$1" = "upgrade"; then
+	# get the currentkeyid for possible deleting by postinst
+	if test -f /etc/apt/keyrings/debhomepubkey.gpg; then
+
+		# get currentkeyid
+		CURRENTKEYID=`gpg --show-key /etc/apt/keyrings/debhomepubkey.gpg | sed -e '/^[ ]/!d'`
+		echo "${CURRENTKEYID}" > "/tmp/currentkeyid"
+	else
+		# debhomepubkey.gpg does not exist
+		echo "initialise-linux:prerm: Cannot determine current key id, /etc/apt/keyrings/debhomepubkey.gpg not found"
+		read -t 10 value
+	fi
 fi
