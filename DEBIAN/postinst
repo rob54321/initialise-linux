@@ -37,7 +37,9 @@ if test -f "/tmp/initialise-linux-status"; then
 				echo "initialise-linux:postinst:upgrade: NEWKEYID = ${NEWKEYID}"
 
 				# does the new key exist in the key list
-				RC=gpg --verbose --list-keys "$NEWKEYID"
+				gpg --verbose --list-keys "$NEWKEYID"
+				RC=$?
+				
 				echo "initialise-linux:postinst:upgrade: RC = ${RC} for NEWKEYID in key list"
 
 				if test ${RC} -ne 0; then
