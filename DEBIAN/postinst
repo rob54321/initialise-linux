@@ -37,7 +37,7 @@ if test -f "/tmp/initialise-linux-status"; then
 				echo "initialise-linux:postinst:upgrade: NEWKEYID = ${NEWKEYID}"
 
 				# does the new key exist in the key list
-				gpg --verbose --list-keys "$NEWKEYID"
+				gpg --list-keys "$NEWKEYID"
 				RC=$?
 				
 				echo "initialise-linux:postinst:upgrade: RC = ${RC} for NEWKEYID in key list"
@@ -45,8 +45,8 @@ if test -f "/tmp/initialise-linux-status"; then
 				if test ${RC} -ne 0; then
 					# new key does not exist in the current list
 					# delete the public key and the secret key from /mnt/debhome/currentkeyid
-					gpg --delete-secret-key "${CURRENTKEYID}"
-					gpg --delete-key "${CURRENTKEYID}"
+					gpg --batch --yes --delete-secret-key "${CURRENTKEYID}"
+					gpg --batch --yes --delete-key "${CURRENTKEYID}"
 					
 					# import the new secret key
 					# not necessary to import the public key
