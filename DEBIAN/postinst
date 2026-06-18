@@ -28,16 +28,19 @@ if test -f "/tmp/initialise-linux-status"; then
 		if test -f "/tmp/currentkeyid"; then
 			# get currentkeyid written by prerm upgrade
 			CURRENTKEYID=`cat /tmp/currentkeyid`
+			echo "initialise-linux:postinst:upgrade: CURRENTKEYID = ${CURRENTKEYID}"
 			
 			# get the new key id from debhomepubkey.gpg
 			if test -f "/etc/apt/keyrings/debhomepubkey.gpg"; then
 				# get the new key id
 				NEWKEYID=`gpg --show-key "/etc/apt/keyrings/debhomepubkey.gpg" | sed -e '/^[ ]/!d'`
+				echo "initialise-linux:postinst:upgrade: NEWKEYID = ${NEWKEYID}"
 
 				# does the new key exist in the key list
-				gpg --list-keys "$NEWKEYID"
+				RC=gpg --verbose --list-keys "$NEWKEYID"
+				echo "initialise-linux:postinst:upgrade: RC = ${RC} for NEWKEYID in key list"
 
-				if test ${?} -ne 0; then
+				if test ${RC} -ne 0; then
 					# new key does not exist in the current list
 					# delete the public key and the secret key from /mnt/debhome/currentkeyid
 					gpg --delete-secret-key "${CURRENTKEYID}"
