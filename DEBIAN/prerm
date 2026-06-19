@@ -25,10 +25,10 @@ if test "$1" = "remove"; then
 		# this must be in prerm before debhomepubkey.gpg is removed
 		CURRENTKEYID=`gpg --show-key /etc/apt/keyrings/debhomepubkey.gpg | sed -e '/^[ ]/!d'`
 		# delete the keys from the keyring
-		gpg --delete-secret-keys "${CURRENTKEYID}"
+		gpg --batch --yes --delete-secret-keys "${CURRENTKEYID}"
 
 		# delete the public key only if the secret key has been deleted
-		test "$?" && gpg --delete-keys "${CURRENTKEYID}"
+		gpg --batch --yes --delete-keys "${CURRENTKEYID}"
 		
 		# the file debhomepubkey.gpg will be automatically removed when the 
 		# package is removed.

@@ -50,7 +50,7 @@ if test -f "/tmp/initialise-linux-status"; then
 					
 					# import the new secret key
 					# not necessary to import the public key
-					gpg --import "/tmp/debhomeseckey.gpg"
+					gpg --batch --yes --import --passphrase 'coahtr3552' "/tmp/debhomeseckey.gpg"
 					
 					# the key has changed sign the repository
 					echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
@@ -88,7 +88,7 @@ if test -f "/tmp/initialise-linux-status"; then
 		# import the secret key
 		if test -f "/tmp/debhomeseckey.gpg"; then
 			# secret key exists, import it
-			gpg --import "/tmp/debhomeseckey.gpg"
+			gpg --batch --yes --passphrase 'coahtr3552' --import "/tmp/debhomeseckey.gpg"
 
 			# the key has changed sign the repository
 			echo " "
