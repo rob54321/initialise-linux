@@ -10,8 +10,25 @@ use warnings;
 # 
 # gpg: revocation certificate stored as '/root/.gnupg/openpgp-revocs.d/2CD8319900216D7B36D7828D456DD768CEB04E19.rev'
 
+# first command line argument is the name of the key
+# if no name given prompt for one
+# check if an argument was given
+my $name;
+if (scalar(@ARGV) == 0) {
+	# no command line arguments given 
+	# prompt for one.
+	print "Enter a unique name for the key\n";
+	$name = <STDIN>;
+	chomp ($name);
+} else {
+	# argument on command line
+	$name = $ARGV[0];
+	chomp($name);
+}
+print "name is : [$name]\n";
+
 # generate the key
-my $output = `gpg --batch --yes --passphrase 'coahtr3552' --quick-generate-key debhome22 > /tmp/output.txt 2>&1`;
+my $output = `gpg --batch --yes --passphrase 'coahtr3552' --quick-generate-key $name> /tmp/output.txt 2>&1`;
 
 # open the file and get the key id
 open (my $fh, "<", "/tmp/output.txt");
