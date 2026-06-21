@@ -23,6 +23,8 @@ if test "$1" = "remove"; then
 	
 		# get the current key for deleting
 		# this must be in prerm before debhomepubkey.gpg is removed
+		# the repository /mnt/debhome may not be available
+		# This is the safest way to get the current key id
 		CURRENTKEYID=`gpg --show-key /etc/apt/keyrings/debhomepubkey.gpg | sed -e '/^[ ]/!d'`
 		# delete the keys from the keyring
 		gpg --batch --yes --delete-secret-keys "${CURRENTKEYID}"
@@ -37,7 +39,7 @@ if test "$1" = "remove"; then
 		# print and error message and continue
 		echo "initialise-linux:prerm: The file /etc/apt/keyrings/debhomepubkey.gpg was not found"
 		echo "initialise-linux:prerm: The secret and public key could not be deleted"
-		read -t 10 value
+		read -t 5 value
 	fi
 
 	# for rpi
@@ -52,13 +54,13 @@ elif test "$1" = "upgrade"; then
 	# get the currentkeyid for possible deleting by postinst
 	if test -f /etc/apt/keyrings/debhomepubkey.gpg; then
 
-		# get currentkeyid
-		CURRENTKEYID=`gpg --show-key /etc/apt/keyrings/debhomepubkey.gpg | sed -e '/^[ ]/!d'`
-		echo "${CURRENTKEYID}" > "/tmp/currentkeyid"
+		# get currentkeyid from /mnt/debhome/dists/home/currentkeyid.txt
+		# as /mnt/debhome repository will be available
+		CURRENTKEYID=`cat /mnt/debhome/dists/home/currentkeyid.txt`
 	else
 		# debhomepubkey.gpg does not exist
-		echo "initialise-linux:prerm: Cannot determine current key id, /etc/apt/keyrings/debhomepubkey.gpg not found"
-		read -t 10 value
+		echo "initialise-linux:prerm: Cannot determine current key id, /mnt/debhome/dists/home/currentkeyid.txt not found"
+		read -t 5 value
 	fi
 fi
 exit 0
