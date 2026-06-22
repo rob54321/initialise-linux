@@ -92,6 +92,8 @@ if test -f "/tmp/initialise-linux-status"; then
 			gpg --batch --yes --passphrase 'coahtr3552' --import "/tmp/debhomeseckey.gpg"
 
 			# check the current key id that was used to sign the repository
+			# the /mnt/debhome repository must exist. The links /mnt/svn /mnt/debhome
+			# must also be present so setuprepository() must be run before this.
 			if test -f "/mnt/debhome/dists/home/currentkeyid.txt"; then
 				# the current key id is available
 				CURRENTKEYID=`cat /mnt/debhome/dists/home/currentkeyid.txt`
