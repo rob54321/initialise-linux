@@ -1,5 +1,6 @@
 #!/usr/bin/bash
 
+
 ##################################################
 # get status install or upgrade from /tmp/initialise-linux-status
 # which was created by preinst
@@ -18,6 +19,207 @@
 # after the links have been set up /mnt/debhome and /mnt/svn
 ###################################################
 
+# function to exit with status 1
+# the debhomedev is unmounted first
+# the rc code is passed as first parameter, no exit on 0, exit on 1, 2, 3..
+# second parameter is the error string
+exitonerror() {
+	# test rc code
+	if test $1 -ne 0; then
+		# display error string
+		echo "return code: $1"
+		echo "$2"
+
+		# log error
+		log "$2"
+		exit 1;
+	fi
+}
+
+# function to setup subversion link to the new path
+# the new user must already exist
+# the owner.group of the /mnt directory must
+# be set to new user
+# check the repository exists and then check/set the link
+# to point to it.
+# parameters: setupreppository
+# 		$1 CURUSER  (non root)
+#		$2 svnpath roor dir | debhomepath root dir
+#		$3 svn | debhome , just the name to distuigish which one is being set up
+#########################################################
+setuprepository() {
+	# the links /mnt/svn and /mnt/debhome never change.
+	# set them so they do not have to be passed as arguments
+	# to this function
+	SVN_LINK="/mnt/svn"
+	DEBHOME_LINK="/mnt/debhome"
+	
+	# check new user exists
+	/usr/bin/getent passwd "$1" > /dev/null 2>&1 
+	exitonerror $? "new user $1 does not exist"
+
+	# the argument $2 is the debhome root directory.
+	# default is /mnt/ad64/debhome with link /mnt/debhome.
+	# to check the existence of the debhome repository
+	# use /debian_root_directory/dists/home.
+	# only do this for debhome, not svn
+	if test "$3" = "debhome"; then
+		# set the full path of debhome for a better check
+		REPOSITORY_PATH="$2/dists/home"
+		# set the link
+		REPOSITORY_LINK="${DEBHOME_LINK}"
+
+	elif test "$3" = "svn"; then
+		# set the path for svn check
+		REPOSITORY_PATH="$2/db"
+		# set the link
+		REPOSITORY_LINK="${SVN_LINK}"
+	else
+		# $3 should be svn or debhome
+		# but it is something else.
+		# print and error message and exit
+		exitonerror 1 "\$3 = $3, should be svn or debhome"
+	fi
+	echo "respository path = ${REPOSITORY_PATH}"
+	echo "repository link = ${REPOSITORY_LINK}"
+
+	# makelive now makes directories /mnt/debhome
+	# and /mnt/svn to access svn and debhome.
+	# makelive delets these directories
+
+	# set ownership of /mnt to robert:robert
+	/usr/bin/chown $1:$1 /mnt
+
+	# check that there is not a directory with the name of the link.
+	# remove it or fail
+	# if debhome or svn is a directory remove the directory
+	# so a link can be made.
+	# test -d link gives true if link points to a directory.
+	# hence test for directory must be
+	# if file or directory exists with the name of the link , /mnt/svn or /mnt/debhome, remove it
+	if test -e "${REPOSITORY_LINK}" && test ! -L "${REPOSITORY_LINK}" && test -d "${REPOSITORY_LINK}"; then
+		echo "${REPOSITORY_LINK} is a directory, removing .."
+		rmdir -v "${REPOSITORY_LINK}"
+		exitonerror $? "Could not remove directory ${REPOSITORY_LINK}"
+	fi
+
+	# check that repository can be found
+	# by using the full path to the repository
+	# for debhome /debhome_root_directory/dists/home
+	# for svn /svn_root_directory
+	# REPOSITORY_PATH is set for each repository
+	if test -d "${REPOSITORY_PATH}"; then
+		# path exists now check the link
+		if test -L "${REPOSITORY_LINK}"; then
+			# the link exists
+			# check where it points to
+			LINKPATH=`ls -l ${REPOSITORY_LINK} | cut -d " " -f11`
+
+			# now check if link points to svn | debhome root directory
+			if test "${LINKPATH}" != "$2"; then
+				# link must be changed
+				rm -vf "${REPOSITORY_LINK}"
+				exitonerror $? "could not remove link ${REPOSITORY_LINK}"
+				# make the new link
+				sudo -u $1 ln -s "$2" "${REPOSITORY_LINK}"
+				exitonerror $? "could not make the link ${REPOSITORY_LINK}"
+			fi
+
+		else
+			# there is no link
+			# make the link
+			sudo -u $1 ln -s "$2" "${RESPOSITORY_LINK}"
+			exitonerror $? "could not make the link ${RESPOSITORY_LINK}"
+		fi
+		# subversion | debhome exists and link is correct
+		echo "repository exists at ${REPOSITORY_LINK} -> $2"
+
+	else
+		# repository path is not valid
+		# it may reside on a device that is attached
+		# and needs to be mounted
+		# try and mount debhome | svn device
+		echo "repository does not exist at $2"
+
+		# the repository root directories could be
+		# /mnt/device/debhome | svn
+		# /opt/debhome | svn etc
+		# determine if an attached device is in the root directory
+		# get the device part from /mnt/device/debhome | svn
+		DEVICE=`echo "$2" | cut -d "/" -f3`
+		
+		# check if device is attached
+		lsblk -o LABEL | grep -w "${DEVICE}"
+		if test $? -eq 0; then 
+			# this is a valid device
+			# and it is attached.
+			echo "${DEVICE} is a valid attached device -- attempting to mount ${DEVICE}"
+
+			test -d "/mnt/${DEVICE}" || sudo -u $1 mkdir "/mnt/${DEVICE}"
+			exitonerror $? "could not make directory /mnt/${DEVICE}"
+
+			# the repository root directory $2 is of
+			# the form /directory/debhome OR /mnt/device_label/debhome
+			# determine if the string contains a valid device label
+			# mount the device if not mounted
+			# check where it is mounted
+			# should be on /mnt/$DEVICE
+			findmnt --source LABEL="${DEVICE}"
+			if test $? -eq 0; then
+				# device is mounted
+				# get mountpoint
+				MNTPT=`findmnt --source LABEL="${DEVICE}" -o TARGET | sed -n -e '2p'`
+				echo "${DEVICE} is mounted at ${MNTPT}"
+
+				# if mount point is not /mnt/DEVICE
+				# then umount and mount again
+				if test "${MNTPT}" != "/mnt/${DEVICE}"; then
+					# mounted but not at /mnt/$DEVICE
+					umount "${MNTPT}"
+					exitonerror $? "could not umount ${MNTPT}"
+					# mount it correctly
+					mount -v -L "${DEVICE}" "/mnt/${DEVICE}"
+					exitonerror $? "could not mount ${DEVICE} at /mnt/${DEVICE}"
+				fi
+			else
+				# DEVICE is not mounted
+				mount -v -L "${DEVICE}" "/mnt/${DEVICE}"
+				exitonerror $? "could not mount ${DEVICE} at /mnt/${DEVICE}"
+			fi
+		fi
+
+		# remove and make the link for subversion | debhome
+		rm -vf "${REPOSITORY_LINK}"
+		sudo -u $1 ln -s "$2" "${REPOSITORY_LINK}"
+		exitonerror $? "could not make the link ${REPOSITORY_LINK}"
+
+		# check that the repository exists from the link
+		if test -d "${REPOSITORY_PATH}"; then
+			# repository exists
+			echo "repository exists at ${REPOSITORY_LINK} -> $2"
+		else
+			# repository not found
+			# enter the root directory to the repository and try again
+			until test -d "${REPOSITORY_PATH}"; do
+				# prompt for a new path to 
+				echo "The link ${REPOSITORY_LINK} -> $2 which is invalid"
+				echo "Enter the root directory that ${REPOSITORY_LINK} points to"
+				read REPOSITORY_ROOT_DIR
+				# try again
+				setuprepository "robert" "${REPOSITORY_ROOT_DIR}" "${3}"
+			done
+
+		# subversion | debhome exists and link is correct
+		fi
+
+	fi
+	# repository exists
+}
+
+
+#########################################################################
+# main entry point
+#########################################################################
 # determine if we are upgrading/reinstalling or first install
 if test -f "/tmp/initialise-linux-status"; then
 	# get the status, either upgrade or install
@@ -86,7 +288,12 @@ if test -f "/tmp/initialise-linux-status"; then
 	
     elif test "${STATUS}" = "install"; then
 		# this is the first install
+		# setup the links /mnt/svn /mnt/debhome for the repository
+		# invoke setuprepository with default values.
+		# the function will prompt if the archive is not found
+		# setuprepository "robert" "/mnt/ad64/debhome" "/mnt/debhome
 		# import the secret key
+		
 		if test -f "/tmp/debhomeseckey.gpg"; then
 			# secret key exists, import it
 			gpg --batch --yes --passphrase 'coahtr3552' --import "/tmp/debhomeseckey.gpg"
@@ -94,6 +301,11 @@ if test -f "/tmp/initialise-linux-status"; then
 			# check the current key id that was used to sign the repository
 			# the /mnt/debhome repository must exist. The links /mnt/svn /mnt/debhome
 			# must also be present so setuprepository() must be run before this.
+			# invoke setuprepository() with default values
+			# if the repositories are not found, they will be prompted for.
+			setuprepository "robert" "/mnt/ad64/debhome" "debhome"
+			setuprepository "robert" "/mnt/ad64/svn" "svn"
+			
 			if test -f "/mnt/debhome/dists/home/currentkeyid.txt"; then
 				# the current key id is available
 				CURRENTKEYID=`cat /mnt/debhome/dists/home/currentkeyid.txt`
