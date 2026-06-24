@@ -548,9 +548,9 @@ usage() {
 	echo "-g set target to graphical target               default: ${TARGET}";
 	echo "-n set target to multi-user.target	        default: ${TARGET}";
 	echo "-d full path to debhome root			default: ${DEBHOMEPATH}";
-	echo "-D debhome default device			default: ${DEBHOMEDEVICE}";
+#	echo "-D debhome default device			default: ${DEBHOMEDEVICE}";
 	echo "-s full path to svn root      			default: ${SVNPATH}";
-	echo "-S svn device					default: ${SVNDEVICE}";
+#	echo "-S svn device					default: ${SVNDEVICE}";
    	echo "-V version and exit";
    	echo "-L run in chrootenvironment";
 	echo "-h help";
@@ -604,15 +604,15 @@ fi
 # parameter S destinstion of svn is
 # only used in init-rpi, not in this script
 # it must be defined here as it is passed to init-rpi
-while getopts gnd:D:s:S:VhL opt
+while getopts gnd:s:VhL opt
 do
 	case ${opt} in
 		d) DEBHOMEPATH="${OPTARG}"; DEBHOME_FLAG="true";;
 		g) TARGET="graphical.target";;
 		n) TARGET="multi-user.target";;
-		D) DEBHOMEDEVICE="${OPTARG}"; DEBHOME_FLAG="true";;
+#		D) DEBHOMEDEVICE="${OPTARG}"; DEBHOME_FLAG="true";;
 		s) SVNPATH="${OPTARG}"; SVN_FLAG="true";;
-		S) SVNDEVICE="${OPTARG}" SVN_FLAG="true";;
+#		S) SVNDEVICE="${OPTARG}" SVN_FLAG="true";;
 		L) LIVEINSTALL="true";;
 		V) dpkg-query -W "initialise-linux"; exit 0;;
 		h) usage;;
@@ -675,20 +675,26 @@ if test "${LIVEINSTALL}" = "false"; then
 
 	# for rpi copy debhome-rpi.sources
 	if test "${ARCH}" = "aarch64"; then
-		test -f "/tmp/debhome-rpi.list" && cp -vf "/tmp/debhome-rpi.list" "/etc/apt/sources.list.d/"
-		exitonerror $? "Could not copy debhome-rpi.list /etc/apt/sources.list.d"
+		if test -f "/tmp/debhome-rpi.list"; then
+			# copy debhome-rpi.list if it exists
+			cp -vf "/tmp/debhome-rpi.list" "/etc/apt/sources.list.d/"
+			exitonerror $? "Could not copy /tmp/debhome-rpi.list /etc/apt/sources.list.d"
+			rm -vf "/tmp/debhome-rpi.list"
+		fi
 	elif test "${ARCH}" = "x86_64"; then
-		test -f "/tmp/debhome-amd64.list" && cp -vf "/tmp/debhome-amd64.list" "/etc/apt/sources.list.d/"
-		exitonerror $? "Could not copy debhome-amd64.list /etc/apt/sources.list.d"
+		# if debhome-amd64.list exists copy it
+		if test -f "/tmp/debhome-amd64.list"; then
+			cp -vf "/tmp/debhome-amd64.list" "/etc/apt/sources.list.d/"
+			exitonerror $? "Could not copy /tmp/debhome-amd64.list /etc/apt/sources.list.d"
+			rm -vf "/tmp/debhome-amd64.list"
+		fi
 	else
 		exitonerror 1 "Unknown architecture ${ARCH}"
 	fi
 
 	# remove files from /tmp
-	rm -vf "/tmp/debhome-rpi.list"
-	rm -vf "/tmp/debhome-amd64.list"
-	rm -vf "/tmp/debhomeseckey.gpg"
-	
+	test -f "/tmp/debhomeseckey.gpg" && rm -vf "/tmp/debhomeseckey.gpg"
+
 	##############################################
 	# linux 24.04 needs a graphical environment for
 	# the live system. liveinstall.sh sets the environment
