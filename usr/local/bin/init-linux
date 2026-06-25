@@ -31,7 +31,7 @@
 # 4. export sudoers robert
 # 5. set aliases and bashrc for root and robert
 # 6. install subversion
-# 6. setup subversion resporitory
+# 6. setup subversion reporitory
 # 7. setup debhome repository with debhomepubkey.asc and debhome.sources
 # 8. makes all mount directories and sets ownership
 # 9. if the user is pi, setup init service to create user robert after boot
@@ -266,7 +266,7 @@ setuprepository() {
 		# print and error message and exit
 		exitonerror 1 "\$3 = $3, should be svn or debhome"
 	fi
-	echo "respository path = ${REPOSITORY_PATH}"
+	echo "repository path = ${REPOSITORY_PATH}"
 	echo "repository link = ${REPOSITORY_LINK}"
 
 	# makelive now makes directories /mnt/debhome
@@ -314,8 +314,8 @@ setuprepository() {
 		else
 			# there is no link
 			# make the link
-			sudo -u $1 ln -s "$2" "${RESPOSITORY_LINK}"
-			exitonerror $? "could not make the link ${RESPOSITORY_LINK}"
+			sudo -u $1 ln -s "$2" "${REPOSITORY_LINK}"
+			exitonerror $? "could not make the link ${REPOSITORY_LINK}"
 		fi
 		# subversion | debhome exists and link is correct
 		echo "repository exists at ${REPOSITORY_LINK} -> $2"
