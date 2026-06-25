@@ -106,8 +106,8 @@ if test -f "/tmp/initialise-linux-status"; then
 			# must also be present so setuprepository() must be run before this.
 			# invoke setuprepository() with default values
 			# if the repositories are not found, they will be prompted for.
-			setuprepository "robert" "/mnt/ad64/debhome" "debhome"
-			setuprepository "robert" "/mnt/ad64/svn" "svn"
+			/usr/local/bin/setuprepository "robert" "/mnt/ad64/debhome" "debhome"
+			/usr/local/bin/setuprepository "robert" "/mnt/ad64/svn" "svn"
 			
 			if test -f "/mnt/debhome/dists/home/currentkeyid.txt"; then
 				# the current key id is available
