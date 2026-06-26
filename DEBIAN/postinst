@@ -60,12 +60,15 @@ if test -f "/tmp/initialise-linux-status"; then
 					
 					# the key has changed sign the repository
 					echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-					echo "line 63: initialise-linux:postinst:upgrade: The key has changed, run init-linux to sign the repository"
+					echo "initialise-linux:postinst:upgrade: The key has changed, run init-linux to sign the repository"
 					echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 					read -t 5 value
 				else
 					# the key has not changed
-					echo "line 68: initialise-linux:postinst:upgrade: The key has not changed"
+					echo " "
+					echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+					echo "initialise-linux:postinst:upgrade: The key has not changed"
+					echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 				
 				fi	
 
@@ -112,7 +115,7 @@ if test -f "/tmp/initialise-linux-status"; then
 			if test -f "/mnt/debhome/dists/home/currentkeyid.txt"; then
 				# the current key id is available
 				CURRENTKEYID=`cat /mnt/debhome/dists/home/currentkeyid.txt`
-				echo "line 115: initialise-linux:postinst:install: CURRENTKEYID = ${CURRENTKEYID}"
+				echo "initialise-linux:postinst:install: CURRENTKEYID = ${CURRENTKEYID}"
 
 				# get the new key id
 				NEWKEYID=`gpg --show-key "/etc/apt/keyrings/debhomepubkey.gpg" | sed -e '/^[ ]/!d'`
@@ -120,14 +123,24 @@ if test -f "/tmp/initialise-linux-status"; then
 
 				# if the new key id and the current key id are the same
 				# there is no need to sign the repository
-				if test "${NEWKEYID} = ${CURRENTKEYID}"; then
+				if test "${NEWKEYID}" = "${CURRENTKEYID}"; then
 					# not necessary to sign the repository
 					echo " "
 					echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-					echo "line 127: initialise-linux:postinst:install: New key = current key: ${NEWKEYID} = ${CURRENTKEYID}"
+					echo "initialise-linux:postinst:install: New key = current key"
+					echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+					read -t 5 value
+				else
+					# the new key is different to the old key.
+					# the repository must be signed and apt update run
+					echo " "
+					echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+					echo "initialise-linux:postinst:install: New key != current key"
+					echo "the repository must be signed with the new key, run apt update"
 					echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 					read -t 5 value
 				fi
+
 			else
 				# /mnt/debhome/dists/home/currentkeyid.txt not found
 				# the repository has not been signed
