@@ -1,7 +1,8 @@
 #!/bin/bash
 
 #########################################################
-# this script will be run by liveinstall.sh
+# this script is run by postinst from initialise-linux
+# the live system now has a separate script.
 # in the chroot environment. It must only be run
 # once since it makes the user robert
 # This  script will write a file to /chroot/dochroot/init-linux
@@ -42,33 +43,6 @@
 #    to change user pi to robert only if the initial user was pi
 
 
-# function to create user robert in the live system.
-# the user is created only if it does not exist
-createuser () {
-	# script to create user robert in the chroot environment
-	# make sure we are running on the live system.
-	test "${LIVEINSTALL}" = "true" || return;
-
-	# check if user exists
-	getent passwd robert
-	RC=$?
-echo "getent returns ${RC}"
-	if test ${RC} -ne 0; then
-echo "createuser: user $1 does not exist"
-		# user does not exist
-		adduser --add-extra-groups --comment "robert key root103 0219596081 0218551556 nothing" --disabled-password $1
-
-		# add user to all the necessary groups
-		usermod -G 4,24,27,30,46 $1
-	else
-		# user exists
-		echo "createuser: User $1 exists"
-		id $1;
-	fi
-}
-
-# function to exit with status 1
-# the debhomedev is unmounted first
 # the rc code is passed as first parameter, no exit on 0, exit on 1, 2, 3..
 # second parameter is the error string
 exitonerror() {
@@ -145,7 +119,7 @@ setuplinux() {
 		sed -i -e 's/raspberrypi/rpi/' /etc/hosts
 
 	#########################################################################
-	# for amd64 only livesystem and desktop
+	# for amd64 desktop
 	#########################################################################
 	elif test "${ARCH}" = "x86_64"; then
 		echo "setting up linux ${ARCH}"
@@ -155,58 +129,26 @@ setuplinux() {
 		# /etc/apt/sources.list must have the followin line appended
 		# sed -i -e '$a\deb https://ppa.launchpadcontent.net/obsproject/obs-studio/ubuntu lunar main' /etc/apt/sources.list
 
-		# for live system only
-		if test "${LIVEINSTALL}" = "true"; then
-			# for the live system
-			# this is the Ubuntu live system
-			usermod -u 1000 robert
-			groupmod -g 1000 robert
-			chown -R robert:robert /home/robert/
-			# move mbl data files to /home/robert
-			# they only exist if system is live
-			# and mountblv has been installed
-			if test -f /root/.mbl.rc; then
-				mv -fv .mbl.rc /home/robert
-				chown robert:robert /home/robert/.mbl.rc
-			fi
+		###############################################
+		# for desktop only
+		###############################################
 
-			if test -f /root/.mbldata.rc; then
-				mv -fv .mbldata.rc /home/robert
-				chown robert:robert /home/robert/.mbldata.rc
-			fi
+		# disable editfstab.service since it will be enabled
+		# after installation of linux on amd64. It is enabled
+		# in the live system.
+		# note editfstab service will not exist if linux was installed
+		# from the iso image. First check if it exists
+		# set the time and zone for desktop
+		timedatectl set-timezone Africa/Johannesburg
 
-			# the timezone must be set and clock  must be set to local time
-			# this can only be done after the firt boot of the live system
-			# done with the service setzone.service.
-			# which will then disable itself.
-			# copy the service to /etc/systemd/system/
-			cp -v /usr/local/bin/setzone.service /etc/systemd/system/
-			# rm -v /usr/local/bin/setzone.service.
-			# enable service
-			systemctl enable setzone.service
+		# set clock to local time for desktop only when init-linux is run
+		timedatectl --adjust-system-clock set-local-rtc 0
+		# hwclock -w
 
-		else
-			###############################################
-			# for desktop only
-			###############################################
+		# disable editfstab.service for desktop
+		systemctl is-enabled editfstab > /dev/null 2>&1
+		test $? -eq 0 && systemctl disable editfstab
 
-			# disable editfstab.service since it will be enabled
-			# after installation of linux on amd64. It is enabled
-			# in the live system.
-			# note editfstab service will not exist if linux was installed
-			# from the iso image. First check if it exists
-			# set the time and zone for desktop
-			timedatectl set-timezone Africa/Johannesburg
-
-			# set clock to local time for desktop only when init-linux is run
-			timedatectl --adjust-system-clock set-local-rtc 0
-			# hwclock -w
-
-			# disable editfstab.service for desktop
-			systemctl is-enabled editfstab > /dev/null 2>&1
-			test $? -eq 0 && systemctl disable editfstab
-
-		fi
 	fi
 }
 
@@ -354,11 +296,8 @@ usage() {
 	echo "-g set target to graphical target               default: ${TARGET}";
 	echo "-n set target to multi-user.target	        default: ${TARGET}";
 	echo "-d full path to debhome root			default: ${DEBHOMEPATH}";
-#	echo "-D debhome default device			default: ${DEBHOMEDEVICE}";
 	echo "-s full path to svn root      			default: ${SVNPATH}";
-#	echo "-S svn device					default: ${SVNDEVICE}";
    	echo "-V version and exit";
-   	echo "-L run in chrootenvironment";
 	echo "-h help";
 	exit 0
 }
@@ -378,17 +317,9 @@ SVNDEVICE="ad64"
 SVNPATH="/mnt/${SVNDEVICE}/svn"
 SVN_LINK="/mnt/svn"
 DEBHOME_LINK="/mnt/debhome"
-LOGFILE="/tmp/init-linux.log"
 # the current non root user, either robert or pi
 CURUSER="robert"
 ARCH=`arch`
-
-# if this script is run by
-# liveinstall then createuser
-# must be run otherwise not
-# LIVEINSTALL is used to indicate
-# it was called by liveinstall
-LIVEINSTALL="false"
 
 ################################
 # main entry
@@ -410,53 +341,18 @@ fi
 # parameter S destinstion of svn is
 # only used in init-rpi, not in this script
 # it must be defined here as it is passed to init-rpi
-while getopts gnd:s:VhL opt
+while getopts gnd:s:Vh opt
 do
 	case ${opt} in
 		d) DEBHOMEPATH="${OPTARG}"; DEBHOME_FLAG="true";;
 		g) TARGET="graphical.target";;
 		n) TARGET="multi-user.target";;
-#		D) DEBHOMEDEVICE="${OPTARG}"; DEBHOME_FLAG="true";;
 		s) SVNPATH="${OPTARG}"; SVN_FLAG="true";;
-#		S) SVNDEVICE="${OPTARG}" SVN_FLAG="true";;
-		L) LIVEINSTALL="true";;
 		V) dpkg-query -W "initialise-linux"; exit 0;;
 		h) usage;;
 		\?) usage;;
 	esac
 done
-
-
-# check if we are running in the chroot environment
-# makelive made the directory /chroot/chrootenvironment
-test -d "/chrootenvironment" && LIVEINSTALL="true";
-
-# if we are running on the live system
-# only run if /chroot/dochroot/init-linux does not exist
-# this script must only needs to be run once
-if test "${LIVEINSTALL}" = "true"; then
-	# running on the live system
-	# check if init-linux has already run
-	if test -f "/dochroot/init-linux"; then
-		# init-linux has already run
-		echo "init-linux has already run...exiting"
-
-		# exit with success
-		exit 0;
-	fi
-
-	# now make the file /dochroot/init-linux
-	# to indicate that init-linux has been
-	test -d /dochroot || mkdir /dochroot
-	echo "init-linux has run" > /dochroot/init-linux
-
-	# only create user robert if it does not exist
-	getent passwd robert;
-	if test $? -ne 0; then
-		createuser "robert";
-	fi
-fi
-
 
 #######################################
 # setup svn and debhome and set links for desktop and rpi
@@ -466,44 +362,43 @@ fi
 #bindall in makelive.pl makes them directories 
 # for binding. unbindall restores links.
 #######################################
-if test "${LIVEINSTALL}" = "false"; then
-	# debhome must be done before svn since the link is required
-	# to copy debhomepubkey.asc and debhome.sources from /mnt/debhome
-	# setuprepository is only invoked if DEBHOME_FLAG is true.
-	# same for svn.
-	test "${DEBHOME_FLAG}" = "true" && /usr/local/bin/setuprepository "${CURUSER}" "${DEBHOMEPATH}" "debhome"
-	test "${SVN_FLAG}" = "true" && /usr/local/bin/setuprepository "${CURUSER}" "${SVNPATH}" "svn"
+# debhome must be done before svn since the link is required
+# to copy debhomepubkey.asc and debhome.sources from /mnt/debhome
+# setuprepository is only invoked if DEBHOME_FLAG is true.
+# same for svn.
+test "${DEBHOME_FLAG}" = "true" && /usr/local/bin/setuprepository "${CURUSER}" "${DEBHOMEPATH}" "debhome"
+test "${SVN_FLAG}" = "true" && /usr/local/bin/setuprepository "${CURUSER}" "${SVNPATH}" "svn"
 
-	# for rpi copy debhome-rpi.sources
-	if test "${ARCH}" = "aarch64"; then
-		if test -f "/tmp/debhome-rpi.list"; then
-			# copy debhome-rpi.list if it exists
-			cp -vf "/tmp/debhome-rpi.list" "/etc/apt/sources.list.d/"
-			exitonerror $? "Could not copy /tmp/debhome-rpi.list /etc/apt/sources.list.d"
-			rm -vf "/tmp/debhome-rpi.list"
-		fi
-	elif test "${ARCH}" = "x86_64"; then
-		# if debhome-amd64.list exists copy it
-		if test -f "/tmp/debhome-amd64.list"; then
-			cp -vf "/tmp/debhome-amd64.list" "/etc/apt/sources.list.d/"
-			exitonerror $? "Could not copy /tmp/debhome-amd64.list /etc/apt/sources.list.d"
-			rm -vf "/tmp/debhome-amd64.list"
-		fi
-	else
-		exitonerror 1 "Unknown architecture ${ARCH}"
+# for rpi copy debhome-rpi.sources
+if test "${ARCH}" = "aarch64"; then
+	if test -f "/tmp/debhome-rpi.list"; then
+		# copy debhome-rpi.list if it exists
+		cp -vf "/tmp/debhome-rpi.list" "/etc/apt/sources.list.d/"
+		exitonerror $? "Could not copy /tmp/debhome-rpi.list /etc/apt/sources.list.d"
+		rm -vf "/tmp/debhome-rpi.list"
 	fi
-
-	# remove files from /tmp
-	test -f "/tmp/debhomeseckey.gpg" && rm -vf "/tmp/debhomeseckey.gpg"
-
-	##############################################
-	# linux 24.04 needs a graphical environment for
-	# the live system. liveinstall.sh sets the environment
-	# in a livesystem.
-	##############################################
-	# set the rpi to boot to console and no autologin
-	systemctl set-default "${TARGET}"
+elif test "${ARCH}" = "x86_64"; then
+	# if debhome-amd64.list exists copy it
+	if test -f "/tmp/debhome-amd64.list"; then
+		cp -vf "/tmp/debhome-amd64.list" "/etc/apt/sources.list.d/"
+		exitonerror $? "Could not copy /tmp/debhome-amd64.list /etc/apt/sources.list.d"
+		rm -vf "/tmp/debhome-amd64.list"
+	fi
+else
+	exitonerror 1 "Unknown architecture ${ARCH}"
 fi
+
+# remove files from /tmp
+test -f "/tmp/debhomeseckey.gpg" && rm -vf "/tmp/debhomeseckey.gpg"
+
+##############################################
+# linux 24.04 needs a graphical environment for
+# the live system. liveinstall.sh sets the environment
+# in a livesystem.
+##############################################
+# set the rpi to boot to console and no autologin
+systemctl set-default "${TARGET}"
+
 
 # update the repositories
 apt update
