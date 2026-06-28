@@ -354,42 +354,13 @@ do
 	esac
 done
 
-#######################################
-# setup svn and debhome and set links for desktop and rpi
-# setuprepository must not be invoked in the chroot environment
-# /mnt/svn and /mnt/debhome are directories and not links
-# when liveinstall and init-linux are run.
-#bindall in makelive.pl makes them directories 
-# for binding. unbindall restores links.
-#######################################
-# debhome must be done before svn since the link is required
-# to copy debhomepubkey.asc and debhome.sources from /mnt/debhome
-# setuprepository is only invoked if DEBHOME_FLAG is true.
-# same for svn.
-test "${DEBHOME_FLAG}" = "true" && /usr/local/bin/setuprepository "${CURUSER}" "${DEBHOMEPATH}" "debhome"
-test "${SVN_FLAG}" = "true" && /usr/local/bin/setuprepository "${CURUSER}" "${SVNPATH}" "svn"
+# if -d or -s has been supplied set 
+# the debhome or svn repository
+# copy the debhome-rpi.list or debhome-amd64.list from /tmp
+# to /etc/apt/sources.list.d depending on architecture
+test "${DEBHOME_FLAG}" = "true" && setuprepository "${CURUSER}" "${DEBHOMEPATH}" "debhome"
+test "${SVN_FLAG}" = "true" && setuprepository "${CURUSER}" "${SVNPATH}" "svn"
 
-# for rpi copy debhome-rpi.sources
-if test "${ARCH}" = "aarch64"; then
-	if test -f "/tmp/debhome-rpi.list"; then
-		# copy debhome-rpi.list if it exists
-		cp -vf "/tmp/debhome-rpi.list" "/etc/apt/sources.list.d/"
-		exitonerror $? "Could not copy /tmp/debhome-rpi.list /etc/apt/sources.list.d"
-		rm -vf "/tmp/debhome-rpi.list"
-	fi
-elif test "${ARCH}" = "x86_64"; then
-	# if debhome-amd64.list exists copy it
-	if test -f "/tmp/debhome-amd64.list"; then
-		cp -vf "/tmp/debhome-amd64.list" "/etc/apt/sources.list.d/"
-		exitonerror $? "Could not copy /tmp/debhome-amd64.list /etc/apt/sources.list.d"
-		rm -vf "/tmp/debhome-amd64.list"
-	fi
-else
-	exitonerror 1 "Unknown architecture ${ARCH}"
-fi
-
-# remove files from /tmp
-test -f "/tmp/debhomeseckey.gpg" && rm -vf "/tmp/debhomeseckey.gpg"
 
 ##############################################
 # linux 24.04 needs a graphical environment for

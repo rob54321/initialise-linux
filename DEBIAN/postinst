@@ -23,6 +23,14 @@
 #########################################################################
 # main entry point
 #########################################################################
+# defaults
+# TARGET is multi-user.target or graphical.target
+DEBHOMEDEVICE="ad64"
+DEBHOMEPATH="/mnt/${DEBHOMEDEVICE}/debhome"
+SVNDEVICE="ad64"
+SVNPATH="/mnt/${SVNDEVICE}/svn"
+ARCH=`arch`
+
 # determine if we are upgrading/reinstalling or first install
 if test -f "/tmp/initialise-linux-status"; then
 	# get the status, either upgrade or install
@@ -94,12 +102,32 @@ if test -f "/tmp/initialise-linux-status"; then
 	
     elif test "${STATUS}" = "install"; then
 		# this is the first install
+
+		# for rpi copy debhome-rpi.sources
+		if test "${ARCH}" = "aarch64"; then
+			if test -f "/tmp/debhome-rpi.list"; then
+				# copy debhome-rpi.list if it exists
+				cp -vf "/tmp/debhome-rpi.list" "/etc/apt/sources.list.d/"
+				exitonerror $? "Could not copy /tmp/debhome-rpi.list /etc/apt/sources.list.d"
+				rm -vf "/tmp/debhome-rpi.list"
+			fi
+		elif test "${ARCH}" = "x86_64"; then
+			# if debhome-amd64.list exists copy it
+			if test -f "/tmp/debhome-amd64.list"; then
+				cp -vf "/tmp/debhome-amd64.list" "/etc/apt/sources.list.d/"
+				exitonerror $? "Could not copy /tmp/debhome-amd64.list /etc/apt/sources.list.d"
+				rm -vf "/tmp/debhome-amd64.list"
+			fi
+		else
+			exitonerror 1 "Unknown architecture ${ARCH}"
+		fi
+
 		# setup the links /mnt/svn /mnt/debhome for the repository
 		# invoke setuprepository with default values.
 		# the function will prompt if the archive is not found
 		# setuprepository "robert" "/mnt/ad64/debhome" "/mnt/debhome
 		# import the secret key
-		
+
 		if test -f "/tmp/debhomeseckey.gpg"; then
 			# secret key exists, import it
 			gpg --batch --yes --passphrase 'coahtr3552' --import "/tmp/debhomeseckey.gpg"
@@ -109,8 +137,8 @@ if test -f "/tmp/initialise-linux-status"; then
 			# must also be present so setuprepository() must be run before this.
 			# invoke setuprepository() with default values
 			# if the repositories are not found, they will be prompted for.
-			/usr/local/bin/setuprepository "robert" "/mnt/ad64/debhome" "debhome"
-			/usr/local/bin/setuprepository "robert" "/mnt/ad64/svn" "svn"
+			/usr/local/bin/setuprepository "robert" "${DEBHOMEPATH}" "debhome"
+			/usr/local/bin/setuprepository "robert" "${SVNPATH}" "svn"
 			
 			if test -f "/mnt/debhome/dists/home/currentkeyid.txt"; then
 				# the current key id is available
@@ -167,11 +195,13 @@ else
 	# there is no file /tmp/initialise-linux-status
 	echo "+++++++++++++++++++++++++++++++++++++++++++++"
 	echo "There is no file /tmp/initialise-linux-status"
+	echo "cannot import or delete gpg keys"
 	echo "+++++++++++++++++++++++++++++++++++++++++++++"
 	read -t 5 value
 fi
 
 # this code will execute for install or upgrade
-#
+# run init-linux with default values to setup account colours, sudoers etc
+/usr/local/bin/init-linux
 
 exit 0
