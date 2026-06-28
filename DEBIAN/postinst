@@ -58,8 +58,6 @@ if test -f "/tmp/initialise-linux-status"; then
 				# does the new key exist in the key list
 				gpg --list-keys "$NEWKEYID" > "/tmp/newkeyerror.txt" 2>&1
 				RC=$?
-				
-				echo "initialise-linux:postinst:upgrade: RC = ${RC} for NEWKEYID in key list"
 
 				if test ${RC} -ne 0; then
 					# new key does not exist in the current list
@@ -148,7 +146,7 @@ if test -f "/tmp/initialise-linux-status"; then
 			if test -f "/mnt/debhome/dists/home/currentkeyid.txt"; then
 				# the current key id is available
 				CURRENTKEYID=`cat /mnt/debhome/dists/home/currentkeyid.txt`
-				echo "initialise-linux:postinst:install: CURRENTKEYID = ${CURRENTKEYID}"
+				echo "initialise-linux:postinst:install: CURRENTKEYID = [${CURRENTKEYID}]"
 
 				# get the new key id
 				NEWKEYID=`gpg --show-key "/etc/apt/keyrings/debhomepubkey.gpg" | sed -e '/^[ ]/!d'`
@@ -162,9 +160,6 @@ if test -f "/tmp/initialise-linux-status"; then
 				# there is no need to sign the repository
 				if test "${NEWKEYID}" = "${CURRENTKEYID}"; then
 					# not necessary to sign the repository
-					echo "equal"
-					echo "new key id: [${NEWKEYID}]"
-					echo "current key id [${CURRENTKEYID}]"
 					echo " "
 					echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 					echo "initialise-linux:postinst:install: New key = current key"
@@ -173,9 +168,6 @@ if test -f "/tmp/initialise-linux-status"; then
 				else
 					# the new key is different to the old key.
 					# the repository must be signed and apt update run
-					echo "not equal"
-					echo "new key id: [${NEWKEYID}]"
-					echo "current key id [${CURRENTKEYID}]"
 					echo " "
 					echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 					echo "initialise-linux:postinst:install: New key != current key"
