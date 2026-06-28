@@ -26,7 +26,14 @@ if test "$1" = "remove"; then
 		# the repository /mnt/debhome may not be available
 		# This is the safest way to get the current key id
 		CURRENTKEYID=`gpg --show-key /etc/apt/keyrings/debhomepubkey.gpg | sed -e '/^[ ]/!d'`
+		# remove leading spaces from the key
+		echo "${CURRENTKEYID}" | sed -e 's/^[ ]*//' > "/tmp/currentkeyid.txt"
+		# get the key without leading spaces
+		CURRENTKEYID=`cat /tmp/currentkeyid.txt`
+
 		# delete the keys from the keyring
+		echo "initialise-linux:prerm: deleting secret and public keys [${CURRENTKEYID}]"
+		
 		gpg --batch --yes --delete-secret-keys "${CURRENTKEYID}"
 
 		# delete the public key only if the secret key has been deleted
@@ -50,17 +57,5 @@ if test "$1" = "remove"; then
 		test -f /etc/apt/sources.list.d/debhome-amd64.list && rm -fv /etc/apt/sources.list.d/debhome-amd64.list
 	fi
 
-elif test "$1" = "upgrade"; then
-	# get the currentkeyid for possible deleting by postinst
-	if test -f /etc/apt/keyrings/debhomepubkey.gpg; then
-
-		# get currentkeyid from /mnt/debhome/dists/home/currentkeyid.txt
-		# as /mnt/debhome repository will be available
-		CURRENTKEYID=`cat /mnt/debhome/dists/home/currentkeyid.txt`
-	else
-		# debhomepubkey.gpg does not exist
-		echo "initialise-linux:prerm: Cannot determine current key id, /mnt/debhome/dists/home/currentkeyid.txt not found"
-		read -t 5 value
-	fi
 fi
 exit 0
