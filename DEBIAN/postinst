@@ -153,6 +153,9 @@ if test -f "/tmp/initialise-linux-status"; then
 				# there is no need to sign the repository
 				if test "${NEWKEYID}" = "${CURRENTKEYID}"; then
 					# not necessary to sign the repository
+					echo "equal"
+					echo "new key id: [${NEWKEYID}]"
+					echo "current key id [${CURRENTKEYID}]"
 					echo " "
 					echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 					echo "initialise-linux:postinst:install: New key = current key"
@@ -161,6 +164,9 @@ if test -f "/tmp/initialise-linux-status"; then
 				else
 					# the new key is different to the old key.
 					# the repository must be signed and apt update run
+					echo "not equal"
+					echo "new key id: [${NEWKEYID}]"
+					echo "current key id [${CURRENTKEYID}]"
 					echo " "
 					echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 					echo "initialise-linux:postinst:install: New key != current key"
