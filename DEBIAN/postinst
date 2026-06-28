@@ -49,7 +49,7 @@ if test -f "/tmp/initialise-linux-status"; then
 				# get the new key id
 				NEWKEYID=`gpg --show-key "/etc/apt/keyrings/debhomepubkey.gpg" | sed -e '/^[ ]/!d'`
 				# remove the leading white space
-				echo "${NEWKEYID}" | sed -e 's/^[ ]*//' > "newkeyid.txt"
+				echo "${NEWKEYID}" | sed -e 's/^[ ]*//' > "/tmp/newkeyid.txt"
 				# get the newkeyid with leading spaces removed
 				NEWKEYID=`cat /tmp/newkeyid.txt`
 				
@@ -153,7 +153,7 @@ if test -f "/tmp/initialise-linux-status"; then
 				# get the new key id
 				NEWKEYID=`gpg --show-key "/etc/apt/keyrings/debhomepubkey.gpg" | sed -e '/^[ ]/!d'`
 				# remove the leading white space
-				echo "${NEWKEYID}" | sed -e 's/^[ ]*//' > "newkeyid.txt"
+				echo "${NEWKEYID}" | sed -e 's/^[ ]*//' > "/tmp/newkeyid.txt"
 				# get the newkeyid with leading spaces removed
 				NEWKEYID=`cat /tmp/newkeyid.txt`
 				echo "initialise-linux:postinst:install: NEWKEYID = [${NEWKEYID}]"
