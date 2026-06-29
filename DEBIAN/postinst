@@ -100,8 +100,10 @@ if test -f "/tmp/initialise-linux-status"; then
 			# /mnt/debhome/dists/home/currentkeyid.txt does not exist
 			echo " "
 			echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-			echo "initialise-linux:postinst:upgrade: /mnt/debhome/dists/home/currentkeyid.txt not found cannot upgrade key"
+			echo "initialise-linux:postinst:upgrade: /mnt/debhome/dists/home/currentkeyid.txt not found"
+			echo "signing the repository"
 			echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+			/usr/local/bin/signrepository "${DEBHOMEPATH}"
 			read -t 5 value
 		fi
 	
