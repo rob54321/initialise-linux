@@ -358,7 +358,12 @@ done
 # the debhome or svn repository
 # copy the debhome-rpi.list or debhome-amd64.list from /tmp
 # to /etc/apt/sources.list.d depending on architecture
-test "${DEBHOME_FLAG}" = "true" && setuprepository "${CURUSER}" "${DEBHOMEPATH}" "debhome"
+if test "${DEBHOME_FLAG}" = "true"; then
+	# setup repository
+	setuprepository "${CURUSER}" "${DEBHOMEPATH}" "debhome"
+	# run apt update
+	apt update
+}
 test "${SVN_FLAG}" = "true" && setuprepository "${CURUSER}" "${SVNPATH}" "svn"
 
 
@@ -370,9 +375,6 @@ test "${SVN_FLAG}" = "true" && setuprepository "${CURUSER}" "${SVNPATH}" "svn"
 # set the rpi to boot to console and no autologin
 systemctl set-default "${TARGET}"
 
-
-# update the repositories
-apt update
 
 ####################################
 # note: git, subversion, editfstab
