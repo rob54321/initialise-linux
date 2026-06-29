@@ -363,7 +363,7 @@ if test "${DEBHOME_FLAG}" = "true"; then
 	setuprepository "${CURUSER}" "${DEBHOMEPATH}" "debhome"
 	# run apt update
 	apt update
-}
+fi
 test "${SVN_FLAG}" = "true" && setuprepository "${CURUSER}" "${SVNPATH}" "svn"
 
 
