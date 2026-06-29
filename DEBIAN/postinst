@@ -71,8 +71,10 @@ if test -f "/tmp/initialise-linux-status"; then
 					
 					# the key has changed sign the repository
 					echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-					echo "initialise-linux:postinst:upgrade: The key has changed, run init-linux to sign the repository"
+					echo "initialise-linux:postinst:upgrade: The key has changed, the repository must be signed"
+					echo "signing the repository"
 					echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+					/usr/local/bin/signrepository "${DEBHOMEPATH}"
 					read -t 5 value
 				else
 					# the key has not changed
@@ -171,8 +173,9 @@ if test -f "/tmp/initialise-linux-status"; then
 					echo " "
 					echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 					echo "initialise-linux:postinst:install: New key != current key"
-					echo "the repository must be signed with the new key, run apt update"
+					echo "signing the repository"
 					echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+					/usr/local/bin/signrepository "${DEBHOMEPATH}"
 					read -t 5 value
 				fi
 
@@ -182,7 +185,9 @@ if test -f "/tmp/initialise-linux-status"; then
 				echo " "
 				echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 				echo "initialise-linux:postinst:install: The repository has not been signed."
+				echo "signing the repository"
 				echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+				/usr/local/bin/signrepository "${DEBHOMEPATH}"
 				read -t 5 value
 			fi
 			

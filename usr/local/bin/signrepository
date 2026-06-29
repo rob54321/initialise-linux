@@ -1,0 +1,75 @@
+#!/usr/bin/bash
+# command line argument should contain the debhome root directory
+# if not prompt for one
+
+# check if there is an argument
+ROOTDIR="null"
+FULLPATH="${ROOTDIR}/dists/home"
+
+# check if $1 given, if not prompt
+# if repository not found, loop
+if test $# -ne 1; then
+	# prompt for the root directory
+	echo "Enter the the root directory of the debhome repository"
+	read ROOTDIR
+else
+	# root directory was supplied
+	ROOTDIR="$1"
+fi
+# set the path to check
+FULLPATH="${ROOTDIR}/dists/home"
+
+
+until test -d "${FULLPATH}"; do
+	# repository not found prompt for the root directory
+	echo "repository not found at ${ROOTDIR}"
+	echo "Enter the the root directory of the debhome repository"
+	read ROOTDIR
+	
+	# set the path to check
+	FULLPATH="${ROOTDIR}/dists/home"
+done;
+echo "repository found at ${ROOTDIR}"
+
+
+ARCH=("amd64" "i386" "armhf" "arm64");
+for item in "${ARCH[@]}"; do
+	# chdir to root directory
+	cd "${ROOTDIR}"
+
+	# create Packages for arch
+	echo "Creating Packages file for ${item}"
+	apt-ftparchive  --arch "${item}" packages pool > "dists/home/main/binary-${item}/Packages"
+	
+	# make compressed packages
+	# cd to directory
+	cd "${ROOTDIR}/dists/home/main/binary-${item}/"
+	# compress
+	gzip -f -k Packages
+	bzip2 -f -k Packages
+	
+done;
+
+# make the Release file
+cd "${ROOTDIR}/dists/home"
+
+# remove the release if it exists
+test -f "Release" && rm -v "Release"
+echo "Creating Release file"
+apt-ftparchive -c=/usr/local/bin/apt-ftparchive-home.conf release . > Release
+
+# get the default key and sign the release file
+# the key is in /etc/apt/keyrings/debhomepubkey.gpg
+gpg --show-key "/etc/apt/keyrings/debhomepubkey.gpg" > "/tmp/keyoutput.txt" 2>&1
+cat "/tmp/keyoutput.txt" | sed -e '/^[ ]/!d' > "/tmp/key.txt"
+# remove the leading spaces on the key
+cat "/tmp/key.txt" | sed -e 's/^[ ]*//' > "/tmp/keyid.txt"
+KEYID=`cat /tmp/keyid.txt`
+
+# save the default key in debian_root/dists/home/currentkeyid.txt
+echo "${KEYID}" > "${ROOTDIR}/dists/home/currentkeyid.txt"
+
+# sign the repository now and generate the InRelease file
+echo "Signing with default key [${KEYID}]"
+gpg --batch --yes --pinentry-mode loopback --passphrase  'coahtr3552' --default-key "${KEYID}" --clear-sign -o InRelease Release
+gpg --batch --yes -abs --default-key "${KEYID}" -o Release.gpg Release
