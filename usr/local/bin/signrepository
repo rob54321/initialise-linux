@@ -21,7 +21,6 @@ until test -d "${FULLPATH}"; do
 done;
 echo "repository found at ${ROOTDIR}"
 
-exit 0;
 ARCH=("amd64" "i386" "armhf" "arm64");
 for item in "${ARCH[@]}"; do
 	# chdir to root directory
@@ -50,6 +49,8 @@ apt-ftparchive -c=/usr/local/bin/apt-ftparchive-home.conf release . > Release
 
 # get the default key and sign the release file
 # the key is in /etc/apt/keyrings/debhomepubkey.gpg
+# do not use /mnt/debhome/dists/home/currentkeyid.txt because
+# there may be a new key.
 gpg --show-key "/etc/apt/keyrings/debhomepubkey.gpg" > "/tmp/keyoutput.txt" 2>&1
 cat "/tmp/keyoutput.txt" | sed -e '/^[ ]/!d' > "/tmp/key.txt"
 # remove the leading spaces on the key
