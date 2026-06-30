@@ -31,7 +31,7 @@ if test "$1" = "remove"; then
 		else
 			# item is not a link
 			# will not remove
-			echo "initialise-linux:postrm ${item} is not a link so not removing"
+			echo "initialise-linux:postrm:remove ${item} is not a link so not removing"
 		fi
 	done;
 fi

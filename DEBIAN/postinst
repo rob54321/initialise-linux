@@ -72,8 +72,15 @@ if test -f "/tmp/initialise-linux-status"; then
 				if test ${RC} -ne 0; then
 					# new key does not exist in the current list
 					# delete the public key and the secret key from /mnt/debhome/currentkeyid
-					gpg --batch --yes --pinentry-mode loopback --delete-secret-key "${CURRENTKEYID}"
-					gpg --batch --yes --delete-key "${CURRENTKEYID}"
+					# only if the key is in the keyring
+					gpg --list-secret-keys "${CURRENTKEYID}"
+					if test $? -eq 0; then
+						gpg --batch --yes --pinentry-mode loopback --delete-secret-key "${CURRENTKEYID}"
+						gpg --batch --yes --delete-key "${CURRENTKEYID}"
+					else
+						# key not found in keyring
+						echo "initialise-linux:posinst:upgrade: {CURRENTKEYID} not found in keyring: cannot delete"
+					fi
 					
 					# import the new secret key
 					# not necessary to import the public key
@@ -100,7 +107,7 @@ if test -f "/tmp/initialise-linux-status"; then
 				# cannot determine the key id
 				echo " "
 				echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-				echo "postinst: Cannot determine the new key id as /etc/apt/keyrings/debhomepubkey.gpg not found"
+				echo "initialise-linux:postinst:upgrade: Cannot determine the new key id as /etc/apt/keyrings/debhomepubkey.gpg not found"
 				echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 				
 				# wait for a prompt or time out of 5 seconds
@@ -218,7 +225,7 @@ if test -f "/tmp/initialise-linux-status"; then
 else
 	# there is no file /tmp/initialise-linux-status
 	echo "+++++++++++++++++++++++++++++++++++++++++++++"
-	echo "There is no file /tmp/initialise-linux-status"
+	echo "initialise-linux:postinst: There is no file /tmp/initialise-linux-status"
 	echo "cannot import or delete gpg keys"
 	echo "+++++++++++++++++++++++++++++++++++++++++++++"
 	read -t 5 value

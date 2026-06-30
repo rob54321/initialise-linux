@@ -31,21 +31,28 @@ if test "$1" = "remove"; then
 		# get the key without leading spaces
 		CURRENTKEYID=`cat /tmp/currentkeyid.txt`
 
-		# delete the keys from the keyring
-		echo "initialise-linux:prerm: deleting secret and public keys [${CURRENTKEYID}]"
+		# delete the current key only if it is in the keyring
+		gpg --list-secret-keys "${CURRENTKEYID}"
+		if test $? -eq 0; then
+			# delete the keys from the keyring
+			echo "initialise-linux:prerm:remove: deleting secret and public keys [${CURRENTKEYID}]"
 		
-		gpg --batch --yes --pinentry-mode loopback --delete-secret-keys "${CURRENTKEYID}"
+			gpg --batch --yes --pinentry-mode loopback --delete-secret-keys "${CURRENTKEYID}"
 
-		# delete the public key only if the secret key has been deleted
-		gpg --batch --yes --delete-keys "${CURRENTKEYID}"
+			# delete the public key only if the secret key has been deleted
+			gpg --batch --yes --delete-keys "${CURRENTKEYID}"
+		else
+			# key not found
+			echo "initialise-linux:prerm:remove: ${CURRENTKEYID} not found in keyring"
+		fi
 		
 		# the file debhomepubkey.gpg will be automatically removed when the 
 		# package is removed.
 	else
 		# the file /etc/apt/keyrings/debhomepubkey.gpg does not exist
 		# print and error message and continue
-		echo "initialise-linux:prerm: The file /etc/apt/keyrings/debhomepubkey.gpg was not found"
-		echo "initialise-linux:prerm: The secret and public key could not be deleted"
+		echo "initialise-linux:prerm:remove: The file /etc/apt/keyrings/debhomepubkey.gpg was not found"
+		echo "initialise-linux:prerm:remove: The secret and public key could not be deleted"
 		read -t 5 value
 	fi
 
