@@ -62,7 +62,7 @@ if test -f "/tmp/initialise-linux-status"; then
 				if test ${RC} -ne 0; then
 					# new key does not exist in the current list
 					# delete the public key and the secret key from /mnt/debhome/currentkeyid
-					gpg --batch --yes --delete-secret-key "${CURRENTKEYID}"
+					gpg --batch --yes --pinentry-mode loopback --delete-secret-key "${CURRENTKEYID}"
 					gpg --batch --yes --delete-key "${CURRENTKEYID}"
 					
 					# import the new secret key
@@ -74,7 +74,7 @@ if test -f "/tmp/initialise-linux-status"; then
 					echo "initialise-linux:postinst:upgrade: The key has changed, the repository must be signed"
 					echo "signing the repository"
 					echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-					/usr/local/bin/signrepository "${DEBHOMEPATH}"
+					/usr/local/bin/signrepository
 					read -t 5 value
 				else
 					# the key has not changed
@@ -103,7 +103,7 @@ if test -f "/tmp/initialise-linux-status"; then
 			echo "initialise-linux:postinst:upgrade: /mnt/debhome/dists/home/currentkeyid.txt not found"
 			echo "signing the repository"
 			echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-			/usr/local/bin/signrepository "${DEBHOMEPATH}"
+			/usr/local/bin/signrepository
 			read -t 5 value
 		fi
 	
@@ -137,7 +137,7 @@ if test -f "/tmp/initialise-linux-status"; then
 
 		if test -f "/tmp/debhomeseckey.gpg"; then
 			# secret key exists, import it
-			gpg --batch --yes --passphrase 'coahtr3552' --import "/tmp/debhomeseckey.gpg"
+			gpg --batch --yes --pinentry-mode loopback --passphrase 'coahtr3552' --import "/tmp/debhomeseckey.gpg"
 
 			# check the current key id that was used to sign the repository
 			# the /mnt/debhome repository must exist. The links /mnt/svn /mnt/debhome
@@ -177,7 +177,7 @@ if test -f "/tmp/initialise-linux-status"; then
 					echo "initialise-linux:postinst:install: New key != current key"
 					echo "signing the repository"
 					echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-					/usr/local/bin/signrepository "${DEBHOMEPATH}"
+					/usr/local/bin/signrepository
 					read -t 5 value
 				fi
 
@@ -189,7 +189,7 @@ if test -f "/tmp/initialise-linux-status"; then
 				echo "initialise-linux:postinst:install: The repository has not been signed."
 				echo "signing the repository"
 				echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-				/usr/local/bin/signrepository "${DEBHOMEPATH}"
+				/usr/local/bin/signrepository
 				read -t 5 value
 			fi
 			

@@ -28,7 +28,7 @@ if (scalar(@ARGV) == 0) {
 print "name is : [$name]\n";
 
 # generate the key
-my $output = `gpg --batch --yes --passphrase 'coahtr3552' --quick-generate-key $name> /tmp/output.txt 2>&1`;
+my $output = `gpg --batch --yes --pinentry-mode loopback --passphrase 'coahtr3552' --quick-generate-key $name> /tmp/output.txt 2>&1`;
 
 # open the file and get the key id
 open (my $fh, "<", "/tmp/output.txt");
@@ -59,13 +59,13 @@ print "keyid: [$keyid]\n";
 
 # export the secret and public keys to the
 # git repository for initialise-linux
-my $msg = `gpg --verbose --batch --yes --passphrase 'coahtr3552' --export-secret-key $keyid > /home/robert/initialise-linux/tmp/debhomeseckey.gpg`;
+my $msg = `gpg --verbose --batch --yes --pinentry-mode loopback --passphrase 'coahtr3552' --export-secret-key $keyid > /home/robert/initialise-linux/tmp/debhomeseckey.gpg`;
 print "$msg\n";
 $msg = `gpg --verbose --batch --yes --export $keyid > /home/robert/initialise-linux/etc/apt/keyrings/debhomepubkey.gpg`;
 print "$msg\n";
 
 # delete the secret and public keys
-$msg = `gpg --verbose --batch --yes --passphrase 'coahtr3552' --delete-secret-key $keyid`;
+$msg = `gpg --verbose --batch --yes --pinentry-mode loopback --passphrase 'coahtr3552' --delete-secret-key $keyid`;
 print "$msg\n";
-$msg = `gpg --verbose --batch --yes --delete-key $keyid`;
+$msg = `gpg --verbose --batch --yes --pinentry-mode loopback --delete-key $keyid`;
 print "$msg\n";

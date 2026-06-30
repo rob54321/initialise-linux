@@ -34,7 +34,7 @@ if test "$1" = "remove"; then
 		# delete the keys from the keyring
 		echo "initialise-linux:prerm: deleting secret and public keys [${CURRENTKEYID}]"
 		
-		gpg --batch --yes --delete-secret-keys "${CURRENTKEYID}"
+		gpg --batch --yes --pinentry-mode loopback --delete-secret-keys "${CURRENTKEYID}"
 
 		# delete the public key only if the secret key has been deleted
 		gpg --batch --yes --delete-keys "${CURRENTKEYID}"
