@@ -19,6 +19,16 @@
 # after the links have been set up /mnt/debhome and /mnt/svn
 ###################################################
 
+# the rc code is passed as first parameter, no exit on 0, exit on 1, 2, 3..
+# second parameter is the error string
+exitonerror() {
+	# test rc code
+	if test $1 -ne 0; then
+		# display error string
+		echo "$2"
+		exit 1;
+	fi
+}
 
 #########################################################################
 # main entry point
