@@ -2,36 +2,26 @@
 # command line argument should contain the debhome root directory
 # if not prompt for one
 
-# check if there is an argument
-ROOTDIR="null"
-FULLPATH="${ROOTDIR}/dists/home"
-
-# check if $1 given, if not prompt
-# if repository not found, loop
-if test $# -ne 1; then
-	# prompt for the root directory
-	echo "Enter the the root directory of the debhome repository"
-	read ROOTDIR
-else
-	# root directory was supplied
-	ROOTDIR="$1"
-fi
-# set the path to check
+# use the default link for the repository
+# the repository may or may not be available
+ROOTDIR="/mnt/debhome"
 FULLPATH="${ROOTDIR}/dists/home"
 
 
 until test -d "${FULLPATH}"; do
 	# repository not found prompt for the root directory
 	echo "repository not found at ${ROOTDIR}"
-	echo "Enter the the root directory of the debhome repository"
+	echo "Enter the the root directory of the debhome repository, or type quit to exit"
 	read ROOTDIR
+	# exit if quit is typed
+	test "${ROOTDIR}" = "quit" && exit 1;
 	
 	# set the path to check
 	FULLPATH="${ROOTDIR}/dists/home"
 done;
 echo "repository found at ${ROOTDIR}"
 
-
+exit 0;
 ARCH=("amd64" "i386" "armhf" "arm64");
 for item in "${ARCH[@]}"; do
 	# chdir to root directory
