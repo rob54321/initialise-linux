@@ -64,3 +64,6 @@ echo "${KEYID}" > "${ROOTDIR}/dists/home/currentkeyid.txt"
 echo "Signing with default key [${KEYID}]"
 gpg --batch --yes --pinentry-mode loopback --passphrase  'coahtr3552' --default-key "${KEYID}" --clear-sign -o InRelease Release
 gpg --batch --yes -abs --default-key "${KEYID}" -o Release.gpg Release
+
+# update 
+apt update
