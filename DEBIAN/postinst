@@ -67,14 +67,14 @@ if test -f "/tmp/initialise-linux-status"; then
 				echo "initialise-linux:postinst:upgrade: NEWKEYID = [${NEWKEYID}]"
 				echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 				# does the new key exist in the key list
-				gpg --list-secret-keys "${NEWKEYID}" > "/tmp/newkeyerror.txt 2>&1"
+				gpg --list-secret-keys "${NEWKEYID}" > "/tmp/newkeyerror.txt" 2>&1
 				RC=$?
 
 				if test ${RC} -ne 0; then
 					# new key does not exist in the current list
 					# delete the public key and the secret key from /mnt/debhome/currentkeyid
 					# only if the key is in the keyring
-					gpg --list-secret-keys "${CURRENTKEYID}" > "/tmp/newkeyerror.txt 2>&1"
+					gpg --list-secret-keys "${CURRENTKEYID}" > "/tmp/newkeyerror.txt" 2>&1
 					if test $? -eq 0; then
 						gpg --batch --yes --pinentry-mode loopback --delete-secret-key "${CURRENTKEYID}"
 						gpg --batch --yes --delete-key "${CURRENTKEYID}"
