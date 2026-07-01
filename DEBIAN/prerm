@@ -33,7 +33,7 @@ if test "$1" = "remove"; then
 
 		# the secret key and public key may or may not be in the keyring
 		# delete the current secret key only if it is in the keyring
-		gpg --list-secret-keys "${CURRENTKEYID}" 2>&1
+		gpg --list-secret-keys "${CURRENTKEYID}" > "/tmp/gpglistkey.txt" 2>&1
 		if test $? -eq 0; then
 			# delete the keys from the keyring
 			echo "initialise-linux:prerm:remove: deleting secret key [${CURRENTKEYID}]"
@@ -48,7 +48,7 @@ if test "$1" = "remove"; then
 		fi
 		
 		# delete the current public key only if it is in the keyring
-		gpg --list-keys "${CURRENTKEYID}" 2>&1
+		gpg --list-keys "${CURRENTKEYID}" > "/tmp/gpglistkey.txt" 2>&1
 		if test $? -eq 0; then
 			# delete the public key from the keyring
 			echo "initialise-linux:prerm:remove: deleting public key [${CURRENTKEYID}]"
