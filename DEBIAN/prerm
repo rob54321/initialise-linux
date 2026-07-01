@@ -31,11 +31,12 @@ if test "$1" = "remove"; then
 		# get the key without leading spaces
 		CURRENTKEYID=`cat /tmp/currentkeyid.txt`
 
-		# delete the current key only if it is in the keyring
+		# the secret key and public key may or may not be in the keyring
+		# delete the current secret key only if it is in the keyring
 		gpg --list-secret-keys "${CURRENTKEYID}"
 		if test $? -eq 0; then
 			# delete the keys from the keyring
-			echo "initialise-linux:prerm:remove: deleting secret and public keys [${CURRENTKEYID}]"
+			echo "initialise-linux:prerm:remove: deleting secret key [${CURRENTKEYID}]"
 		
 			gpg --batch --yes --pinentry-mode loopback --delete-secret-keys "${CURRENTKEYID}"
 
@@ -43,9 +44,23 @@ if test "$1" = "remove"; then
 			gpg --batch --yes --delete-keys "${CURRENTKEYID}"
 		else
 			# key not found
-			echo "initialise-linux:prerm:remove: ${CURRENTKEYID} not found in keyring"
+			echo "initialise-linux:prerm:remove: secret key ${CURRENTKEYID} not found in keyring"
 		fi
 		
+		# delete the current public key only if it is in the keyring
+		gpg --list-keys "${CURRENTKEYID}"
+		if test $? -eq 0; then
+			# delete the public key from the keyring
+			echo "initialise-linux:prerm:remove: deleting public key [${CURRENTKEYID}]"
+		
+			# delete the public key 
+			gpg --batch --yes --delete-keys "${CURRENTKEYID}"
+		else
+			# key not found
+			echo "initialise-linux:prerm:remove: public key ${CURRENTKEYID} not found in keyring"
+		fi
+
+
 		# the file debhomepubkey.gpg will be automatically removed when the 
 		# package is removed.
 	else
