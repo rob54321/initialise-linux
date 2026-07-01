@@ -74,18 +74,30 @@ if test -f "/tmp/initialise-linux-status"; then
 					# new key does not exist in the current list
 					# delete the public key and the secret key from /mnt/debhome/currentkeyid
 					# only if the key is in the keyring
+					# delete the secret key first if it is in the keyring
 					gpg --list-secret-keys "${CURRENTKEYID}" > "/tmp/newkeyerror.txt" 2>&1
 					if test $? -eq 0; then
 						gpg --batch --yes --pinentry-mode loopback --delete-secret-key "${CURRENTKEYID}"
-						gpg --batch --yes --delete-key "${CURRENTKEYID}"
 					else
-						# key not found in keyring
+						# secret key not found in keyring
 						echo " "
 						echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-						echo "initialise-linux:posinst:upgrade: ${CURRENTKEYID} not found in keyring: cannot delete"
+						echo "initialise-linux:posinst:upgrade: secret key ${CURRENTKEYID} not found in keyring: cannot delete"
 						echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 					fi
-					
+
+					# delete the public key if it is in the keyring
+					gpg --list-keys "${CURRENTKEYID}" > "/tmp/newkeyerror.txt" 2>&1
+					if test $? -eq 0; then
+						gpg --batch --yes --delete-key "${CURRENTKEYID}"
+					else
+						# public key not found in keyring
+						echo " "
+						echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+						echo "initialise-linux:posinst:upgrade: public key ${CURRENTKEYID} not found in keyring: cannot delete"
+						echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+					fi
+
 					# import the new secret key
 					# not necessary to import the public key
 					gpg --batch --yes --pinentry-mode loopback --import --passphrase 'coahtr3552' "/tmp/debhomeseckey.gpg"
