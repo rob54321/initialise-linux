@@ -261,6 +261,7 @@ fi
 
 # this code will execute for install or upgrade
 # run init-linux with default values to setup account colours, sudoers etc
-/usr/local/bin/init-linux
+#/usr/local/bin/init-linux
+echo "run init-linux or init-linux -h for help"
 
 exit 0
