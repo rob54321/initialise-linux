@@ -168,18 +168,21 @@ if test -f "/tmp/initialise-linux-status"; then
 		# setuprepository "robert" "/mnt/ad64/debhome" "/mnt/debhome
 		# import the secret key
 
-		if test -f "/tmp/debhomeseckey.gpg"; then
-			# secret key exists, import it
-			gpg --batch --yes --pinentry-mode loopback --passphrase 'coahtr3552' --import "/tmp/debhomeseckey.gpg"
+		# check the current key id that was used to sign the repository
+		# the /mnt/debhome repository must exist. The links /mnt/svn /mnt/debhome
+		# must also be present so setuprepository() must be run before this.
+		# invoke setuprepository() with default values
+		# if the repositories are not found, they will be prompted for.
+		/usr/local/bin/setuprepository "robert" "${DEBHOMEPATH}" "debhome"
+		/usr/local/bin/setuprepository "robert" "${SVNPATH}" "svn"
 
-			# check the current key id that was used to sign the repository
-			# the /mnt/debhome repository must exist. The links /mnt/svn /mnt/debhome
-			# must also be present so setuprepository() must be run before this.
-			# invoke setuprepository() with default values
-			# if the repositories are not found, they will be prompted for.
-			/usr/local/bin/setuprepository "robert" "${DEBHOMEPATH}" "debhome"
-			/usr/local/bin/setuprepository "robert" "${SVNPATH}" "svn"
+		if test -f "/tmp/debhomeseckey.gpg"; then
 			
+			# get the new key id
+			NEWKEY=`gpg --show-key "/etc/apt/keyrings/debhomepubkey.gpg" | sed -e '/^[ ]/!d'`
+			# remove the leading white space
+			NEWKEYID=`echo "${NEWKEY}" | sed -e 's/^[ ]*//'`
+
 			if test -f "/mnt/debhome/dists/home/currentkeyid.txt"; then
 				# the current key id is available
 				CURRENTKEYID=`cat /mnt/debhome/dists/home/currentkeyid.txt`
@@ -188,12 +191,10 @@ if test -f "/tmp/initialise-linux-status"; then
 				echo "initialise-linux:postinst:install: CURRENTKEYID = [${CURRENTKEYID}]"
 				echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 
-				# get the new key id
-				NEWKEYID=`gpg --show-key "/etc/apt/keyrings/debhomepubkey.gpg" | sed -e '/^[ ]/!d'`
-				# remove the leading white space
-				echo "${NEWKEYID}" | sed -e 's/^[ ]*//' > "/tmp/newkeyid.txt"
-				# get the newkeyid with leading spaces removed
-				NEWKEYID=`cat /tmp/newkeyid.txt`
+				# secret key exists, import only if it is not in the keyring
+				gpg --list-secret-keys "${NEWKEYID}" > "/tmp/gpgoutput.txt" 2>&1
+				test $? -ne 0 && gpg --batch --yes --pinentry-mode loopback --passphrase 'coahtr3552' --import "/tmp/debhomeseckey.gpg"
+
 				echo " "
 				echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 				echo "initialise-linux:postinst:install: NEWKEYID = [${NEWKEYID}]"
@@ -228,6 +229,11 @@ if test -f "/tmp/initialise-linux-status"; then
 				echo "initialise-linux:postinst:install: The repository has not been signed."
 				echo "signing the repository"
 				echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+
+				# secret key exists, import only if it is not in the keyring
+				gpg --list-secret-keys "${NEWKEYID}" > "/tmp/gpgoutput.txt" 2>&1
+				test $? -ne 0 && gpg --batch --yes --pinentry-mode loopback --passphrase 'coahtr3552' --import "/tmp/debhomeseckey.gpg"
+
 				/usr/local/bin/signrepository
 				read -t 5 value
 			fi
