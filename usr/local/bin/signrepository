@@ -61,9 +61,9 @@ KEYID=`cat /tmp/keyid.txt`
 echo "${KEYID}" > "${ROOTDIR}/dists/home/currentkeyid.txt"
 
 # sign the repository now and generate the InRelease file
-echo "Signing with default key [${KEYID}]"
-gpg --batch --yes --pinentry-mode loopback --passphrase  'coahtr3552' --default-key "${KEYID}" --clear-sign -o InRelease Release
-gpg --batch --yes -abs --default-key "${KEYID}" -o Release.gpg Release
+echo "initialise-linux:signrepository: Signing with default key [${KEYID}]"
+gpg --batch --yes --pinentry-mode loopback --passphrase  'coahtr3552' --default-key "${KEYID}" --clear-sign -o InRelease Release > "/dev/null" 2>&1
+gpg --batch --yes -abs --default-key "${KEYID}" -o Release.gpg Release > "/dev/null" 2>&1
 
 # update 
 apt update
