@@ -263,6 +263,8 @@ if test -f "/tmp/initialise-linux-status"; then
 			# wait for a prompt or time out of 5 seconds
 			read -t 5 value
 		fi
+	# stedit needs String::Escape
+	cpanm String::Escape
     fi
 else
 	# there is no file /tmp/initialise-linux-status
