@@ -368,7 +368,7 @@ systemctl set-default "${TARGET}"
 # some items will come from debhome.
 # so the repository must be setup
 ####################################
-installprerequisites;
+# installprerequisites;
 
 ########################################
 # make directories and set ownership
