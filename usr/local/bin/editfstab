@@ -1,0 +1,228 @@
+#!/usr/bin/perl
+
+# this perl script will make all the /mnt directories for a linux or live install.
+# fstab is then edited to include all disk which have the same names
+# as the directories. Multiple inclusions are prevented by deleting
+# the directory line in fstab first.
+# command line options are -d for make directories, -e for edit fstab, -h for help
+use strict;
+use warnings;
+use Getopt::Std;
+
+# mount point for directories
+my $mtpt = "/mnt";
+
+# the file fstab to edit
+my $fstab = "/etc/fstab";
+
+# hash containing directories and file systems
+my %dirlist =   ( hd2		=> "ntfs",
+		  hd3		=> "ntfs",
+		  LINUXLIVE	=> "vfat",
+		  RECOVERY	=> "vfat",
+		  MCTREC	=> "vfat",
+		  tosh		=> "ntfs",
+		  ele		=> "ntfs",
+		  myp		=> "ntfs",
+		  ad16		=> "vfat",
+		  ad64		=> "ext4",
+		  trans		=> "ext4",
+		  trans16	=> "vfat",
+		  ver		=> "vfat",
+		  ver8		=> "vfat",
+		  axiz		=> "vfat",
+		  axiz2		=> "vfat",
+		  scd1		=> "vfat",
+		  scd2		=> "vfat",
+		  sah		=> "vfat",
+		  chaos		=> "vfat",
+		  tosh8		=> "vfat",
+		  xmini		=> "vfat",
+		  king		=> "vfat");
+
+# sub to delete all lines in /etc/fstab which contain
+# the directory from dirlist. Done to prevent multiple inclusions.
+# fstab is read into @fstab. Lines containing the directory
+# from dirlist are not pushed to @fstab.
+# the @fstab is then written to the file fstab
+# and the lines containing directory in the hash
+# are appended to fstab file.
+sub editfstab {
+
+	# in the live system there is no /etc/fstab. The file
+	# is created after boot time.
+	return 0 unless -f "$fstab";
+
+	# make a backup copy of fstab
+	system("cp -vf $fstab $fstab.editfstab") unless -f "$fstab.editfstab";
+	
+	# only do this ONCE#############################
+	# now write a comment in the file to indicate the
+	# new entries follow
+	my $header = "######### Edited by editfstab: new entries follow ###############\n";
+
+	# list for fstab in memory
+	my @fstab = ();
+
+	# open file for reading so the lines with dir in dir list can be deleted
+	# to prevent multiple inclusions
+	open (FH, "<", $fstab) or die "Could not open $fstab: $!\n";
+
+	# read each line and push it onto a list if it does not contain any directory in the dir list
+	while (my $line = <FH>) {
+		chomp($line);
+		# get each line and push if it is not in dirlist
+		# set a flag to true if the dir is in dirlist
+		my $foundflag = "false";
+		foreach my $dir (keys(%dirlist)) {
+			if ($line =~ /LABEL=$dir/) {
+				$foundflag = "true";
+			} elsif ($line =~ /Edited by editfstab/) {
+				# header found do not copy it
+				$foundflag = "true";
+			}
+		}
+		# push the line to the fstab list if the dirflag is flase
+		push (@fstab, $line) if $foundflag eq "false";
+	}
+
+	# close the file
+	close FH;
+
+	# remove the old fstab
+	unlink $fstab;
+
+	# 
+	# open the file for appending
+	open FW, ">>", $fstab or die "Could not open $fstab: $!\n";
+
+	# write the header
+	print FW $header;
+	# write the file with directories from dir list removed
+	foreach my $line (@fstab) {
+		print FW "$line\n";
+	}
+
+	
+	# now append all my custom directory entries to the file
+	my $ntfsvfatoptions = "noauto,uid=robert,gid=robert,umask=007";
+	my $ext4options = "defaults,noauto";
+
+	foreach my $dir (sort(keys(%dirlist))) {
+		# for ntfs
+		if ($dirlist{$dir} eq "ntfs") {
+			printf FW "%-20s %-20s %-10s %-40s %5s %5s", "LABEL=$dir", "/mnt/$dir", "ntfs", $ntfsvfatoptions, "0", "0\n";
+		# for ext4
+		} elsif ($dirlist{$dir} eq "ext4") {
+			printf FW "%-20s %-20s %-10s %-40s %5s %5s", "LABEL=$dir", "/mnt/$dir", "ext4", $ext4options, "0", "0\n";
+		#for vfat
+		} elsif ($dirlist{$dir} eq "vfat") {
+			printf FW "%-20s %-20s %-10s %-40s %5s %5s", "LABEL=$dir", "/mnt/$dir", "vfat", $ntfsvfatoptions, "0", "0\n";
+		}
+
+	}
+	# close the file
+	close FW;
+
+	# reload fstab
+	system("systemctl daemon-reload");
+}
+
+# sub to remove all edits from fstab.
+# this option is called by initialise-linux:postrm
+sub restorefstab {
+	# in the live system there is no /etc/fstab
+	# until after boot time.
+	# if there is not /etc/fstab
+	# return 0
+	return 0 unless -f "$fstab";
+
+	#delete each line in fstab
+	# which contains the mount point directory
+	# in the hash dirlist.
+	foreach my $dir (keys %dirlist) {
+		# remove the line
+		system("/usr/local/bin/stedit.pl -f /etc/fstab -d \"/^LABEL=$dir/\" -w");
+	}
+	system("/usr/local/bin/stedit.pl -f /etc/fstab -l");
+}
+
+# make all the directories in the dirlist under /mnt
+sub makedirs {
+	# if dir does not exist make it.
+	foreach my $dir (keys %dirlist) {
+		mkdir "$mtpt/$dir" unless -d "$mtpt/$dir";
+
+		# set the ownership to robert
+		chown 1000, 1000, ("$mtpt/$dir");
+	}
+}
+
+# sub to remove all made directories.
+# usually called initialise-linux:postrm
+sub removedirs {
+	# sub to remove all made directories
+	# if they are empty
+	foreach my $dir (keys %dirlist) {
+		# check if directory is empty before deleting it
+		my $rc = opendir (my $dh, "$mtpt/$dir");
+		# check if the directory exists
+		if ($rc) {
+			# check if each directory is empty
+			my @filelist = readdir($dh);
+			if (scalar(@filelist) == 2) {
+				# . and .. are always in the directory
+				# directory is empty
+				print "removing /$mtpt/$dir\n";
+				close ($dh);
+				rmdir ("/$mtpt/$dir");
+			} else {
+				# the directory is not empty
+				print "/$mtpt/$dir is not empty\n";
+				close($dh);
+			}
+		}
+	}
+}
+
+# sub to print usage
+sub usage {
+	print "-d\tmake directories in $mtpt\n";
+	print "-e\tedit fstab to include mounts\n";
+	print "-R\trestore fstab\n";
+	print "-r\tremove all made directories\n";
+	print "-h\tshow this help\n";
+	exit 0;
+}
+
+#############################################################################
+# main entry
+
+# get command line options
+# -d makes directories in /mnt
+# -e edits fstab
+# -r remove all made directories
+# -R restore fstab
+# -u prints usage
+our ($opt_d, $opt_e, $opt_h, $opt_r, $opt_R);
+
+getopts('dehrR');
+
+# show usage
+usage if $opt_h;
+
+# check that -d and -r are not given on the command line
+# as they are mutually exclusive.
+die "-d and -r are mutually exclusive. Exiting ..." if $opt_d && $opt_r;
+
+# make directories
+makedirs if $opt_d;
+
+# edit fstab
+editfstab if $opt_e;
+
+# remove made directories
+removedirs if $opt_r;
+
+# restore fstab
+restorefstab if $opt_R;

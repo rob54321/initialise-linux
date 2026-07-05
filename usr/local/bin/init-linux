@@ -244,21 +244,6 @@ installprerequisites() {
 
 	# for each item in the list
 	# install it, if it is not installed
-	# setting editfstab and stedit to manualy installed
-	LIST=(editfstab stedit)
-	for ITEM in "${LIST[@]}"; do
-
-		# check if item is installed
-		dpkg-query -s ${ITEM} 1>/dev/null 2>&1
-		if test $? -ne 0; then
-			# install ITEM
-			apt install ${ITEM} -y
-			exitonerror $? "could not install ${ITEM}"
-		fi
-	done
-	# set editfstab and stedit to manually installed so  they are not removed
-	# when initialise-linux is purged
-	apt-mark manual editfstab stedit
 
 	# install configdata or configdatarpi and thunderbirddata or thunderbirddatarpi
 	# depending on architecture

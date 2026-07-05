@@ -142,6 +142,20 @@ if test -f "/tmp/initialise-linux-status"; then
 	
     elif test "${STATUS}" = "install"; then
 		# this is the first install
+		
+		##########################################################################
+		# setup directories with editfstab
+		# setup fstab to include device for debhome
+		# if install then make directories and edit fstab
+		# in the live system there is no fstab
+		# so editfstab -e will do nothing
+		# this is not an error
+		/usr/local/bin/editfstab -d
+		/usr/local/bin/editfstab -e
+
+		#########################################################################
+		# end of editfstab code
+		#########################################################################
 
 		# for rpi copy debhome-rpi.sources
 		if test "${ARCH}" = "aarch64"; then

@@ -79,5 +79,14 @@ if test "$1" = "remove"; then
 		test -f /etc/apt/sources.list.d/debhome-amd64.list && rm -fv /etc/apt/sources.list.d/debhome-amd64.list
 	fi
 
+	if test -x /usr/local/bin/editfstab; then
+		# remove the made directories
+		/usr/local/bin/editfstab -r
+		# restore fstab
+		# in the live system there is no /etc/fstab
+		# so -R does nothing.
+		/usr/local/bin/editfstab -R
+	fi
+
 fi
 exit 0
