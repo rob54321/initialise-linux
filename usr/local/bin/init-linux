@@ -231,7 +231,7 @@ accountcolours() {
 	sudo -u $1 sed -i -e 's/\[\\033\[01;34m\\\]/\[\\033\[01;36m\\\]/' /home/$1/.bashrc
 
 	# edit subversion config so .git and .gitignore are ignored
-	sed -i -e 's/^# global-ignores =/global-ignores = .git .gitignore/' /etc/subversion/config
+	# sed -i -e 's/^# global-ignores =/global-ignores = .git .gitignore/' /etc/subversion/config
 
 }
 
