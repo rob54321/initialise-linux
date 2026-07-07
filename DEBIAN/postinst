@@ -263,8 +263,6 @@ if test -f "/tmp/initialise-linux-status"; then
 			# wait for a prompt or time out of 5 seconds
 			read -t 5 value
 		fi
-	# stedit needs String::Escape
-	cpanm String::Escape
     fi
 else
 	# there is no file /tmp/initialise-linux-status
@@ -276,8 +274,14 @@ else
 fi
 
 # this code will execute for install or upgrade
+# install cpan module String::Escape without
+# asking any questions
+# stedit package uses this module
+export PERL_MM_USE_DEFAULT=1
+cpan String::Escape
+
 # run init-linux with default values to setup account colours, sudoers etc
-#/usr/local/bin/init-linux
-echo "run init-linux or init-linux -h for help"
+/usr/local/bin/init-linux
+# echo "run init-linux or init-linux -h for help"
 
 exit 0
