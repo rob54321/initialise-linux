@@ -1,8 +1,7 @@
 Package: initialise-linux
-Version: 4.8.4
+Version: 4.8.5
 Architecture: all
 Maintainer: Robert Key robkey@mighty.co.za
 Section: myown
-Depends: cpanminus
 Priority: optional
 Description: init-linux initialises linux on desktop and raspberry pi after install. It sets up accounts, multi-user.target, aliases etc.
