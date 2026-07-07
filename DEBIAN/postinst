@@ -47,6 +47,14 @@ if test -f "/tmp/initialise-linux-status"; then
 	STATUS=`cat "/tmp/initialise-linux-status"`
 	
 	if test "${STATUS}" = "upgrade"; then
+		# make sure the debhome repository is available
+		echo "Checking if debhome repository is available"
+		if test ! -f "${DEBHOMEPATH}/dists/home"; then
+			# debhome not available, set it up
+			/usr/local/bin/setuprepository "robert" "${DEBHOMEPATH}" "debhome"
+			exitonerror $? "Could not find the debhome repository"
+		fi
+
 		# check if currentkeyid exists
 		if test -f "/mnt/debhome/dists/home/currentkeyid.txt"; then
 			# get currentkeyid as /mnt/debhome will be available.
