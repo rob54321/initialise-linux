@@ -15,7 +15,7 @@ until test -d "${FULLPATH}"; do
 	read ROOTDIR
 	# exit if quit is typed
 	test "${ROOTDIR}" = "quit" && exit 1;
-	
+
 	# set the path to check
 	FULLPATH="${ROOTDIR}/dists/home"
 done;
@@ -29,14 +29,14 @@ for item in "${ARCH[@]}"; do
 	# create Packages for arch
 	echo "Creating Packages file for ${item}"
 	apt-ftparchive  --arch "${item}" packages pool > "dists/home/main/binary-${item}/Packages"
-	
+
 	# make compressed packages
 	# cd to directory
 	cd "${ROOTDIR}/dists/home/main/binary-${item}/"
 	# compress
 	gzip -f -k Packages
 	bzip2 -f -k Packages
-	
+
 done;
 
 # make the Release file
@@ -57,9 +57,6 @@ cat "/tmp/keyoutput.txt" | sed -e '/^[ ]/!d' > "/tmp/key.txt"
 cat "/tmp/key.txt" | sed -e 's/^[ ]*//' > "/tmp/keyid.txt"
 KEYID=`cat /tmp/keyid.txt`
 
-# save the default key in debian_root/dists/home/currentkeyid.txt
-echo "${KEYID}" > "${ROOTDIR}/dists/home/currentkeyid.txt"
-
 # sign the repository now and generate the InRelease file
 echo " "
 echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
@@ -70,5 +67,5 @@ echo " "
 gpg --batch --yes --pinentry-mode loopback --passphrase  'coahtr3552' --default-key "${KEYID}" --clear-sign -o InRelease Release > "/dev/null" 2>&1
 gpg --batch --yes -abs --default-key "${KEYID}" -o Release.gpg Release > "/dev/null" 2>&1
 
-# update 
+# update
 apt update
