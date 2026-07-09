@@ -1,14 +1,62 @@
 #!/usr/bin/bash
 # preinst script for install, first install
 
+# get the current key id from /etc/apt/keyrings/debhomepubkey.gpg
+# this file may not exist for preinst if this is the very
+# first install.
+# write the key to /tmp/currentkeyid.txt for postinst to use
+# if the file does not yet exist write "no key" to /tmp/currentkeyid.txt
+# postinst will import the new key
+# parameters passed : $1 = install | upgrade
+getcurrentkey() {
+	# check if /etc/apt/keyrings/debhomepubkey.gpg exists
+	if test -f "/etc/apt/keyrings/debhomepubkey.gpg"; then
+		CURRENTKEY=`gpg --show-key "/etc/apt/keyrings/debhomepubkey.gpg" | sed -e '/^[ ]/!d'`
+		# remove the leading white space
+		CURRENTKEYID=`echo "${CURRENTKEY}" | sed -e 's/^[ ]*//'`
+		# write it to a file
+		echo "${CURRENTKEYID}" > "/tmp/currentkeyid.txt"
+
+		echo " "
+		echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+		echo "initialise-linux:preinst:$1: current key id = [${CURRENTKEYID}]"
+		echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+		echo " "
+	else
+		# the key does not exist
+		# this is the very first install
+		# write "no key" to /tmp/currentkeyid.txt
+		echo "no key" > "/tmp/currentkeyid.txt"
+
+		echo " "
+		echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+		echo "initialise-linux:preinst:$1: no current key"
+		echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+		echo " "
+	fi	
+}
+
 if test "$1" = "install"; then
 
 	# this is the very fist install
 	# set the status in file /tmp/initialise-linux-status to install
 	echo "install" > "/tmp/initialise-linux-status"
+	
+	# save the key for postinst
+	getcurrentkey "install"
+
 elif test "$1" = "upgrade"; then
 	# this is an upgrade
 	# set status to upgrade
 	echo "upgrade" > "/tmp/initialise-linux-status"
+	
+	# save the key for postinst
+	getcurrentkey "upgrade"
 fi
+
+# get the current key id incase a new key is installed
+# get the current key id
+# /etc/apt/keyrings/debhomepubkey.gpg will still be the old one in and upgrade.
+# for a new install this file may not exist
+
 exit 0
