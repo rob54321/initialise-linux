@@ -45,7 +45,7 @@ ARCH=`arch`
 if test -f "/tmp/initialise-linux-status"; then
 	# get the status, either upgrade or install
 	STATUS=`cat "/tmp/initialise-linux-status"`
-	
+
 	if test "${STATUS}" = "upgrade"; then
 		# make sure the debhome repository is available
 		echo "Checking if debhome repository is available"
@@ -64,10 +64,10 @@ if test -f "/tmp/initialise-linux-status"; then
 		echo "initialise-linux:postinst:upgrade: CURRENTKEYID = [${CURRENTKEYID}]"
 		echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 		echo " "
-		
+
 		if test "${CURRENTKEYID}" != "no key"; then
 			# current key is available
-			
+
 			# get the new key id from debhomepubkey.gpg
 			# as /etc/apt/keyrings/debhomepubkey.gpg will have been replaced with a new one
 			if test -f "/etc/apt/keyrings/debhomepubkey.gpg"; then
@@ -113,13 +113,14 @@ if test -f "/tmp/initialise-linux-status"; then
 					# import the new secret key
 					# not necessary to import the public key
 					gpg --batch --yes --pinentry-mode loopback --import --passphrase 'coahtr3552' "/tmp/debhomeseckey.gpg"
-					
+
 					# the key has changed sign the repository
 					echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 					echo "initialise-linux:postinst:upgrade: The key has changed, the repository must be signed"
 					echo "signing the repository"
 					echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 					/usr/local/bin/signrepository
+					apt update
 					read -t 5 value
 				else
 					# the key has not changed
@@ -147,12 +148,13 @@ if test -f "/tmp/initialise-linux-status"; then
 			gpg --batch --yes --pinentry-mode loopback --passphrase 'coahtr3552' --import "/tmp/debhomeseckey.gpg"
 
 			/usr/local/bin/signrepository
+			apt update
 			read -t 5 value
 		fi
-	
+
     elif test "${STATUS}" = "install"; then
 		# this is the first install
-		
+
 		##########################################################################
 		# setup directories with editfstab
 		# setup fstab to include device for debhome
