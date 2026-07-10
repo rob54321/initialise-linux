@@ -241,6 +241,7 @@ if test -f "/tmp/initialise-linux-status"; then
 				echo "signing the repository"
 				echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 				/usr/local/bin/signrepository
+				echo "initialise-linux:postinst:install apt update"
 				apt update
 				read -t 5 value
 			fi
