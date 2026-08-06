@@ -275,6 +275,9 @@ export PERL_MM_USE_DEFAULT=1
 cpan String::Escape
 
 # run init-linux with default values to setup account colours, sudoers etc
+echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+echo "+++++++++++++++++++++++++++++++ running init-linux +++++++++++++++++++++++++++++++++++++++++++++++"
+echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 /usr/local/bin/init-linux
 # echo "run init-linux or init-linux -h for help"
 
