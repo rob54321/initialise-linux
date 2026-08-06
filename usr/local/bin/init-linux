@@ -170,10 +170,15 @@ setuplinux() {
 		timedatectl --adjust-system-clock set-local-rtc 0
 		# hwclock -w
 
-		# disable editfstab.service for desktop
-		systemctl is-enabled editfstab > /dev/null 2>&1
-		test $? -eq 0 && systemctl disable editfstab
-
+		###################################
+		# setup the service to update fstab
+		# on live systems only
+		###################################
+		HOSTNAME=`hostname`
+		if test "${HOSTNAME}" = "live"; then
+			# setup editfstab.service
+			editfstabservice
+		fi
 	fi
 }
 
@@ -320,7 +325,7 @@ usage() {
 # defaults
 # TARGET is multi-user.target or graphical.target
 # the default is multi-user.target
-TARGET="multi-user.target"
+TARGET="graphical.target"
 DEBHOMEDEVICE="ad64"
 DEBHOMEPATH="/mnt/${DEBHOMEDEVICE}/debhome"
 SVNDEVICE="ad64"
@@ -419,12 +424,6 @@ accountcolours "${CURUSER}"
 ####################################
 setuplinux
 
-###################################
-# setup the service to update fstab
-# on live systems only
-###################################
-HOSTNAME=`hostname`
-"test ${HOSTNAME}" = "live" && editfstab
 
 # sync new fstab with system
 systemctl daemon-reload
