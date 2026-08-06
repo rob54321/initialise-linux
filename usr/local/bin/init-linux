@@ -347,12 +347,6 @@ ARCH=`arch`
 DEBHOME_FLAG="false"
 SVN_FLAG="false"
 
-# init-linux must not be run on a live system
-if test `hostname` = "live"; then
-	echo "init-linux cannot be run on a live system"
-	exit 0;
-fi
-
 # parameter S destinstion of svn is
 # only used in init-rpi, not in this script
 # it must be defined here as it is passed to init-rpi
