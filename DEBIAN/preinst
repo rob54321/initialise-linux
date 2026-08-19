@@ -33,7 +33,7 @@ getcurrentkey() {
 		echo "initialise-linux:preinst:$1: no current key"
 		echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 		echo " "
-	fi	
+	fi
 }
 
 # the rc code is passed as first parameter, no exit on 0, exit on 1, 2, 3..
@@ -48,16 +48,13 @@ exitonerror() {
 }
 
 # main entry
-# check if apt-utils is installed
-dpkg-query -W apt-utilss > /dev/null 2>&1
-exitonerror $? "apt-utils is not installed. Install apt-utils and xinit"
 
 if test "$1" = "install"; then
 
 	# this is the very fist install
 	# set the status in file /tmp/initialise-linux-status to install
 	echo "install" > "/tmp/initialise-linux-status"
-	
+
 	# save the key for postinst
 	getcurrentkey "install"
 
@@ -65,7 +62,7 @@ elif test "$1" = "upgrade"; then
 	# this is an upgrade
 	# set status to upgrade
 	echo "upgrade" > "/tmp/initialise-linux-status"
-	
+
 	# save the key for postinst
 	getcurrentkey "upgrade"
 fi
