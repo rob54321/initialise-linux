@@ -36,6 +36,22 @@ getcurrentkey() {
 	fi	
 }
 
+# the rc code is passed as first parameter, no exit on 0, exit on 1, 2, 3..
+# second parameter is the error string
+exitonerror() {
+	# test rc code
+	if test $1 -ne 0; then
+		# display error string
+		echo "$2"
+		exit 1;
+	fi
+}
+
+# main entry
+# check if apt-utils is installed
+dpkg-query -W apt-utilss > /dev/null 2>&1
+exitonerror $? "apt-utils is not installed. Install apt-utils and xinit"
+
 if test "$1" = "install"; then
 
 	# this is the very fist install
