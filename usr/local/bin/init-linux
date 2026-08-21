@@ -325,7 +325,7 @@ usage() {
 # defaults
 # TARGET is multi-user.target or graphical.target
 # the default is multi-user.target
-TARGET="graphical.target"
+TARGET="multi-user.target"
 DEBHOMEDEVICE="ad64"
 DEBHOMEPATH="/mnt/${DEBHOMEDEVICE}/debhome"
 SVNDEVICE="ad64"
