@@ -347,19 +347,19 @@ sub buildpackage {
 # gitclone is invoked from the -d -g and -n options.
 # they require different clone options.
 # The options are set my the mode
-# mode 1 : invoked by -g  git options: single_branch, depth 1, branch = project name
+# mode 1 : invoked by -g  git options: single_branch, depth 1, branch = given by -b
 # mode 2 : invoked by -d  git options: single_branch, depth 1, branch = dev
 # mode 3 : invoked by -n  git options: no_checkout, all branches download
 # gitclone (package_name, mode, targetdirectory)
 # the return code from the git clone command is returned.
 sub gitclone {
 	# get parameters
-	my($pname, $mode, $directory) = @_;
+	my($pname, $mode, $directory, $branch) = @_;
 
 	# set options from mode
 	my $gitoptions = "";
 	if ($mode == 1) {
-		$gitoptions = " -v --single-branch --depth=1 -b $pname ";
+		$gitoptions = " -v --single-branch --depth=1 -b $branch ";
 	} elsif  ($mode == 2) {
 		$gitoptions = " -v --single-branch --depth=1 -b dev ";
 	} elsif ($mode == 3) {
@@ -427,7 +427,8 @@ sub usage {
 -l list debian packages in subversion\
 -p [\"pkg1 pkg2 ...\"] extract package latest release from subversion -> build -> add to distribution tree\
 -t [\"pkg1 pkg2 ...\"] extract package from trunk/root in subversion, build->add to archive tree\
--g [\"pkg1 pkg2 ...\"] extract package from git project branch, build->add to tree\
+-g [\"pkg1 pkg2 ...\"] extract package from git with branch given by -b, build->add to tree\
+-b branch_name for package given by -g , build->add to tree\
 -d [\"pkg1 pkg2 ...\"] extract package from git dev branch, build->add to tree\
 -n [\"pkg1 pkg2 ...\"] extract package from git newest branch, build->add to tree\
 -r [\"dir1 dir2 ...\"] recurse directory for deb packages list containing full paths, build -> add to archive\
@@ -487,7 +488,7 @@ my $no_arg = @ARGV;
 
 
 # get command line options
-getopts('n:B:c:FVt:hkS:lp:r:x:d:sf:w:Rg:G:');
+getopts('b:n:B:c:FVt:hkS:lp:r:x:d:sf:w:Rg:G:');
 
 
 # if no options or h option print usage
@@ -707,18 +708,21 @@ if ($opt_p) {
 	} # end foreach
 }
 
-# export a package from git, project branch, build it and insert into the repository
+# export a package from git, branch given by -b, build it and insert into the repository
 # export to depth 1 and delete .git directory
-# this options assumes the branch name is the same as the package name.
+# this option will fail if a branch name is not given by -b
 if ($opt_g) {
 	# checkout each package in list $opt_t is a space separated string
+	# if a branch name was not given, die
+	die "A branch name must be given with -b\n" unless $opt_b;
+	my $branch = $opt_b;
 	my @package_list = split /\s+/, $opt_g;
 
 	foreach my $package (@package_list) {
 		print "\n";
 		print "--------------------------------------------------------------------------------\n";
 
-	    	if (gitclone($package, 1, $workingdir . "/" . $package) == 0) {
+	    	if (gitclone($package, 1, $workingdir . "/" . $package, $branch) == 0) {
 	    		# remove .git directory
     			rmtree $workingdir . "/" . $package . "/.git";
 
@@ -742,7 +746,7 @@ if ($opt_d) {
 		print "\n";
 		print "--------------------------------------------------------------------------------\n";
 
-	    	if (gitclone($package, 2, $workingdir . "/" . $package) == 0) {
+	    	if (gitclone($package, 2, $workingdir . "/" . $package, "") == 0) {
 	    		# remove .git directory
     			rmtree $workingdir . "/" . $package . "/.git";
 
@@ -766,7 +770,7 @@ if ($opt_n) {
 		print "\n";
 		print "--------------------------------------------------------------------------------\n";
 		# clone the package
-	    	if (gitclone($package, 3, $workingdir . "/" . $package) == 0) {
+	    	if (gitclone($package, 3, $workingdir . "/" . $package, "") == 0) {
 	    		# checkout the latest branch
 	    		chdir $workingdir . "/" . $package;
 	    		lbranch;
