@@ -155,14 +155,13 @@ sub getpackagefield {
 }
 
 # first parameter packagename.deb
-# second parameter is status = debpackage | git
-# debpackage means the archive is a debpackage, rename it to standard form and copy to archive
-# subversion means the archive was exported from subversion, built, renamed to standard form and moved to archive
 # all destination directories are created
 # destination = debianpool / section / firstchar of archive / packagename
 # any architecture is moved.
 sub movearchivetotree {
-	my($debarchive, $status) = @_;
+	my($debarchive) = @_;
+
+print "movearchivetotree: $debarchive\n";
 
 	# keep current directory
 	my $currentdir = cwd;
@@ -224,19 +223,11 @@ sub movearchivetotree {
 		# an existing deb file must be renamed to standard form
 		# ie packagename_version_architecture.deb
 		rename $debarchive, $debstdarchive;
-		
-		#display message for move debpackage or build and move
-		if ($status eq "debpackage") {
 
-			# original was a deb archive, cp it
-			print "debpackage: ", $debarchive, " -> $destination/$debstdarchive\n";
-			system ("cp " . $debstdarchive . " " . $destination);
-		} else {
-			# original file was extracted from subversion
-			# buildpackage() would have renamed the file with a standard name
-			print "$status:  ", $debarchive, " -> $destination/$debstdarchive\n";
-			system ("mv " . $debstdarchive . " " . $destination);
-		}
+		# original was a deb archive, cp it
+		print "debpackage: ", $debarchive, " -> $destination/$debstdarchive\n";
+		system ("cp " . $debstdarchive . " " . $destination);
+
 		# chmod of file in archive to 0666
 		my $pname = $destination . "/" . $debstdarchive;
 		chmod (0666, $pname);
@@ -257,18 +248,21 @@ sub add_archive {
 	if( -f $filename) {
 		# move archive to debian dist tree and create dirs
 		if ($filename =~ /\.deb$/) {
-			movearchivetotree($filename, "debpackage");
+			movearchivetotree($filename);
 		}
 	}
 }
 
-# called with buildpackage(workingdirectory, package list)
-# this function builds a source package(s) exported from subversion
+# called with buildpackage(workingdirectory, package name
+# this function builds a source package(s) exported from git or a debian package 
 # into a debian package. The package is then moved to the archive using movetoarchivetree
 # movetoarchivetree is called with debian package name and status subversion 
 sub buildpackage {
 	# get parameters
-	my($workdir, $package, $packagervs) = @_;
+	my($workdir, $package) = @_;
+
+print "buildpackage: $workdir $package\n";
+
 	# keep current directory
 	my $currentdir = cwd;
 	
@@ -298,7 +292,7 @@ sub buildpackage {
 	if ($rc == 0) {
 		# the output of dpkg-deb -b is package.deb
 		my $debpackage = $package . ".deb";
-		movearchivetotree($debpackage, $packagervs);
+		movearchivetotree($debpackage);
 	} else {
 		# control file in DEBIAN directory is not valid or does not exist
 		print "control file of $package is not valid\n";
@@ -319,6 +313,8 @@ sub gitclone {
 	# get parameters
 	my($package, $mode, $workingdir, $branch) = @_;
 
+print "$package $mode $workingdir $branch\n";
+
 	# set options from mode
 	my $gitoptions = "";
 	if ($mode == 1) {
@@ -338,7 +334,16 @@ sub gitclone {
 	rmtree "$workingdir";
 	
 	# clone the project	or die if there is an error
-	my $rc = system("su robert -c 'git clone $gitoptions $gitremotepath$package.git $workingdir >>/tmp/git.log 2>&1' ") or die "Error cloning $package\n";
+
+print "$gitoptions : $gitremotepath$package.git $workingdir\n";
+
+	my $rc = system("su robert -c 'git clone $gitoptions $gitremotepath$package.git $workingdir >>/tmp/git.log 2>&1' ");
+	do {open FH,"<","/tmp/git.log";
+		my @gitlog = <FH>;
+		close FH;
+		print "git.log: @gitlog\n";
+		die "gitclone: Error cloning $package\n";
+	} unless $rc == 0;
 
 	# remove .git directory
 	rmtree $workingdir . "/" . $package . "/.git";
@@ -448,7 +453,7 @@ my $no_arg = @ARGV;
 
 
 # get command line options
-getopts('b:n:B:c:FVt:hkS:lp:r:x:d:sf:w:Rg:G:');
+getopts('b:n:B:c:FVt:hkp:r:x:d:sf:w:Rg:G:');
 
 
 # if no options or h option print usage
@@ -581,7 +586,7 @@ if ($opt_g) {
 	print "--------------------------------------------------------------------------------\n";
 
 	gitclone($package, 1, $workingdir . "/" . $package, $branch);
-	buildpackage($workingdir, $package, "git");
+	buildpackage($workingdir, $package);
 
 }
 
@@ -598,7 +603,7 @@ if ($opt_d) {
 	    gitclone($package, 2, $workingdir . "/" . $package, "");
     			
 		# build the package and move it to the tree
-		buildpackage($workingdir, $package, "git");
+		buildpackage($workingdir, $package);
 	}
 }
 
@@ -618,7 +623,7 @@ if ($opt_n) {
    		lbranch;
     			
 		# build the package and move it to the tree
-		buildpackage($workingdir, $package, "git");
+		buildpackage($workingdir, $package);
 	}
 }
 
@@ -650,7 +655,7 @@ if ($opt_r) {
 if ($opt_f) {
 	print "\n";
 	print "--------------------------------------------------------------------------------\n";
-	movearchivetotree($opt_f, "debpackage");			
+	movearchivetotree($opt_f);			
 }
 print "\n";
 print "--------------------------------------------------------------------------------\n";
@@ -682,7 +687,7 @@ if ($opt_B) {
 	system("cp -a $opt_B $workingdir/");
 
 	# build the package
-	buildpackage($workingdir, $package, "debpackage");
+	buildpackage($workingdir, $package);
 
 }
 
