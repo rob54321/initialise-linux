@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 
-# this programme exports all debian source packages from svn and git
+# this programme exports all debian source packages git
 # builds the debian packages, places then in the debian tree, builds the
 # Packages file, updates apt-get.
 use File::Path;
@@ -13,14 +13,14 @@ use Cwd;
 use File::Glob;
 
 # global variables
-my ($svn, $config_changed, $version, $configFile, $dist, @all_arch, $workingdir, $gitremotepath, $debianroot, $sourcefile);
-our ($opt_k, $opt_n, $opt_B, $opt_c, $opt_h, $opt_w, $opt_f, $opt_b, $opt_S, $opt_t, $opt_p, $opt_r, $opt_x, $opt_G, $opt_F, $opt_V, $opt_g, $opt_s, $opt_d, $opt_l, $opt_R);
+my ($config_changed, $version, $configFile, $dist, @all_arch, $workingdir, $gitremotepath, $debianroot, $sourcefile);
+our ($opt_k, $opt_n, $opt_B, $opt_c, $opt_h, $opt_w, $opt_f, $opt_b, $opt_r, $opt_x, $opt_G, $opt_F, $opt_V, $opt_g, $opt_s, $opt_d, $opt_R);
 
 # sub to get a source tarball and include it in the debian package for building
 # if it is required
 # the source file is kept in debianroot/source
 # The postinst is checked to see if it has SOURCE=source_file, tar or bz2 or tar.gz or tar.bz2
-# this is done so the tarball does not have to be included in subversion
+# this is done so the tarball does not have to be included in git
 # package name is passed as a parameter. The full directory is
 # $workingdir/$packagename
 # returns 1 if tarball sucessfully included in package
@@ -69,51 +69,15 @@ sub getsource {
 	} # end if file_version and sourcefile
 }
 
-# sub to get the maximum release number for a package from subversion
-# the call getrelease( package_name )
-# returns the latest version no, or undef if not found
-sub getmaxrelease {
-	my $package = shift;
-
-	# get all release numbers.
-	my @list = `svn list file://$svn/debian/$package/release/ 2>/tmp/svnerror.log`;
-
-	# check for error
-	my $errorlog = `cat /tmp/svnerror.log`;
-	if (grep /not found/i, $errorlog) {
-		return undef;
-	}
-	# remove new line as well as trailing slash
-	# the versions are returned as 1.3/ etc
-	chomp(@list);
-	chop (@list);
-
-	my $max = "0";
-	# find the maximum version
-	# as string comparison must be done
-	# as version are of the form 2:2.5.1-2.6.4
-	foreach my $ver (@list) {
-		$max = $ver if $max lt $ver;
-	}
-	return $max;
-}
-
-# this sub operates on the list @ARGV
-# all the switches in the defparam hash are checked to see if they have arguments.
-# if they do not have arguments, the default arguments are inserted into ARGV after the switch
-# so that getopts will not fail.
-# no parameters are passed and none are returned.
-
 # sub to write config file of parameters that have changed.
 # the hash %config contains the key value pairs of the changed variables
-# all three vars workingdir, subversion and debianroot are written
+# all three vars workingdir, debianroot and gitrepopath are written
 # some may not have changed, then the default values are written
 # format is variable value
 sub writeconfig {
     # set up hash to save
     my %config = ();
     $config{"workingdir"} = $workingdir;
-    $config{"subversion"} = $svn;
     $config{"debianroot"} = $debianroot;
     $config{"gitrepopath"}    = $gitremotepath;
         
@@ -136,7 +100,6 @@ sub getconfig {
 		# read file into hash and set values
 		while (<INFILE>) {
 			$workingdir = (split " ", $_)[1] if /workingdir/;
-			$svn = (split " ", $_)[1] if /subversion/;
 			$debianroot = (split " ", $_)[1] if /debianroot/;
 			$gitremotepath = (split " ", $_)[1] if /gitrepopath/;
 			}
@@ -192,7 +155,7 @@ sub getpackagefield {
 }
 
 # first parameter packagename.deb
-# second parameter is status = debpackage | subversion | git
+# second parameter is status = debpackage | git
 # debpackage means the archive is a debpackage, rename it to standard form and copy to archive
 # subversion means the archive was exported from subversion, built, renamed to standard form and moved to archive
 # all destination directories are created
@@ -427,9 +390,6 @@ sub lbranch {
 
 sub usage {
     print "usage: builddebiantree [options] filelist\
--l list debian packages in subversion\
--p [\"pkg1 pkg2 ...\"] extract package latest release from subversion -> build -> add to distribution tree\
--t [\"pkg1 pkg2 ...\"] extract package from trunk/root in subversion, build->add to archive tree\
 -g [\"pkg\"] extract one package from git with branch or tag given by -b, build->add to tree\
 -b branch_or tag name for package given by -g , build->add to tree\
 -d [\"pkg1 pkg2 ...\"] extract package from git dev branch, build->add to tree\
@@ -441,7 +401,6 @@ sub usage {
 -x path, to existing respository, default: $debianroot\
 -c path, create a new repository at path
 -s scan packages to make Packages\
--S full path of subversion default root: $svn\
 -G full path of git repo, default: $gitremotepath
 -f full path filename to be added\
 -w set working directory: $workingdir\
@@ -466,8 +425,6 @@ $dist = "home";
 # full path to cloned project is
 # $workingdir/$package_name
 $workingdir = "/tmp/debian";
-
-$svn = "/mnt/svn";
 
 # the git remote path must be
 # appended by /
@@ -591,33 +548,6 @@ if ($opt_V) {
 	exit 0;
 }
 
-# reset by deleting config file and exit
-# subversion , debhome repository, working dir, git repo must be reset
-if ($opt_R) {
-	unlink($configFile);
-
-    #debhome.source must be reset to the default
-    # extract debhome.sourses from subversion
-    # the file is architecture dependent
-    my $arch = `arch`;
-    chomp($arch);
-    
-    if ($arch eq "aarch64") {
-        # extract for arm64
-        my $rc = system("svn export --force file://" . $svn . "/root/my-linux/sources/arm64/debhome.sources /etc/apt/sources.list.d");
-        die("Could not extract debhome.sources from $svn/root/my-linux/sources/arm64\n") unless $rc == 0;
-    } elsif ($arch eq "x86_64") {
-        # extract for amd64
-        my $rc = system("svn export --force file://" . $svn . "/root/my-linux/sources/amd64/debhome.sources /etc/apt/sources.list.d");
-        die("Could not extract debhome.sources from $svn/root/my-linux/sources/amd64\n") unless $rc == 0;
-    } else {
-        # unknown architecture
-        die("$arch is and unknown architecture\n");
-    }
-	print "deleted config file\n";
-	exit 0;
-}
-
 # set the git repository path if changed
 if ($opt_G) {
 	$gitremotepath = $opt_G;
@@ -625,16 +555,6 @@ if ($opt_G) {
 	$gitremotepath = $gitremotepath . "/" unless $gitremotepath =~ /\/$/;
 	
 	$config_changed = "true";
-}
-
-# set subversion respository root path
-if ($opt_S) {
-        $svn = $opt_S;
-        # strip trailing /
-        $svn =~ s/\/$//;
-
-        # set flag to say a change has been made
-        $config_changed = "true";
 }
 
 # set working directory if changed
@@ -647,69 +567,6 @@ if ($opt_w) {
 
 # save config file if it has changed
 writeconfig if $config_changed;
-
-
-if ($opt_l) {
-    my $command = "svn -v list file://" . $svn . "/debian";
-    system($command);
-}
-
-# set up subversion export command
-my $subversioncmd = "svn --force -q export file://" . $svn . "/debian/";
-
-# export the trunk from subversion, build the package and move to the debian tree
-# if there is no trunk directory then export from the project directory
-if ($opt_t) {
-	# export package from trunk and build it, insert into debian repository
-    	removeworkingdir;
-	my @package_list = split /\s+/, $opt_t;
-	foreach my $package (@package_list) {
-		# checkout each package in list $opt_t is a space separated string
-		print "\n";
-		print "--------------------------------------------------------------------------------\n";
-		# check if trunk exists
-		my $trunk = "/trunk";
-		my $rc = system("svn list file://" . $svn . "/debian/" . $package . "/trunk > /tmp/svn.log 2>&1");
-		$trunk = "/" unless $rc == 0;
-    		my $command = $subversioncmd . $package . $trunk . " " . $workingdir . "/" . $package . " 1>/tmp/svn.log 2>/tmp/svnerror.log";
-	    	if (system($command) == 0) {
-			print "exported file://" . $svn . "/debian/" . $package . $trunk . "\n";
-			# build the package and move it to the tree
-			buildpackage($workingdir, $package, "subversion trunk");
-		} else {
-			my $error = `cat /tmp/svnerror.log`;
-			print "$error\n";
-		}
-	} # end foreach
-}
-# export the latest release, build the package and move to the debian tree
-# also check if a source tarball is required and insert it into the debian package
-if ($opt_p) {
-	# empty working dir incase
-	removeworkingdir;
-
-	# checkout each package in list $opt_p is a space separated string
-	my @package_list = split /\s+/, $opt_p;
-	foreach my $package (@package_list) {
-		print "\n";
-		print "--------------------------------------------------------------------------------\n";
-		# get latest release no
-		my $release = getmaxrelease($package);
-		if ($release) {
-		    	my $command = $subversioncmd . $package . "/release/" . $release . " " . $workingdir . "/" . $package . " 1>/tmp/svn.log 2>/tmp/svnerror.log";
-	    		if (system($command) == 0) {
-				print "exported file://" . $svn . "/debian/" . $package . "/release/" . $release . "\n";
-				# build the package and move it to the tree
-				buildpackage($workingdir, $package, "subversion release");
-			} else {
-				my $error = `cat /tmp/svnerror.log`;
-				print "$error\n";
-			}
-		} else {
-			print "There is no release for package $package\n";
-		} # end if release
-	} # end foreach
-}
 
 # export one package from git, branch or tag given by -b, build it and insert into the repository
 # export to depth 1 and delete .git directory
