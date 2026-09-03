@@ -313,7 +313,7 @@ sub gitclone {
 	# get parameters
 	my($package, $mode, $workingdir, $branch) = @_;
 
-print "$package $mode $workingdir $branch\n";
+print "gitclone: $package $mode $workingdir $branch\n";
 
 	# set options from mode
 	my $gitoptions = "";
@@ -331,6 +331,7 @@ print "$package $mode $workingdir $branch\n";
 	# project name is project_name.git
 	# project_name.git is the repository name
 	# remove directory working directory if it exists
+	# workingdir = /tmp/debian/packagename
 	rmtree "$workingdir";
 	
 	# clone the project	or die if there is an error
@@ -346,11 +347,12 @@ print "$gitoptions : $gitremotepath$package.git $workingdir\n";
 	} unless $rc == 0;
 
 	# remove .git directory
-	rmtree $workingdir . "/" . $package . "/.git";
+print "rmtree: $workingdir" . "/.git\n";
+	rmtree $workingdir . "/.git";
 
 	# remove the readme file and .gitignore
-	unlink "$workingdir" . "/" . "$package" . "/README.md";
-	unlink "$workingdir" . "/" . "$package" . "/.gitignore";
+	unlink "$workingdir" . "/README.md";
+	unlink "$workingdir" . "/.gitignore";
 
 	return $rc;
 }
