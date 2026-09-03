@@ -261,8 +261,6 @@ sub buildpackage {
 	# get parameters
 	my($workdir, $package) = @_;
 
-print "buildpackage: $workdir $package\n";
-
 	# keep current directory
 	my $currentdir = cwd;
 	
@@ -285,6 +283,15 @@ print "buildpackage: $workdir $package\n";
 		print "$package: $sourcefile defined but not found: skipping\n";
 		return;
 	}
+
+	# remove .git directory, README and .gitignore files
+	rmtree $workingdir . "/" . $package . "/.git";
+
+	# remove the readme file and .gitignore
+	unlink "$workingdir" . "/" . $package . "/README.md";
+	unlink "$workingdir" . "/" . $package . "/.gitignore";
+
+
 	# build the package to packagename.deb
 	# use deb package name to get full name
 	my $rc = system("dpkg-deb -b -Z gzip " . $package . " >/dev/null");
@@ -307,22 +314,21 @@ print "buildpackage: $workdir $package\n";
 # mode 1 : invoked by -g  git options: single_branch, depth 1, branch/tag = given by -b
 # mode 2 : invoked by -d  git options: single_branch, depth 1, branch = dev
 # mode 3 : invoked by -n  git options: no_checkout, all branches download
-# gitclone (package_name, mode, targetdirectory)
+# gitclone (package_name, mode, workingdirectory root)
+# workingdirectory = /tmp/debian by default
 # the return code from the git clone command is returned.
 sub gitclone {
 	# get parameters
 	my($package, $mode, $workingdir, $branch) = @_;
 
-print "gitclone: $package $mode $workingdir $branch\n";
-
 	# set options from mode
 	my $gitoptions = "";
 	if ($mode == 1) {
-		$gitoptions = " -v --single-branch --depth=1 -b $branch ";
+		$gitoptions = "-v --single-branch --depth=1 -b $branch ";
 	} elsif  ($mode == 2) {
-		$gitoptions = " -v --single-branch --depth=1 -b dev ";
+		$gitoptions = "-v --single-branch --depth=1 -b dev ";
 	} elsif ($mode == 3) {
-		$gitoptions = " -v -n ";
+		$gitoptions = "-v -n ";
 	} else {
 		# mode is an undefined value, die
 		die "mode = $mode is undefined\n";
@@ -331,28 +337,19 @@ print "gitclone: $package $mode $workingdir $branch\n";
 	# project name is project_name.git
 	# project_name.git is the repository name
 	# remove directory working directory if it exists
-	# workingdir = /tmp/debian/packagename
+	# workingdir = /tmp/debian
 	rmtree "$workingdir";
-	
 	# clone the project	or die if there is an error
+	my $gitcommand = "git clone " . $gitoptions . " " . $gitremotepath . $package . ".git" . " " . $workingdir . "/" . $package . " >> /tmp/git.log 2>&1";
+	my $rc = system("su robert -c '$gitcommand'");
 
-print "$gitoptions : $gitremotepath$package.git $workingdir\n";
-
-	my $rc = system("su robert -c 'git clone $gitoptions $gitremotepath$package.git $workingdir >>/tmp/git.log 2>&1' ");
+	# display the error if there is one
 	do {open FH,"<","/tmp/git.log";
 		my @gitlog = <FH>;
 		close FH;
 		print "git.log: @gitlog\n";
 		die "gitclone: Error cloning $package\n";
 	} unless $rc == 0;
-
-	# remove .git directory
-print "rmtree: $workingdir" . "/.git\n";
-	rmtree $workingdir . "/.git";
-
-	# remove the readme file and .gitignore
-	unlink "$workingdir" . "/README.md";
-	unlink "$workingdir" . "/.gitignore";
 
 	return $rc;
 }
@@ -361,7 +358,6 @@ print "rmtree: $workingdir" . "/.git\n";
 # this sub can only be executed in the git cloned directory
 sub getremote {
 	my @remotelist = `su robert -c 'git remote'`;
-print "getremote: remotelist = @remotelist\n";
 	chomp (@remotelist);
 	return $remotelist[0];
 }
@@ -375,11 +371,11 @@ print "getremote: remotelist = @remotelist\n";
 sub lbranch { 
 	# get remote name
 	my $rname = getremote;
-print "lbranch: $rname\n";
+
 	# get heads and sort
 	# line 0 will be the latest head, line 1 next etc
 	my @line = `su robert -c 'git ls-remote --heads --sort=-committerdate $rname'`;
-print "line: @line\n";
+
 	# each line contains "commit refs/heads/branch_name"
 	# the first line will have the newest date
 	# get branch latest branch, it will appear first on the list
@@ -391,7 +387,7 @@ print "line: @line\n";
 	die ("Could not checkout $lbranch from $rname:$!\n") unless $rc == 0;
 	
 	# print remote name and latest branch
-	print "remote: $rname\t latest branch: $lbranch\n";
+	print "latest branch: $lbranch\n";
 }
 
 
@@ -588,7 +584,7 @@ if ($opt_g) {
 	print "\n";
 	print "--------------------------------------------------------------------------------\n";
 
-	gitclone($package, 1, $workingdir . "/" . $package, $branch);
+	gitclone($package, 1, $workingdir, $branch);
 	buildpackage($workingdir, $package);
 
 }
@@ -603,7 +599,7 @@ if ($opt_d) {
 		print "\n";
 		print "--------------------------------------------------------------------------------\n";
 
-	    gitclone($package, 2, $workingdir . "/" . $package, "");
+	    gitclone($package, 2, $workingdir, "");
     			
 		# build the package and move it to the tree
 		buildpackage($workingdir, $package);
@@ -620,7 +616,7 @@ if ($opt_n) {
 		print "\n";
 		print "--------------------------------------------------------------------------------\n";
 		# clone the package
-	    gitclone($package, 3, $workingdir . "/" . $package, "");
+	    gitclone($package, 3, $workingdir , "");
    		# checkout the latest branch
    		chdir $workingdir . "/" . $package;
    		lbranch;
