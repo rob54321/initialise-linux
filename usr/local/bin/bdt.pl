@@ -453,7 +453,7 @@ my $no_arg = @ARGV;
 
 
 # get command line options
-getopts('b:n:B:c:FVt:hkp:r:x:d:sf:w:Rg:G:');
+getopts('b:n:B:c:FVhkp:r:x:d:sf:w:Rg:G:');
 
 
 # if no options or h option print usage
@@ -593,7 +593,7 @@ if ($opt_g) {
 # export a package from git, development branch, build it and insert into the repository
 # export to depth 1 and delete .git directory
 if ($opt_d) {
-	# checkout each package in list $opt_t is a space separated string
+	# checkout each package in list input is a space separated string
 	my @package_list = split /\s+/, $opt_d;
 
 	foreach my $package (@package_list) {
@@ -610,7 +610,7 @@ if ($opt_d) {
 # export the latest package from git, irrespective of which branch it is on, build it and insert into the repository
 # this is the -n newest option
 if ($opt_n) {
-	# checkout each package in list $opt_t is a space separated string
+	# checkout each package in list input is a space separated string
 	my @package_list = split /\s+/, $opt_n;
 
 	foreach my $package (@package_list) {
