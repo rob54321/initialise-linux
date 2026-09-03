@@ -396,7 +396,7 @@ sub lbranch {
 sub usage {
     print "usage: builddebiantree [options] filelist\
 -g [\"pkg\"] extract one package from git with branch or tag given by -b, build->add to tree\
--b branch_or tag name for package given by -g , build->add to tree\
+-b branch_or tag name for package given by -g , tags must have been uploaded build->add to tree\
 -d [\"pkg1 pkg2 ...\"] extract package from git dev branch, build->add to tree\
 -n [\"pkg1 pkg2 ...\"] extract package from git newest branch, build->add to tree\
 -r [\"dir1 dir2 ...\"] recurse directory for deb packages list containing full paths, build -> add to archive\
