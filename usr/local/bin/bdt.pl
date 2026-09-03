@@ -361,6 +361,7 @@ print "rmtree: $workingdir" . "/.git\n";
 # this sub can only be executed in the git cloned directory
 sub getremote {
 	my @remotelist = `su robert -c 'git remote'`;
+print "getremote: remotelist = @remotelist\n";
 	chomp (@remotelist);
 	return $remotelist[0];
 }
@@ -374,11 +375,11 @@ sub getremote {
 sub lbranch { 
 	# get remote name
 	my $rname = getremote;
-	
+print "lbranch: $rname\n";
 	# get heads and sort
 	# line 0 will be the latest head, line 1 next etc
 	my @line = `su robert -c 'git ls-remote --heads --sort=-committerdate $rname'`;
-
+print "line: @line\n";
 	# each line contains "commit refs/heads/branch_name"
 	# the first line will have the newest date
 	# get branch latest branch, it will appear first on the list
