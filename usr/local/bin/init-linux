@@ -424,6 +424,6 @@ systemctl daemon-reload
 
 # create /home/robert/.xinitrc
 # which contains exec cinnamon-session
-su
-sudo -u "${CURUSER}" echo "exec cinnamon-session" > "/home/robert/.xinitrc"
-chmod a+x "/home/robert/xinitrc"
+echo "exec cinnamon-session" > "/home/robert/.xinitrc"
+chown "${CURUSER}":"${CURUSER}" "/home/robert/.xinitrc"
+chmod a+x "/home/robert/.xinitrc"
