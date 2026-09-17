@@ -421,3 +421,9 @@ setuplinux
 
 # sync new fstab with system
 systemctl daemon-reload
+
+# create /home/robert/.xinitrc
+# which contains exec cinnamon-session
+su
+sudo -u "${CURUSER}" echo "exec cinnamon-session" > "/home/robert/.xinitrc"
+chmod a+x "/home/robert/xinitrc"
